@@ -12,6 +12,26 @@
   external_node_modules = ["ethers", "@elizaos/core"]
 
 [[redirects]]
+  from = "/api/status"
+  to = "/.netlify/functions/governance-agent/status"
+  status = 200
+
+[[redirects]]
+  from = "/api/health"
+  to = "/.netlify/functions/governance-agent/health"
+  status = 200
+
+[[redirects]]
+  from = "/api/proposals"
+  to = "/.netlify/functions/governance-agent/proposals"
+  status = 200
+
+[[redirects]]
+  from = "/api/voting-history"
+  to = "/.netlify/functions/governance-agent/voting-history"
+  status = 200
+
+[[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/governance-agent/:splat"
   status = 200
