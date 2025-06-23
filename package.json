@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "npm run build && npm run start:local",
-    "build": "tsc && npm run build:netlify",
+    "build": "npm run clean && tsc && npm run build:netlify-functions",
+    "build:netlify-functions": "mkdir -p dist/netlify/functions && tsc netlify/functions/governance-agent.ts --outDir dist/netlify/functions --target ES2022 --module ESNext --moduleResolution node && cp public/index.html dist/",
+    "build:static": "mkdir -p dist/netlify/functions && cp -r public/* dist/ 2>/dev/null || true && tsc netlify/functions/governance-agent.ts --outDir dist/netlify/functions --target ES2022 --module ESNext --moduleResolution node",
     "build:netlify": "mkdir -p dist/netlify/functions && cp -r characters dist/ 2>/dev/null || true && cp netlify.toml dist/ 2>/dev/null || true && tsc netlify/functions/governance-agent.ts --outDir dist/netlify/functions --target ES2022 --module ESNext --moduleResolution node",
     "start": "npm run build && npm run start:local",
     "start:local": "node dist/src/index.js",
@@ -27,7 +29,8 @@
     "verify-registration": "ts-node scripts/monitoring/verify-registration-status.ts",
     "test-governance": "ts-node scripts/testing/quick-assetdao-test.ts",
     "deploy": "npm run build && netlify deploy --prod --dir=dist",
-    "preview": "netlify deploy --dir=dist"
+    "preview": "netlify deploy --dir=dist",
+    "clean": "rm -rf dist && mkdir -p dist"
   },
   "keywords": [
     "elizaOS",
@@ -50,21 +53,21 @@
     "dotenv": "^16.5.0",
     "node-cron": "^4.0.7",
     "winston": "^3.17.0",
-    "cron-parser": "^5.2.0"
+    "cron-parser": "^5.2.0",
+    "typescript": "^5.8.3",
+    "@netlify/functions": "^2.8.1"
   },
   "devDependencies": {
     "@types/node": "^22.15.29",
     "@types/jest": "^29.5.14",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
-    "@netlify/functions": "^2.8.1",
     "eslint": "^8.57.0",
     "jest": "^29.7.0",
     "snyk": "^1.1291.0",
     "solhint": "^5.1.0",
     "ts-jest": "^29.1.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.3",
     "netlify-cli": "^17.34.2"
   },
   "elizaConfig": {
