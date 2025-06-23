@@ -1,8 +1,7 @@
 import { ethers } from 'ethers';
 import { WalletService } from './WalletService.js';
 import { ContractService } from './ContractService.js';
-import { GovernanceError } from '../types/index.js';
-import { governanceLogger as logger } from '../utils/logger.js';
+import { contractLogger as logger } from '../utils/logger.js';
 
 /**
  * Service for managing DLOOP token operations

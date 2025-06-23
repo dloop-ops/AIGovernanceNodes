@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { governanceLogger as logger } from '../utils/logger.js';
+import { contractLogger as logger } from '../utils/logger.js';
 /**
  * Service for managing DLOOP token operations
  */

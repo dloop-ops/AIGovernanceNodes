@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { contractLogger as logger } from '../utils/logger.js';
-import { NetworkMonitor, NetworkStatus } from './NetworkMonitor.js';
+import { NetworkMonitor } from './NetworkMonitor.js';
 import { ConnectionPool } from './ConnectionPool.js';
 
 export interface RpcEndpoint {

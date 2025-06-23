@@ -30,9 +30,10 @@ export default {
         'html'
     ],
     setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
-    moduleNameMapping: {
+    moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/src/$1',
-        '^@elizaos/(.*)$': '<rootDir>/node_modules/@elizaos/$1'
+        '^@elizaos/(.*)$': '<rootDir>/node_modules/@elizaos/$1',
+        '^(\\.{1,2}/.*)\\.js$': '$1'
     },
     moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
     testTimeout: 10000,

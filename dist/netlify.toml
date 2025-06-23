@@ -1,18 +1,15 @@
 [build]
-  publish = "dist"
+  publish = "public"
   command = "npm run build"
 
 [build.environment]
   NODE_VERSION = "18"
   NPM_FLAGS = "--prefix=/opt/buildhome/.nodejs/lib/node_modules/npm"
 
-[[functions]]
-  name = "governance-agent"
-  src = "dist"
+[functions]
+  directory = "dist/netlify/functions"
   node_bundler = "esbuild"
-
-[functions."governance-agent".environment]
-  NODE_ENV = "production"
+  external_node_modules = ["ethers", "@elizaos/core"]
 
 [[redirects]]
   from = "/api/*"

@@ -18,9 +18,10 @@ declare namespace _default {
     let coverageDirectory: string;
     let coverageReporters: string[];
     let setupFilesAfterEnv: string[];
-    let moduleNameMapping: {
+    let moduleNameMapper: {
         '^@/(.*)$': string;
         '^@elizaos/(.*)$': string;
+        '^(\\.{1,2}/.*)\\.js$': string;
     };
     let moduleFileExtensions: string[];
     let testTimeout: number;

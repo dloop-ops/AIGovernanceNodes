@@ -1,4 +1,4 @@
-import { Proposal, ProposalType, ProposalState, MarketAnalysis, StrategyConfig, GovernanceError } from '../types/index.js';
+import { Proposal, ProposalType, ProposalState, MarketAnalysis, StrategyConfig } from '../types/index.js';
 import { strategyLogger as logger } from '../utils/logger.js';
 
 export abstract class BaseStrategy {

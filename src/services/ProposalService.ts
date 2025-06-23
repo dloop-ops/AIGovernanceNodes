@@ -1,6 +1,7 @@
+import { ethers } from 'ethers';
 import { ContractService } from './ContractService.js';
 import { MarketDataService } from './MarketDataService.js';
-import { ProposalParams, ProposalType, MarketAnalysis, InvestmentRecommendation, GovernanceError } from '../types/index.js';
+import { ProposalParams, ProposalType, MarketAnalysis, GovernanceError } from '../types/index.js';
 import { governanceLogger as logger } from '../utils/logger.js';
 
 export class ProposalService {

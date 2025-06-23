@@ -1,6 +1,5 @@
 import { ethers } from 'ethers';
 import fs from 'fs';
-import path from 'path';
 import logger from '../utils/logger.js';
 import { RpcManager } from './RpcManager.js';
 import { TransactionManager } from './TransactionManager.js';

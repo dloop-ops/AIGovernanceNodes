@@ -1,5 +1,4 @@
 import { ethers } from 'ethers';
-import { NetworkStatus } from './NetworkMonitor.js';
 export interface RpcEndpoint {
     url: string;
     name: string;
@@ -95,7 +94,7 @@ export declare class RpcManager {
             priority: number;
             lastUsed: number;
         }[];
-        networkStatus: [string, NetworkStatus][];
+        networkStatus: [string, import("./NetworkMonitor.js").NetworkStatus][];
         poolStatus: {
             [endpointName: string]: {
                 healthy: number;
