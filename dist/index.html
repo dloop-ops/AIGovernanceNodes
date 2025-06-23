@@ -261,13 +261,23 @@
         async function loadStatus() {
             try {
                 const response = await fetch('/api/status');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const data = await response.json();
+                console.log('Status API Response:', data);
                 
-                document.getElementById('statusBadge').textContent = '✅ ' + data.status.toUpperCase();
-                document.getElementById('statusBadge').style.background = '#27ae60';
-                
-                if (data.version) document.getElementById('version').textContent = data.version;
-                if (data.nodes) document.getElementById('nodeCount').textContent = data.nodes;
+                if (data && data.status) {
+                    document.getElementById('statusBadge').textContent = '✅ ' + data.status.toUpperCase();
+                    document.getElementById('statusBadge').style.background = '#27ae60';
+                    
+                    if (data.version) document.getElementById('version').textContent = data.version;
+                    if (data.nodes) document.getElementById('nodeCount').textContent = data.nodes;
+                } else {
+                    throw new Error('Invalid API response structure');
+                }
                 
             } catch (error) {
                 document.getElementById('statusBadge').textContent = '⚠️ OFFLINE';
@@ -284,10 +294,16 @@
             
             try {
                 const response = await fetch(endpoint);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const data = await response.json();
                 responseDiv.textContent = JSON.stringify(data, null, 2);
             } catch (error) {
                 responseDiv.textContent = 'Error: ' + error.message;
+                console.error('API Test Error:', error);
             }
         }
         
