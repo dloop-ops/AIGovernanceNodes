@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.dloop.governance.voting</string>
+    
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/node</string>
+        <string>/Users/apple/Downloads/AIGovernanceNodes/dist/scripts/core/multi-node-voting.js</string>
+    </array>
+    
+    <key>WorkingDirectory</key>
+    <string>/Users/apple/Downloads/AIGovernanceNodes</string>
+    
+    <key>StartInterval</key>
+    <integer>1800</integer> <!-- 30 minutes = 1800 seconds -->
+    
+    <key>RunAtLoad</key>
+    <true/>
+    
+    <key>KeepAlive</key>
+    <false/>
+    
+    <key>StandardOutPath</key>
+    <string>/Users/apple/Downloads/AIGovernanceNodes/logs/voting-automation.log</string>
+    
+    <key>StandardErrorPath</key>
+    <string>/Users/apple/Downloads/AIGovernanceNodes/logs/voting-automation-error.log</string>
+    
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>NODE_ENV</key>
+        <string>production</string>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+    
+    <key>ProcessType</key>
+    <string>Background</string>
+    
+    <key>LowPriorityIO</key>
+    <true/>
+    
+    <key>Nice</key>
+    <integer>1</integer>
+</dict>
+</plist> 

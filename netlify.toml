@@ -7,9 +7,12 @@
   NODE_ENV = "development"
 
 [functions]
-  directory = "dist/netlify/functions"
+  directory = "netlify/functions"
   node_bundler = "esbuild"
   external_node_modules = ["ethers", "@elizaos/core"]
+
+[functions."scheduled-voting"]
+  schedule = "*/30 * * * *"
 
 [[redirects]]
   from = "/api/status"
