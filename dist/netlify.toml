@@ -1,0 +1,67 @@
+[build]
+  publish = "dist"
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "18"
+  NPM_FLAGS = "--prefix=/opt/buildhome/.nodejs/lib/node_modules/npm"
+
+[[functions]]
+  name = "governance-agent"
+  src = "dist"
+  node_bundler = "esbuild"
+
+[functions."governance-agent".environment]
+  NODE_ENV = "production"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/governance-agent/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[context.production.environment]
+  NODE_ENV = "production"
+  ELIZA_RUNTIME = "production"
+
+[context.deploy-preview.environment]
+  NODE_ENV = "development"
+  ELIZA_RUNTIME = "development"
+
+[context.branch-deploy.environment]
+  NODE_ENV = "development"
+  ELIZA_RUNTIME = "development"
+
+# Headers for security and performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://sepolia.infura.io https://api.coingecko.com wss://sepolia.infura.io; font-src 'self' data:;"
+
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET,HEAD,POST,OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type,Authorization"
+
+# Environment variable templates (will be overridden by actual secrets)
+[template.environment]
+  OPENAI_API_KEY = "Set in Netlify dashboard"
+  ETHEREUM_RPC_URL = "Set in Netlify dashboard"  
+  AI_NODE_1_PRIVATE_KEY = "Set in Netlify dashboard"
+  AI_NODE_2_PRIVATE_KEY = "Set in Netlify dashboard"
+  AI_NODE_3_PRIVATE_KEY = "Set in Netlify dashboard"
+  AI_NODE_4_PRIVATE_KEY = "Set in Netlify dashboard"
+  AI_NODE_5_PRIVATE_KEY = "Set in Netlify dashboard"
+  ASSET_DAO_CONTRACT_ADDRESS = "0xa87e662061237a121Ca2E83E77dA8251bc4B3529"
+  DLOOP_TOKEN_ADDRESS = "0xC37f5136084A0Ecf88Bc1a2E3F20c4BB4EDAfCe3"
+  LOG_LEVEL = "info" 

@@ -1,0 +1,82 @@
+{
+  "name": "dloop-ai-governance-nodes",
+  "version": "2.0.0",
+  "description": "DLoop AI Governance Nodes using elizaOS framework for autonomous DAO participation",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run build && npm run start:local",
+    "build": "tsc && npm run build:netlify",
+    "build:netlify": "mkdir -p dist && cp -r characters dist/ 2>/dev/null || true && cp netlify.toml dist/ 2>/dev/null || true",
+    "start": "npm run build && npm run start:local",
+    "start:local": "node dist/src/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:integration": "jest --testPathPattern=integration",
+    "test:unit": "jest --testPathPattern=unit",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "setup": "echo 'Please configure .env file with required variables'",
+    "health-check": "npm test && npm run test-governance",
+    "emergency-fix": "npx ts-node scripts/core/emergency-governance-fix.ts",
+    "emergency-voting": "npx ts-node scripts/core/emergency-governance-fix.ts",
+    "multi-node-voting": "npx ts-node scripts/core/multi-node-voting.ts",
+    "verify-addresses": "ts-node scripts/utilities/verify-contract-addresses.ts",
+    "check-registration": "ts-node scripts/monitoring/check-registration-status.ts",
+    "verify-registration": "ts-node scripts/monitoring/verify-registration-status.ts",
+    "test-governance": "ts-node scripts/testing/quick-assetdao-test.ts",
+    "deploy": "npm run build && netlify deploy --prod --dir=dist",
+    "preview": "netlify deploy --dir=dist"
+  },
+  "keywords": [
+    "elizaOS",
+    "AI-agent",
+    "blockchain",
+    "governance",
+    "DAO",
+    "DeFi",
+    "autonomous",
+    "sepolia",
+    "ethereum",
+    "voting",
+    "dloop"
+  ],
+  "author": "DLoop AI Governance Team",
+  "license": "MIT",
+  "dependencies": {
+    "ethers": "^6.14.3",
+    "axios": "^1.9.0",
+    "dotenv": "^16.5.0",
+    "node-cron": "^4.0.7",
+    "winston": "^3.17.0",
+    "cron-parser": "^5.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.29",
+    "@types/jest": "^29.5.14",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "snyk": "^1.1291.0",
+    "solhint": "^5.1.0",
+    "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3",
+    "netlify-cli": "^17.34.2"
+  },
+  "elizaConfig": {
+    "characters": ["./characters/dloop-governance.character.json"],
+    "plugins": [
+      "./plugins/governance-plugin",
+      "./plugins/voting-plugin",
+      "./plugins/treasury-plugin"
+    ],
+    "modelProvider": "openai",
+    "databaseAdapter": "sqlite"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
