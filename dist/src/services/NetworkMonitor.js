@@ -37,13 +37,10 @@ export class NetworkMonitor {
         providerConfigs.forEach((endpoint, index) => {
             if (endpoint.url && !endpoint.url.includes('undefined')) {
                 try {
-                    // Add progressive delay to avoid concurrent initialization issues
+                    // Initialize provider for monitoring  
                     setTimeout(() => {
                         try {
-                            const provider = new ethers.JsonRpcProvider(endpoint.url, {
-                                name: 'sepolia',
-                                chainId: 11155111
-                            });
+                            const provider = new ethers.JsonRpcProvider(endpoint.url);
                             this.providers.set(endpoint.name, provider);
                             // Initialize metrics
                             this.metrics.set(endpoint.name, {
@@ -53,7 +50,7 @@ export class NetworkMonitor {
                                 failedChecks: 0,
                                 lastSuccessfulCheck: 0
                             });
-                            logger.info('Network monitor initialized provider', {
+                            logger.debug('Provider initialized for monitoring', {
                                 component: 'contract',
                                 provider: endpoint.name,
                                 url: endpoint.url.substring(0, 50) + '...'
@@ -202,13 +199,13 @@ export class NetworkMonitor {
     }
     getHealthyProviders() {
         return Array.from(this.networkStatus.entries())
-            .filter(([_, status]) => status.isConnected)
-            .map(([name, _]) => name);
+            .filter(([_name, status]) => status.isConnected)
+            .map(([name, _status]) => name);
     }
     getBestProvider() {
         const healthyProviders = Array.from(this.networkStatus.entries())
-            .filter(([_, status]) => status.isConnected)
-            .sort(([_, a], [__, b]) => a.latency - b.latency);
+            .filter(([_name, status]) => status.isConnected)
+            .sort(([_name1, a], [_name2, b]) => a.latency - b.latency);
         return healthyProviders.length > 0 ? healthyProviders[0][0] : null;
     }
     getMetrics() {

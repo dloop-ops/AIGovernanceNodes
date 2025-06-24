@@ -1,4 +1,3 @@
-import { ethers } from 'ethers';
 import { ContractService } from './ContractService.js';
 import { MarketDataService } from './MarketDataService.js';
 import { ProposalParams, ProposalType, MarketAnalysis, GovernanceError } from '../types/index.js';

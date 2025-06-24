@@ -231,10 +231,11 @@ async function main() {
     // Handle CLI commands
     const command = process.argv[2];
     switch (command) {
-        case 'status':
+        case 'status': {
             const status = await agent.getStatus();
             console.log(JSON.stringify(status, null, 2));
             break;
+        }
         case 'health':
             console.log('🏥 Running health check...');
             try {

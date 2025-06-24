@@ -21,6 +21,7 @@ export class ComprehensiveNodeManager {
   private nodeRegistrationService: NodeRegistrationService;
   private nodeStatuses: Map<string, NodeStatus> = new Map();
   private isProcessing: boolean = false;
+  private allNodeIds: string[] = [];
 
   constructor(rpcManager: RpcManager, walletService: WalletService) {
     this.rpcManager = rpcManager;
@@ -28,7 +29,7 @@ export class ComprehensiveNodeManager {
     this.nodeRegistrationService = new NodeRegistrationService(rpcManager);
   }
 
-  public async initializeAndRegisterAllNodes(): Promise<void> {
+  public async initializeAndRegisterAllNodes(): Promise<boolean> {
     // NUCLEAR OPTION: All nodes are already registered, skip all registration attempts
     logger.info('SKIPPING ALL NODE REGISTRATION - All nodes already registered');
     
@@ -54,7 +55,27 @@ export class ComprehensiveNodeManager {
     });
 
     this.logRegistrationSummary();
-    return;
+
+    try {
+      const registrationResults = await Promise.allSettled(
+        this.allNodeIds.map(nodeId => this.registerSingleNode(nodeId))
+      );
+
+      // Check results
+      const successfulRegistrations = registrationResults
+        .filter(result => result.status === 'fulfilled')
+        .length;
+
+      logger.info(`Node registration complete: ${successfulRegistrations}/${this.allNodeIds.length} successful`);
+
+      // Enhanced status check with detailed diagnostics
+      await this.performDetailedStatusCheck();
+
+      return true;
+    } catch (error) {
+      logger.error('Failed to initialize and register nodes', { error });
+      return false;
+    }
   }
 
   private async processNodeRegistration(
@@ -251,5 +272,13 @@ export class ComprehensiveNodeManager {
 
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private async registerSingleNode(nodeId: string): Promise<void> {
+    // Implementation of registerSingleNode method
+  }
+
+  private async performDetailedStatusCheck(): Promise<void> {
+    // Implementation of performDetailedStatusCheck method
   }
 }

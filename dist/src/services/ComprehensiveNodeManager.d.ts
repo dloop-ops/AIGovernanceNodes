@@ -16,8 +16,9 @@ export declare class ComprehensiveNodeManager {
     private nodeRegistrationService;
     private nodeStatuses;
     private isProcessing;
+    private allNodeIds;
     constructor(rpcManager: RpcManager, walletService: WalletService);
-    initializeAndRegisterAllNodes(): Promise<void>;
+    initializeAndRegisterAllNodes(): Promise<boolean>;
     private processNodeRegistration;
     private loadNodeConfigurations;
     getNodeStatuses(): Map<string, NodeStatus>;
@@ -31,5 +32,7 @@ export declare class ComprehensiveNodeManager {
     private logRegistrationSummary;
     retryFailedRegistrations(): Promise<void>;
     private delay;
+    private registerSingleNode;
+    private performDetailedStatusCheck;
 }
 //# sourceMappingURL=ComprehensiveNodeManager.d.ts.map

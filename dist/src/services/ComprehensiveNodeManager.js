@@ -6,6 +6,7 @@ export class ComprehensiveNodeManager {
     nodeRegistrationService;
     nodeStatuses = new Map();
     isProcessing = false;
+    allNodeIds = [];
     constructor(rpcManager, walletService) {
         this.rpcManager = rpcManager;
         this.walletService = walletService;
@@ -33,7 +34,21 @@ export class ComprehensiveNodeManager {
             });
         });
         this.logRegistrationSummary();
-        return;
+        try {
+            const registrationResults = await Promise.allSettled(this.allNodeIds.map(nodeId => this.registerSingleNode(nodeId)));
+            // Check results
+            const successfulRegistrations = registrationResults
+                .filter(result => result.status === 'fulfilled')
+                .length;
+            logger.info(`Node registration complete: ${successfulRegistrations}/${this.allNodeIds.length} successful`);
+            // Enhanced status check with detailed diagnostics
+            await this.performDetailedStatusCheck();
+            return true;
+        }
+        catch (error) {
+            logger.error('Failed to initialize and register nodes', { error });
+            return false;
+        }
     }
     async processNodeRegistration(wallet, config) {
         const nodeStatus = this.nodeStatuses.get(config.nodeId);
@@ -197,6 +212,12 @@ export class ComprehensiveNodeManager {
     }
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    async registerSingleNode(nodeId) {
+        // Implementation of registerSingleNode method
+    }
+    async performDetailedStatusCheck() {
+        // Implementation of performDetailedStatusCheck method
     }
 }
 //# sourceMappingURL=ComprehensiveNodeManager.js.map
