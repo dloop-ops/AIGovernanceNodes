@@ -1,20 +1,65 @@
 import { ethers } from 'ethers';
 export const handler = async (event, context) => {
-    console.log('🤖 Netlify Scheduled Voting Function triggered');
+    console.log('🤖 Netlify Governance Agent Function triggered');
     console.log('⏰ Execution time:', new Date().toISOString());
     console.log('🔧 Event type:', event.httpMethod);
-    console.log('🗳️ STARTING NETLIFY SCHEDULED VOTING');
+    console.log('🔧 Function path:', event.path);
+    console.log('🗳️ STARTING NETLIFY GOVERNANCE AGENT');
     console.log('=====================================');
     console.log('⏰ Start time:', new Date().toISOString());
     try {
         // Environment validation with detailed logging
-        const rpcUrl = process.env.ETHEREUM_RPC_URL;
         console.log('🔍 Checking environment variables...');
+        const rpcUrl = process.env.ETHEREUM_RPC_URL;
+        const etherscanKey = process.env.ETHERSCAN_API_KEY;
+        // Log which environment variables are available (without values)
+        console.log('📋 Available environment variables:');
+        Object.keys(process.env).forEach(key => {
+            if (key.includes('ETHEREUM') || key.includes('AI_NODE') || key.includes('ETHERSCAN')) {
+                const hasValue = process.env[key] && process.env[key].length > 0;
+                console.log(`   ${key}: ${hasValue ? '✅ SET' : '❌ MISSING'}`);
+            }
+        });
+        // Check critical environment variables
+        const missingVars = [];
         if (!rpcUrl) {
-            throw new Error('ETHEREUM_RPC_URL environment variable is not set');
+            missingVars.push('ETHEREUM_RPC_URL');
         }
-        if (rpcUrl.includes('YOUR_PROJECT_ID') || rpcUrl.includes('YOUR_INFURA_KEY')) {
-            throw new Error('ETHEREUM_RPC_URL contains placeholder value - please set actual Infura project ID');
+        else if (rpcUrl.includes('YOUR_PROJECT_ID') || rpcUrl.includes('YOUR_INFURA_KEY')) {
+            missingVars.push('ETHEREUM_RPC_URL (contains placeholder)');
+        }
+        if (!etherscanKey) {
+            missingVars.push('ETHERSCAN_API_KEY');
+        }
+        // Check for at least one AI node private key
+        let hasAnyNodeKey = false;
+        for (let i = 1; i <= 5; i++) {
+            const nodeKey = process.env[`AI_NODE_${i}_PRIVATE_KEY`];
+            if (nodeKey && nodeKey.length > 0 && !nodeKey.includes('YOUR_ACTUAL_PRIVATE_KEY')) {
+                hasAnyNodeKey = true;
+                break;
+            }
+        }
+        if (!hasAnyNodeKey) {
+            missingVars.push('AI_NODE_*_PRIVATE_KEY (at least one)');
+        }
+        if (missingVars.length > 0) {
+            const errorMessage = `Missing required environment variables: ${missingVars.join(', ')}`;
+            console.error('❌ Environment validation failed:', errorMessage);
+            return {
+                statusCode: 500,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                body: JSON.stringify({
+                    success: false,
+                    error: errorMessage,
+                    missingVariables: missingVars,
+                    timestamp: new Date().toISOString(),
+                    instructions: 'Please set environment variables in Netlify Dashboard → Site Settings → Environment Variables'
+                })
+            };
         }
         // Log sanitized URL (hide the key)
         const sanitizedUrl = rpcUrl.replace(/\/v3\/.*$/, '/v3/[HIDDEN]');
@@ -45,6 +90,10 @@ export const handler = async (event, context) => {
             console.log('ℹ️ No proposals exist in the DAO');
             return {
                 statusCode: 200,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
                 body: JSON.stringify({
                     success: true,
                     message: 'No proposals exist in the DAO',
@@ -80,6 +129,10 @@ export const handler = async (event, context) => {
             console.log('ℹ️ No active proposals found');
             return {
                 statusCode: 200,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
                 body: JSON.stringify({
                     success: true,
                     message: 'No active proposals to vote on',
@@ -89,13 +142,16 @@ export const handler = async (event, context) => {
             };
         }
         console.log(`🗳️ Found ${activeProposals.length} active proposals`);
-        // TODO: Add voting logic here with private keys
-        // For now, just log the proposals found
+        // Log the proposals found
         activeProposals.forEach(proposal => {
             console.log(`📋 Proposal ${proposal.id}: Type ${proposal.proposalType}, Amount: ${proposal.amount}`);
         });
         return {
             statusCode: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
             body: JSON.stringify({
                 success: true,
                 message: `Found ${activeProposals.length} active proposals`,
@@ -112,15 +168,21 @@ export const handler = async (event, context) => {
         console.error('❌ Error details:', {
             message: error.message,
             code: error.code,
-            info: error.info
+            info: error.info,
+            stack: error.stack
         });
         return {
             statusCode: 500,
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
             body: JSON.stringify({
                 success: false,
                 error: error.message,
                 errorCode: error.code,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                troubleshooting: 'Check Netlify function logs for detailed error information'
             })
         };
     }
