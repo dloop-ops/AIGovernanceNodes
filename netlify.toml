@@ -71,13 +71,13 @@
 
 # Environment variable templates (will be overridden by actual secrets)
 [template.environment]
-  OPENAI_API_KEY = "Set in Netlify dashboard"
-  ETHEREUM_RPC_URL = "Set in Netlify dashboard"  
-  AI_NODE_1_PRIVATE_KEY = "Set in Netlify dashboard"
-  AI_NODE_2_PRIVATE_KEY = "Set in Netlify dashboard"
-  AI_NODE_3_PRIVATE_KEY = "Set in Netlify dashboard"
-  AI_NODE_4_PRIVATE_KEY = "Set in Netlify dashboard"
-  AI_NODE_5_PRIVATE_KEY = "Set in Netlify dashboard"
+  OPENAI_API_KEY = "sk-your-openai-api-key-here"
+  ETHEREUM_RPC_URL = "https://sepolia.infura.io/v3/YOUR-ACTUAL-INFURA-PROJECT-ID"  
+  AI_NODE_1_PRIVATE_KEY = "0xYOUR_ACTUAL_PRIVATE_KEY_1"
+  AI_NODE_2_PRIVATE_KEY = "0xYOUR_ACTUAL_PRIVATE_KEY_2"
+  AI_NODE_3_PRIVATE_KEY = "0xYOUR_ACTUAL_PRIVATE_KEY_3"
+  AI_NODE_4_PRIVATE_KEY = "0xYOUR_ACTUAL_PRIVATE_KEY_4"
+  AI_NODE_5_PRIVATE_KEY = "0xYOUR_ACTUAL_PRIVATE_KEY_5"
   ASSET_DAO_CONTRACT_ADDRESS = "0xa87e662061237a121Ca2E83E77dA8251bc4B3529"
   DLOOP_TOKEN_ADDRESS = "0xC37f5136084A0Ecf88Bc1a2E3F20c4BB4EDAfCe3"
   LOG_LEVEL = "info" 

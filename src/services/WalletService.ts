@@ -38,6 +38,17 @@ export class WalletService {
       for (let i = 0; i < privateKeys.length; i++) {
         const privateKey = privateKeys[i];
         if (!privateKey) {
+          // In development, provide a more helpful error message
+          if (process.env.NODE_ENV === 'development') {
+            logger.error(`❌ Missing environment variable: AI_NODE_${i + 1}_PRIVATE_KEY`);
+            logger.info(`💡 Please set the following environment variables:`);
+            logger.info(`   AI_NODE_1_PRIVATE_KEY=0x...`);
+            logger.info(`   AI_NODE_2_PRIVATE_KEY=0x...`);
+            logger.info(`   AI_NODE_3_PRIVATE_KEY=0x...`);
+            logger.info(`   AI_NODE_4_PRIVATE_KEY=0x...`);
+            logger.info(`   AI_NODE_5_PRIVATE_KEY=0x...`);
+            logger.info(`   ETHEREUM_RPC_URL=https://sepolia.infura.io/v3/YOUR_PROJECT_ID`);
+          }
           throw new GovernanceError(
             `Private key for AI Node ${i + 1} not found in environment variables`,
             'MISSING_PRIVATE_KEY'
