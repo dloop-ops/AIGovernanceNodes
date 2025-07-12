@@ -6,7 +6,7 @@ class NetlifyRpcManager {
   private providers: ethers.JsonRpcProvider[] = [];
   private currentProviderIndex = 0;
   private lastRequestTime = 0;
-  private minRequestInterval = 1500; // 1.5 seconds between requests to prevent rate limiting
+  private minRequestInterval = 500; // 0.5 seconds between requests to prevent rate limiting
 
   constructor() {
     this.initializeProviders();
@@ -46,7 +46,7 @@ class NetlifyRpcManager {
 
   async executeWithRetry<T>(
     operation: (provider: ethers.JsonRpcProvider) => Promise<T>,
-    maxRetries: number = 3
+    maxRetries: number = 2
   ): Promise<T> {
     let lastError: Error | null = null;
 
@@ -58,7 +58,7 @@ class NetlifyRpcManager {
         const result = await Promise.race([
           operation(provider),
           new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('Operation timeout')), 15000)
+            setTimeout(() => reject(new Error('Operation timeout')), 5000)
           )
         ]);
 
@@ -73,7 +73,8 @@ class NetlifyRpcManager {
                            errorMessage.includes('-32005');
 
         const isABIError = errorMessage.includes('deferred error during abi decoding') ||
-                          errorMessage.includes('accessing index 0');
+                          errorMessage.includes('accessing index 0') ||
+                          errorMessage.includes('does not exist or has invalid data');
 
         const isConnectionError = errorMessage.includes('network') ||
                                  errorMessage.includes('timeout') ||
@@ -92,9 +93,9 @@ class NetlifyRpcManager {
             this.currentProviderIndex = (this.currentProviderIndex + 1) % this.providers.length;
           }
 
-          // Exponential backoff with jitter - longer delays for rate limits
-          const baseDelay = isRateLimit ? 3000 : 1000;
-          const backoffDelay = Math.min(baseDelay * Math.pow(2, attempt) + Math.random() * 1000, 15000);
+          // Shorter backoff delays
+          const baseDelay = isRateLimit ? 1000 : 500;
+          const backoffDelay = Math.min(baseDelay * attempt + Math.random() * 500, 3000);
           await this.delay(backoffDelay);
         }
       }
@@ -126,7 +127,7 @@ export const handler: Handler = async (event, context) => {
   const requestPromise = (async () => {
     const startTime = Date.now();
     const requestId = Math.random().toString(36).substring(2, 10);
-    const TIMEOUT_LIMIT = 20000; // 20 seconds to leave buffer for response
+    const TIMEOUT_LIMIT = 15000; // 15 seconds to leave buffer for response
 
     try {
 
@@ -157,13 +158,13 @@ export const handler: Handler = async (event, context) => {
         // Initialize RPC Manager with shorter timeouts
         const rpcManager = new NetlifyRpcManager();
 
-        // Quick connection test with 5 second timeout
+        // Quick connection test with 3 second timeout
         const network = await Promise.race([
           rpcManager.executeWithRetry(async (provider) => {
             return await provider.getNetwork();
           }, 1), // Only 1 retry
           new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('Network connection timeout')), 5000)
+            setTimeout(() => reject(new Error('Network connection timeout')), 3000)
           )
         ]);
 
@@ -176,14 +177,14 @@ export const handler: Handler = async (event, context) => {
           "function getProposal(uint256) external view returns (tuple(address proposer, uint8 proposalType, address assetAddress, uint256 amount, string description, uint256 votesFor, uint256 votesAgainst, uint256 startTime, uint256 endTime, bool executed, bool cancelled, uint8 state) proposal)"
         ];
 
-        // Get proposal count with 5 second timeout
+        // Get proposal count with 3 second timeout
         const proposalCount = await Promise.race([
           rpcManager.executeWithRetry(async (provider) => {
             const contract = new ethers.Contract(assetDAOAddress, assetDAOABI, provider);
             return await contract.getProposalCount();
           }, 1), // Only 1 retry
           new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('Proposal count timeout')), 5000)
+            setTimeout(() => reject(new Error('Proposal count timeout')), 3000)
           )
         ]);
 
@@ -206,71 +207,61 @@ export const handler: Handler = async (event, context) => {
           };
         }
 
-        // Only check last 5 proposals to stay within time limit
-        const startIndex = Math.max(1, totalProposals - 4);
+        // Only check last 3 proposals to stay within time limit
+        const startIndex = Math.max(1, totalProposals - 2);
         const endIndex = totalProposals;
         const activeProposals = [];
 
         console.log(`${requestId} INFO   🔍 Checking proposals ${startIndex} to ${endIndex}...`);
 
-        // Process proposals with strict time limit
-        const proposalPromises = [];
+        // Process proposals sequentially with strict time limits
         for (let i = startIndex; i <= endIndex; i++) {
-          const proposalPromise = Promise.race([
-            (async () => {
-              try {
-                const proposal = await rpcManager.executeWithRetry(async (provider) => {
-                  const contract = new ethers.Contract(assetDAOAddress, assetDAOABI, provider);
-                  return await contract.getProposal(i);
-                }, 1); // Only 1 retry
+          try {
+            const proposalResult = await Promise.race([
+              (async () => {
+                try {
+                  const proposal = await rpcManager.executeWithRetry(async (provider) => {
+                    const contract = new ethers.Contract(assetDAOAddress, assetDAOABI, provider);
+                    return await contract.getProposal(i);
+                  }, 1); // Only 1 retry
 
-                // Quick validation
-                if (proposal.proposer === '0x0000000000000000000000000000000000000000') {
+                  // Quick validation
+                  if (proposal.proposer === '0x0000000000000000000000000000000000000000') {
+                    return null;
+                  }
+
+                  const proposalState = proposal.state;
+                  if (proposalState === 1n || proposalState === 4n) { // Active or Pending
+                    return {
+                      id: i,
+                      state: proposalState.toString(),
+                      type: proposal.proposalType.toString(),
+                      description: proposal.description || `Proposal ${i}`,
+                      proposer: proposal.proposer,
+                      assetAddress: proposal.assetAddress,
+                      amount: proposal.amount.toString(),
+                      startTime: proposal.startTime.toString(),
+                      endTime: proposal.endTime.toString(),
+                      forVotes: proposal.votesFor.toString(),
+                      againstVotes: proposal.votesAgainst.toString()
+                    };
+                  }
+                  return null;
+                } catch (error) {
+                  console.log(`${requestId} WARN   ⚠️ Proposal ${i}: ${error instanceof Error ? error.message.substring(0, 50) : 'Unknown error'}`);
                   return null;
                 }
+              })(),
+              new Promise<null>((resolve) => 
+                setTimeout(() => resolve(null), 2000) // 2 second timeout per proposal
+              )
+            ]);
 
-                const proposalState = proposal.state;
-                if (proposalState === 1n || proposalState === 4n) { // Active or Pending
-                  return {
-                    id: i,
-                    state: proposalState.toString(),
-                    type: proposal.proposalType.toString(),
-                    description: proposal.description || `Proposal ${i}`,
-                    proposer: proposal.proposer,
-                    assetAddress: proposal.assetAddress,
-                    amount: proposal.amount.toString(),
-                    startTime: proposal.startTime.toString(),
-                    endTime: proposal.endTime.toString(),
-                    forVotes: proposal.votesFor.toString(),
-                    againstVotes: proposal.votesAgainst.toString()
-                  };
-                }
-                return null;
-              } catch (error) {
-                console.log(`${requestId} WARN   ⚠️ Proposal ${i}: ${error instanceof Error ? error.message.substring(0, 50) : 'Unknown error'}`);
-                return null;
-              }
-            })(),
-            new Promise<null>((resolve) => 
-              setTimeout(() => resolve(null), 3000) // 3 second timeout per proposal
-            )
-          ]);
-          
-          proposalPromises.push(proposalPromise);
-        }
-
-        // Wait for all proposals with overall timeout
-        const proposalResults = await Promise.race([
-          Promise.all(proposalPromises),
-          new Promise<null[]>((resolve) => 
-            setTimeout(() => resolve(new Array(proposalPromises.length).fill(null)), 10000)
-          )
-        ]);
-
-        // Filter out null results
-        for (const result of proposalResults) {
-          if (result) {
-            activeProposals.push(result);
+            if (proposalResult) {
+              activeProposals.push(proposalResult);
+            }
+          } catch (error) {
+            console.log(`${requestId} WARN   ⚠️ Skipped proposal ${i} due to timeout`);
           }
         }
 
