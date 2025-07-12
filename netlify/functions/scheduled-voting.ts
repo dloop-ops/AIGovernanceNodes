@@ -61,17 +61,31 @@ class NetlifyVotingService {
 
   async getActiveProposals(): Promise<Proposal[]> {
     try {
-      const count = await this.assetDaoContract.getProposalCount();
+      // Set timeout for getting proposal count
+      const count = await Promise.race([
+        this.assetDaoContract.getProposalCount(),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Proposal count timeout')), 5000)
+        )
+      ]);
+      
       const totalCount = Number(count);
-      const startFrom = Math.max(1, totalCount - 19); // Check last 20 proposals
+      const startFrom = Math.max(1, totalCount - 9); // Check last 10 proposals only
       
       console.log(`📊 Checking proposals ${startFrom}-${totalCount} for active ones...`);
       
       const activeProposals: Proposal[] = [];
       
+      // Process proposals sequentially with timeout for each
       for (let i = startFrom; i <= totalCount; i++) {
         try {
-          const proposalData = await this.assetDaoContract.getProposal(i);
+          const proposalData = await Promise.race([
+            this.assetDaoContract.getProposal(i),
+            new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('Proposal fetch timeout')), 3000)
+            )
+          ]);
+          
           const state = proposalData[10];
           
           if (Number(state) === 1) { // ACTIVE
@@ -101,7 +115,8 @@ class NetlifyVotingService {
             }
           }
         } catch (error) {
-          console.log(`   ❌ Error checking proposal ${i}:`, error);
+          console.log(`   ❌ Error checking proposal ${i}:`, error instanceof Error ? error.message.substring(0, 50) : 'Unknown error');
+          // Continue to next proposal instead of breaking
         }
       }
       
@@ -173,7 +188,7 @@ class NetlifyVotingService {
     const proposals = await Promise.race([
       this.getActiveProposals(),
       new Promise<any[]>((_, reject) => 
-        setTimeout(() => reject(new Error('getActiveProposals timeout')), 15000)
+        setTimeout(() => reject(new Error('getActiveProposals timeout')), 10000)
       )
     ]);
     
@@ -187,7 +202,10 @@ class NetlifyVotingService {
     let totalVotes = 0;
     const results = [];
 
-    for (const proposal of proposals) {
+    // Limit to first proposal to prevent timeout
+    const proposalsToProcess = proposals.slice(0, 1);
+
+    for (const proposal of proposalsToProcess) {
       console.log(`\n📋 Processing Proposal ${proposal.id}`);
       console.log(`   💰 Amount: ${proposal.amount} ETH`);
       console.log(`   📍 Asset: ${proposal.assetAddress.slice(0, 10)}...`);
@@ -216,8 +234,13 @@ class NetlifyVotingService {
         console.log(`\n   🤖 Node ${nodeIndex + 1} (${nodeId}): ${nodeAddress.slice(0, 10)}...`);
         
         try {
-          // Check if this node has already voted
-          const hasVoted = await this.hasVoted(proposal.id, nodeIndex);
+          // Check if this node has already voted with timeout
+          const hasVoted = await Promise.race([
+            this.hasVoted(proposal.id, nodeIndex),
+            new Promise<boolean>((_, reject) => 
+              setTimeout(() => reject(new Error('hasVoted timeout')), 5000)
+            )
+          ]);
           
           if (hasVoted) {
             console.log(`      ℹ️  Already voted`);
@@ -229,7 +252,7 @@ class NetlifyVotingService {
           const txHash = await Promise.race([
             this.castVote(proposal.id, nodeIndex, shouldVote.support),
             new Promise<string>((_, reject) => 
-              setTimeout(() => reject(new Error('Vote transaction timeout')), 30000)
+              setTimeout(() => reject(new Error('Vote transaction timeout')), 20000)
             )
           ]);
           console.log(`      ✅ Vote cast: ${txHash.slice(0, 10)}...`);
@@ -243,7 +266,7 @@ class NetlifyVotingService {
           
           // Delay between nodes to avoid rate limiting
           if (nodeIndex < 4) {
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            await new Promise(resolve => setTimeout(resolve, 2000));
           }
           
         } catch (error) {
@@ -251,7 +274,7 @@ class NetlifyVotingService {
           proposalResults.votes.push({ 
             nodeIndex: nodeIndex + 1, 
             status: 'failed', 
-            error: error instanceof Error ? error.message : String(error)
+            error: error instanceof Error ? error.message.substring(0, 100) : String(error)
           });
         }
       }
