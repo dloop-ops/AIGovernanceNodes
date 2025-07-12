@@ -11,7 +11,7 @@ import { WebServer } from './web/server.js';
 import logger from './utils/logger.js';
 import { GovernanceError } from './types/index.js';
 import { createServer } from 'http';
-import * as process from 'process';
+import process from 'process';
 // Load environment variables
 dotenv.config();
 /**
