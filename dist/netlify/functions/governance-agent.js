@@ -47,17 +47,28 @@ export const handler = async (event, context) => {
             const errorMessage = `Missing required environment variables: ${missingVars.join(', ')}`;
             console.error('❌ Environment validation failed:', errorMessage);
             return {
-                statusCode: 500,
+                statusCode: 503,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
+                    'Access-Control-Allow-Origin': '*',
+                    'Cache-Control': 'no-cache'
                 },
                 body: JSON.stringify({
                     success: false,
                     error: errorMessage,
                     missingVariables: missingVars,
                     timestamp: new Date().toISOString(),
-                    instructions: 'Please set environment variables in Netlify Dashboard → Site Settings → Environment Variables'
+                    status: 'configuration_required',
+                    instructions: {
+                        message: 'Environment variables must be configured in Netlify Dashboard',
+                        steps: [
+                            '1. Go to Netlify Dashboard → Site Settings → Environment Variables',
+                            '2. Add ETHEREUM_RPC_URL with your Infura endpoint',
+                            '3. Add ETHERSCAN_API_KEY: HG7DAYXKN5B6AZE35WRDVQRSNN5IDC3ZG6',
+                            '4. Add AI_NODE_*_PRIVATE_KEY variables (1-5)',
+                            '5. Redeploy the site'
+                        ]
+                    }
                 })
             };
         }

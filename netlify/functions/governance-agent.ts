@@ -1,4 +1,3 @@
-
 import { Handler } from '@netlify/functions';
 import { ethers } from 'ethers';
 
@@ -15,10 +14,10 @@ export const handler: Handler = async (event, context) => {
   try {
     // Environment validation with detailed logging
     console.log('🔍 Checking environment variables...');
-    
+
     const rpcUrl = process.env.ETHEREUM_RPC_URL;
     const etherscanKey = process.env.ETHERSCAN_API_KEY;
-    
+
     // Log which environment variables are available (without values)
     console.log('📋 Available environment variables:');
     Object.keys(process.env).forEach(key => {
@@ -30,17 +29,17 @@ export const handler: Handler = async (event, context) => {
 
     // Check critical environment variables
     const missingVars = [];
-    
+
     if (!rpcUrl) {
       missingVars.push('ETHEREUM_RPC_URL');
     } else if (rpcUrl.includes('YOUR_PROJECT_ID') || rpcUrl.includes('YOUR_INFURA_KEY')) {
       missingVars.push('ETHEREUM_RPC_URL (contains placeholder)');
     }
-    
+
     if (!etherscanKey) {
       missingVars.push('ETHERSCAN_API_KEY');
     }
-    
+
     // Check for at least one AI node private key
     let hasAnyNodeKey = false;
     for (let i = 1; i <= 5; i++) {
@@ -50,15 +49,22 @@ export const handler: Handler = async (event, context) => {
         break;
       }
     }
-    
+
     if (!hasAnyNodeKey) {
       missingVars.push('AI_NODE_*_PRIVATE_KEY (at least one)');
     }
 
     if (missingVars.length > 0) {
-      const errorMessage = `Missing required environment variables: ${missingVars.join(', ')}`;
-      console.error('❌ Environment validation failed:', errorMessage);
-      
+      console.error(`❌ Environment validation failed: Missing required environment variables: ${missingVars.join(', ')}`);
+
+      // Provide helpful guidance for setup
+      console.info('💡 Environment Setup Guide:');
+      console.info('   1. Go to Netlify Dashboard > Site Settings > Environment Variables');
+      console.info('   2. Set ETHEREUM_RPC_URL=https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
+      console.info('   3. Set ETHERSCAN_API_KEY=HG7DAYXKN5B6AZE35WRDVQRSNN5IDC3ZG6');
+      console.info('   4. Set AI_NODE_1_PRIVATE_KEY=0x... (64 hex characters)');
+      console.info('   5. Repeat for AI_NODE_2_PRIVATE_KEY through AI_NODE_5_PRIVATE_KEY');
+
       return {
         statusCode: 500,
         headers: {
@@ -66,11 +72,25 @@ export const handler: Handler = async (event, context) => {
           'Access-Control-Allow-Origin': '*'
         },
         body: JSON.stringify({
-          success: false,
-          error: errorMessage,
-          missingVariables: missingVars,
+          error: 'Environment configuration error',
+          message: `Missing or invalid environment variables: ${missingVars.join(', ')}`,
           timestamp: new Date().toISOString(),
-          instructions: 'Please set environment variables in Netlify Dashboard → Site Settings → Environment Variables'
+          setup_guide: {
+            step1: 'Go to Netlify Dashboard > Site Settings > Environment Variables',
+            step2: 'Set ETHEREUM_RPC_URL to your Infura Sepolia endpoint',
+            step3: 'Set ETHERSCAN_API_KEY=HG7DAYXKN5B6AZE35WRDVQRSNN5IDC3ZG6',
+            step4: 'Set AI_NODE_*_PRIVATE_KEY variables (must be 64 hex characters)',
+            step5: 'Redeploy the site after setting environment variables'
+          },
+          required_vars: [
+            'ETHEREUM_RPC_URL',
+            'ETHERSCAN_API_KEY', 
+            'AI_NODE_1_PRIVATE_KEY',
+            'AI_NODE_2_PRIVATE_KEY',
+            'AI_NODE_3_PRIVATE_KEY',
+            'AI_NODE_4_PRIVATE_KEY',
+            'AI_NODE_5_PRIVATE_KEY'
+          ]
         })
       };
     }
