@@ -234,15 +234,23 @@ export const handler = async (event, context) => {
                     })
                 };
             })();
-            // Create timeout promise
+            // Race between main logic and timeout with proper cleanup
+            let timeoutId;
             const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => {
+                timeoutId = setTimeout(() => {
                     console.log(`${requestId} ERROR  ⏰ Function timeout after ${TIMEOUT_LIMIT / 1000} seconds`);
                     reject(new Error(`Function timeout after ${TIMEOUT_LIMIT / 1000} seconds`));
                 }, TIMEOUT_LIMIT);
             });
-            // Race between main logic and timeout
-            return await Promise.race([mainLogicPromise, timeoutPromise]);
+            try {
+                const result = await Promise.race([mainLogicPromise, timeoutPromise]);
+                clearTimeout(timeoutId);
+                return result;
+            }
+            catch (error) {
+                clearTimeout(timeoutId);
+                throw error;
+            }
         }
         catch (error) {
             console.error('❌ Error details:', {

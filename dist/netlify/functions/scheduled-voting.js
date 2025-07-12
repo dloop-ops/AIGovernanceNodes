@@ -1,5 +1,6 @@
-const { schedule } = require('@netlify/functions');
-const { ethers } = require('ethers');
+
+import { Handler, schedule } from '@netlify/functions';
+import { ethers } from 'ethers';
 
 // 🗳️ NETLIFY SCHEDULED VOTING FUNCTION
 // Runs every 30 minutes to check for and vote on new proposals
@@ -42,17 +43,31 @@ class NetlifyVotingService {
 
   async getActiveProposals() {
     try {
-      const count = await this.assetDaoContract.getProposalCount();
+      // Set timeout for getting proposal count
+      const count = await Promise.race([
+        this.assetDaoContract.getProposalCount(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Proposal count timeout')), 5000)
+        )
+      ]);
+      
       const totalCount = Number(count);
-      const startFrom = Math.max(1, totalCount - 19); // Check last 20 proposals
+      const startFrom = Math.max(1, totalCount - 9); // Check last 10 proposals only
       
       console.log(`📊 Checking proposals ${startFrom}-${totalCount} for active ones...`);
       
       const activeProposals = [];
       
+      // Process proposals sequentially with timeout for each
       for (let i = startFrom; i <= totalCount; i++) {
         try {
-          const proposalData = await this.assetDaoContract.getProposal(i);
+          const proposalData = await Promise.race([
+            this.assetDaoContract.getProposal(i),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Proposal fetch timeout')), 3000)
+            )
+          ]);
+          
           const state = proposalData[10];
           
           if (Number(state) === 1) { // ACTIVE
@@ -82,7 +97,8 @@ class NetlifyVotingService {
             }
           }
         } catch (error) {
-          console.log(`   ❌ Error checking proposal ${i}:`, error);
+          console.log(`   ❌ Error checking proposal ${i}:`, error instanceof Error ? error.message.substring(0, 50) : 'Unknown error');
+          // Continue to next proposal instead of breaking
         }
       }
       
@@ -150,8 +166,13 @@ class NetlifyVotingService {
     console.log('=====================================');
     console.log(`⏰ Start time: ${new Date().toISOString()}`);
 
-    // Get active proposals
-    const proposals = await this.getActiveProposals();
+    // Get active proposals with timeout
+    const proposals = await Promise.race([
+      this.getActiveProposals(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('getActiveProposals timeout')), 10000)
+      )
+    ]);
     
     if (proposals.length === 0) {
       console.log('ℹ️  No active proposals found');
@@ -163,7 +184,10 @@ class NetlifyVotingService {
     let totalVotes = 0;
     const results = [];
 
-    for (const proposal of proposals) {
+    // Limit to first proposal to prevent timeout
+    const proposalsToProcess = proposals.slice(0, 1);
+
+    for (const proposal of proposalsToProcess) {
       console.log(`\n📋 Processing Proposal ${proposal.id}`);
       console.log(`   💰 Amount: ${proposal.amount} ETH`);
       console.log(`   📍 Asset: ${proposal.assetAddress.slice(0, 10)}...`);
@@ -192,8 +216,13 @@ class NetlifyVotingService {
         console.log(`\n   🤖 Node ${nodeIndex + 1} (${nodeId}): ${nodeAddress.slice(0, 10)}...`);
         
         try {
-          // Check if this node has already voted
-          const hasVoted = await this.hasVoted(proposal.id, nodeIndex);
+          // Check if this node has already voted with timeout
+          const hasVoted = await Promise.race([
+            this.hasVoted(proposal.id, nodeIndex),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('hasVoted timeout')), 5000)
+            )
+          ]);
           
           if (hasVoted) {
             console.log(`      ℹ️  Already voted`);
@@ -201,8 +230,13 @@ class NetlifyVotingService {
             continue;
           }
           
-          // Cast vote
-          const txHash = await this.castVote(proposal.id, nodeIndex, shouldVote.support);
+          // Cast vote with timeout
+          const txHash = await Promise.race([
+            this.castVote(proposal.id, nodeIndex, shouldVote.support),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Vote transaction timeout')), 20000)
+            )
+          ]);
           console.log(`      ✅ Vote cast: ${txHash.slice(0, 10)}...`);
           totalVotes++;
           
@@ -214,7 +248,7 @@ class NetlifyVotingService {
           
           // Delay between nodes to avoid rate limiting
           if (nodeIndex < 4) {
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            await new Promise(resolve => setTimeout(resolve, 2000));
           }
           
         } catch (error) {
@@ -222,7 +256,7 @@ class NetlifyVotingService {
           proposalResults.votes.push({ 
             nodeIndex: nodeIndex + 1, 
             status: 'failed', 
-            error: error.message || String(error)
+            error: error instanceof Error ? error.message.substring(0, 100) : String(error)
           });
         }
       }
@@ -279,7 +313,7 @@ const scheduledHandler = async (event, context) => {
       body: JSON.stringify({
         success: false,
         timestamp: new Date().toISOString(),
-        error: error.message || String(error),
+        error: error instanceof Error ? error.message : String(error),
         message: 'Scheduled voting failed'
       }, null, 2)
     };
@@ -287,4 +321,4 @@ const scheduledHandler = async (event, context) => {
 };
 
 // Export the scheduled handler with cron schedule
-exports.handler = schedule('*/30 * * * *', scheduledHandler); // Every 30 minutes 
+export const handler = schedule('*/30 * * * *', scheduledHandler); // Every 30 minutes
