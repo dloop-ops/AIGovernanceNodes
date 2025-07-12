@@ -5,7 +5,7 @@ class NetlifyRpcManager {
   private providers: ethers.JsonRpcProvider[] = [];
   private currentProviderIndex = 0;
   private lastRequestTime = 0;
-  private minRequestInterval = 1000; // 1 second between requests
+  private minRequestInterval = 1500; // 1.5 seconds between requests to prevent rate limiting
 
   constructor() {
     this.initializeProviders();
@@ -66,19 +66,34 @@ class NetlifyRpcManager {
         lastError = error;
         const errorMessage = error.message?.toLowerCase() || '';
 
-        // Check for rate limiting or connection errors
+        // Check for various error types
         const isRateLimit = errorMessage.includes('too many requests') || 
                            errorMessage.includes('rate limit') ||
                            errorMessage.includes('-32005');
+        
+        const isABIError = errorMessage.includes('deferred error during abi decoding') ||
+                          errorMessage.includes('accessing index 0');
+        
+        const isConnectionError = errorMessage.includes('network') ||
+                                 errorMessage.includes('timeout') ||
+                                 errorMessage.includes('connection');
 
-        if (isRateLimit || attempt < maxRetries) {
+        // Don't retry ABI decoding errors - they indicate the proposal doesn't exist
+        if (isABIError) {
+          throw lastError;
+        }
+
+        if (isRateLimit || isConnectionError || attempt < maxRetries) {
           console.log(`⚠️ Request failed (attempt ${attempt}/${maxRetries}): ${error.message?.substring(0, 100)}`);
 
-          // Rotate to next provider
-          this.currentProviderIndex = (this.currentProviderIndex + 1) % this.providers.length;
+          // Rotate to next provider for rate limits or connection issues
+          if (isRateLimit || isConnectionError) {
+            this.currentProviderIndex = (this.currentProviderIndex + 1) % this.providers.length;
+          }
 
-          // Exponential backoff with jitter
-          const backoffDelay = Math.min(1000 * Math.pow(2, attempt) + Math.random() * 1000, 10000);
+          // Exponential backoff with jitter - longer delays for rate limits
+          const baseDelay = isRateLimit ? 3000 : 1000;
+          const backoffDelay = Math.min(baseDelay * Math.pow(2, attempt) + Math.random() * 1000, 15000);
           await this.delay(backoffDelay);
         }
       }
@@ -201,27 +216,74 @@ export const handler = async (event: any, context: any) => {
 
     console.log('📊 Total proposals:', proposalCount.toString());
 
-    // Check last 10 proposals for active ones
+    // Check last 10 proposals for active ones, but ensure we don't exceed actual proposal count
     const totalProposals = Number(proposalCount);
-    const startIndex = Math.max(1, totalProposals - 9); // Check last 10 proposals
-    const endIndex = totalProposals;
+    
+    if (totalProposals === 0) {
+      console.log('ℹ️ No proposals exist yet');
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: true,
+          message: 'No proposals exist yet',
+          proposalsChecked: 0,
+          timestamp: new Date().toISOString()
+        })
+      };
+    }
+    
+    // Calculate safe range - proposals are 1-indexed
+    const startIndex = Math.max(1, totalProposals - 9); // Check last 10 proposals  
+    const endIndex = Math.min(totalProposals, totalProposals); // Don't exceed actual count
 
-    console.log(`🔍 Checking proposals ${startIndex} to ${endIndex}...`);
+    console.log(`🔍 Checking proposals ${startIndex} to ${endIndex} (total: ${totalProposals})...`);
 
     const activeProposals = [];
 
     // Check each proposal sequentially with rate limiting
     for (let i = startIndex; i <= endIndex; i++) {
       try {
-        // Get proposal details with retry logic
+        // First check if proposal exists by checking proposal count
+        if (i > totalProposals) {
+          console.log(`⏭️ Skipping proposal ${i}: exceeds total count (${totalProposals})`);
+          continue;
+        }
+
+        // Get proposal details with enhanced error handling
         const proposal = await rpcManager.executeWithRetry(async (provider) => {
           const contract = new ethers.Contract(assetDAOAddress, assetDAOABI, provider);
-          return await contract.getProposal(i);
+          
+          try {
+            const result = await contract.getProposal(i);
+            
+            // Validate proposal structure
+            if (!result || typeof result !== 'object') {
+              throw new Error(`Invalid proposal structure for proposal ${i}`);
+            }
+            
+            // Check if proposal has required fields
+            if (result.proposer === '0x0000000000000000000000000000000000000000') {
+              throw new Error(`Proposal ${i} appears to be empty or deleted`);
+            }
+            
+            return result;
+          } catch (contractError: any) {
+            // Handle specific ABI decoding errors
+            if (contractError.message?.includes('deferred error during ABI decoding') ||
+                contractError.message?.includes('accessing index 0')) {
+              throw new Error(`Proposal ${i} does not exist or has invalid data structure`);
+            }
+            throw contractError;
+          }
         });
 
         const proposalState = proposal.state;
 
-        console.log(`📋 Proposal ${i}: State ${proposalState}, Type ${proposal.proposalType}`);
+        console.log(`📋 Proposal ${i}: State ${proposalState}, Type ${proposal.proposalType}, Proposer ${proposal.proposer?.substring(0, 8)}...`);
 
         // State 1 = Active, State 4 = Pending
         if (proposalState === 1n || proposalState === 4n) {
@@ -229,7 +291,7 @@ export const handler = async (event: any, context: any) => {
             id: i,
             state: proposalState.toString(),
             type: proposal.proposalType.toString(),
-            description: proposal.description,
+            description: proposal.description || `Proposal ${i}`,
             proposer: proposal.proposer,
             assetAddress: proposal.assetAddress,
             amount: proposal.amount.toString(),
@@ -238,13 +300,30 @@ export const handler = async (event: any, context: any) => {
             forVotes: proposal.votesFor.toString(),
             againstVotes: proposal.votesAgainst.toString()
           });
+        } else {
+          console.log(`⏭️ Proposal ${i}: Not active (state ${proposalState})`);
         }
 
       } catch (error: any) {
-        console.log(`⚠️ Could not fetch proposal ${i}: ${error.message?.substring(0, 100)}`);
+        const errorMsg = error.message?.substring(0, 100) || 'Unknown error';
+        
+        // Different handling for different error types
+        if (errorMsg.includes('does not exist') || 
+            errorMsg.includes('invalid data structure') ||
+            errorMsg.includes('empty or deleted')) {
+          console.log(`⚠️ Proposal ${i}: ${errorMsg}`);
+        } else if (errorMsg.includes('deferred error during ABI decoding')) {
+          console.log(`⚠️ Proposal ${i}: ABI decoding failed - proposal may not exist`);
+        } else {
+          console.log(`⚠️ Proposal ${i}: Unexpected error - ${errorMsg}`);
+        }
+        
         // Continue with next proposal even if this one fails
         continue;
       }
+      
+      // Add small delay between proposal checks to prevent overwhelming the RPC
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
 
     if (activeProposals.length === 0) {
