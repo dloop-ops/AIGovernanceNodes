@@ -1,69 +1,141 @@
-import { Handler } from '@netlify/functions';
 import { ethers } from 'ethers';
 
-export const handler: Handler = async (event, context) => {
-  console.log('🤖 Netlify Governance Agent Function triggered');
-  console.log('⏰ Execution time:', new Date().toISOString());
-  console.log('🔧 Event type:', event.httpMethod);
-  console.log('🔧 Function path:', event.path);
+// Enhanced RPC Manager for Netlify Functions
+class NetlifyRpcManager {
+  private providers: ethers.JsonRpcProvider[] = [];
+  private currentProviderIndex = 0;
+  private lastRequestTime = 0;
+  private minRequestInterval = 1000; // 1 second between requests
 
-  console.log('🗳️ STARTING NETLIFY GOVERNANCE AGENT');
-  console.log('=====================================');
-  console.log('⏰ Start time:', new Date().toISOString());
+  constructor() {
+    this.initializeProviders();
+  }
+
+  private initializeProviders() {
+    const endpoints = [
+      process.env.ETHEREUM_RPC_URL || 'https://sepolia.infura.io/v3/ca485bd6567e4c5fb5693ee66a5885d8',
+      'https://sepolia.infura.io/v3/60755064a92543a1ac7aaf4e20b71cdf',
+      'https://sepolia.gateway.tenderly.co/public',
+      'https://ethereum-sepolia-rpc.publicnode.com'
+    ].filter(url => url && !url.includes('undefined'));
+
+    this.providers = endpoints.map(url => new ethers.JsonRpcProvider(url, {
+      name: 'sepolia',
+      chainId: 11155111
+    }));
+
+    console.log(`🔗 Initialized ${this.providers.length} RPC providers`);
+  }
+
+  private async delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private async enforceRateLimit(): Promise<void> {
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+
+    if (timeSinceLastRequest < this.minRequestInterval) {
+      const waitTime = this.minRequestInterval - timeSinceLastRequest;
+      await this.delay(waitTime);
+    }
+
+    this.lastRequestTime = Date.now();
+  }
+
+  async executeWithRetry<T>(
+    operation: (provider: ethers.JsonRpcProvider) => Promise<T>,
+    maxRetries: number = 3
+  ): Promise<T> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await this.enforceRateLimit();
+
+        const provider = this.providers[this.currentProviderIndex];
+        const result = await Promise.race([
+          operation(provider),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Operation timeout')), 15000)
+          )
+        ]);
+
+        return result;
+      } catch (error: any) {
+        lastError = error;
+        const errorMessage = error.message?.toLowerCase() || '';
+
+        // Check for rate limiting or connection errors
+        const isRateLimit = errorMessage.includes('too many requests') || 
+                           errorMessage.includes('rate limit') ||
+                           errorMessage.includes('-32005');
+
+        if (isRateLimit || attempt < maxRetries) {
+          console.log(`⚠️ Request failed (attempt ${attempt}/${maxRetries}): ${error.message?.substring(0, 100)}`);
+
+          // Rotate to next provider
+          this.currentProviderIndex = (this.currentProviderIndex + 1) % this.providers.length;
+
+          // Exponential backoff with jitter
+          const backoffDelay = Math.min(1000 * Math.pow(2, attempt) + Math.random() * 1000, 10000);
+          await this.delay(backoffDelay);
+        }
+      }
+    }
+
+    throw lastError || new Error('All providers failed');
+  }
+}
+
+export const handler = async (event: any, context: any) => {
+  const startTime = Date.now();
+  const requestId = Math.random().toString(36).substring(2, 10);
+
+  console.log(`${requestId} INFO   🤖 Netlify Governance Agent Function triggered`);
+  console.log(`${requestId} INFO   ⏰ Execution time: ${new Date().toISOString()}`);
+  console.log(`${requestId} INFO   🔧 Event type: ${event.httpMethod}`);
+  console.log(`${requestId} INFO   🔧 Function path: ${event.path}`);
 
   try {
-    // Environment validation with detailed logging
-    console.log('🔍 Checking environment variables...');
+    console.log(`${requestId} INFO   🗳️ STARTING NETLIFY GOVERNANCE AGENT`);
+    console.log(`${requestId} INFO   =====================================`);
+    console.log(`${requestId} INFO   ⏰ Start time: ${new Date().toISOString()}`);
 
+    // Check environment variables
+    console.log(`${requestId} INFO   🔍 Checking environment variables...`);
     const rpcUrl = process.env.ETHEREUM_RPC_URL;
-    const etherscanKey = process.env.ETHERSCAN_API_KEY;
+    const etherscanApiKey = process.env.ETHERSCAN_API_KEY;
 
-    // Log which environment variables are available (without values)
-    console.log('📋 Available environment variables:');
-    Object.keys(process.env).forEach(key => {
-      if (key.includes('ETHEREUM') || key.includes('AI_NODE') || key.includes('ETHERSCAN')) {
-        const hasValue = process.env[key] && process.env[key].length > 0;
-        console.log(`   ${key}: ${hasValue ? '✅ SET' : '❌ MISSING'}`);
+    console.log(`${requestId} INFO   📋 Available environment variables:`);
+    console.log(`${requestId} INFO      AI_NODE_3_PRIVATE_KEY: ${process.env.AI_NODE_3_PRIVATE_KEY ? '✅ SET' : '❌ NOT SET'}`);
+    console.log(`${requestId} INFO      ETHEREUM_RPC_URL: ${rpcUrl ? '✅ SET' : '❌ NOT SET'}`);
+    console.log(`${requestId} INFO      AI_NODE_5_PRIVATE_KEY: ${process.env.AI_NODE_5_PRIVATE_KEY ? '✅ SET' : '❌ NOT SET'}`);
+    console.log(`${requestId} INFO      AI_NODE_2_PRIVATE_KEY: ${process.env.AI_NODE_2_PRIVATE_KEY ? '✅ SET' : '❌ NOT SET'}`);
+    console.log(`${requestId} INFO      ETHERSCAN_API_KEY: ${etherscanApiKey ? '✅ SET' : '❌ NOT SET'}`);
+    console.log(`${requestId} INFO      AI_NODE_4_PRIVATE_KEY: ${process.env.AI_NODE_4_PRIVATE_KEY ? '✅ SET' : '❌ NOT SET'}`);
+    console.log(`${requestId} INFO      AI_NODE_1_PRIVATE_KEY: ${process.env.AI_NODE_1_PRIVATE_KEY ? '✅ SET' : '❌ NOT SET'}`);
+
+    if (!rpcUrl || !etherscanApiKey) {
+      const missingVars: string[] = [];
+      if (!rpcUrl) missingVars.push('ETHEREUM_RPC_URL');
+      if (!etherscanApiKey) missingVars.push('ETHERSCAN_API_KEY');
+
+      // Check for AI node private keys
+      for (let i = 1; i <= 5; i++) {
+        const keyName = `AI_NODE_${i}_PRIVATE_KEY`;
+        if (!process.env[keyName]) {
+          missingVars.push(keyName);
+        }
       }
-    });
 
-    // Check critical environment variables
-    const missingVars = [];
-
-    if (!rpcUrl) {
-      missingVars.push('ETHEREUM_RPC_URL');
-    } else if (rpcUrl.includes('YOUR_PROJECT_ID') || rpcUrl.includes('YOUR_INFURA_KEY')) {
-      missingVars.push('ETHEREUM_RPC_URL (contains placeholder)');
-    }
-
-    if (!etherscanKey) {
-      missingVars.push('ETHERSCAN_API_KEY');
-    }
-
-    // Check for at least one AI node private key
-    let hasAnyNodeKey = false;
-    for (let i = 1; i <= 5; i++) {
-      const nodeKey = process.env[`AI_NODE_${i}_PRIVATE_KEY`];
-      if (nodeKey && nodeKey.length > 0 && !nodeKey.includes('YOUR_ACTUAL_PRIVATE_KEY')) {
-        hasAnyNodeKey = true;
-        break;
-      }
-    }
-
-    if (!hasAnyNodeKey) {
-      missingVars.push('AI_NODE_*_PRIVATE_KEY (at least one)');
-    }
-
-    if (missingVars.length > 0) {
-      console.error(`❌ Environment validation failed: Missing required environment variables: ${missingVars.join(', ')}`);
-
-      // Provide helpful guidance for setup
-      console.info('💡 Environment Setup Guide:');
-      console.info('   1. Go to Netlify Dashboard > Site Settings > Environment Variables');
-      console.info('   2. Set ETHEREUM_RPC_URL=https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
-      console.info('   3. Set ETHERSCAN_API_KEY=HG7DAYXKN5B6AZE35WRDVQRSNN5IDC3ZG6');
-      console.info('   4. Set AI_NODE_1_PRIVATE_KEY=0x... (64 hex characters)');
-      console.info('   5. Repeat for AI_NODE_2_PRIVATE_KEY through AI_NODE_5_PRIVATE_KEY');
+      console.log(`${requestId} ERROR  ❌ Environment validation failed: Missing required environment variables: ${missingVars.join(', ')}`);
+      console.log(`${requestId} INFO   💡 Environment Setup Guide:`);
+      console.log(`${requestId} INFO      1. Go to Netlify Dashboard > Site Settings > Environment Variables`);
+      console.log(`${requestId} INFO      2. Set ETHEREUM_RPC_URL=https://sepolia.infura.io/v3/YOUR_PROJECT_ID`);
+      console.log(`${requestId} INFO      3. Set ETHERSCAN_API_KEY=HG7DAYXKN5B6AZE35WRDVQRSNN5IDC3ZG6`);
+      console.log(`${requestId} INFO      4. Set AI_NODE_1_PRIVATE_KEY=0x... (64 hex characters)`);
+      console.log(`${requestId} INFO      5. Repeat for AI_NODE_2_PRIVATE_KEY through AI_NODE_5_PRIVATE_KEY`);
 
       return {
         statusCode: 500,
@@ -95,81 +167,84 @@ export const handler: Handler = async (event, context) => {
       };
     }
 
+    // Initialize RPC Manager
+    const rpcManager = new NetlifyRpcManager();
+
     // Log sanitized URL (hide the key)
     const sanitizedUrl = rpcUrl.replace(/\/v3\/.*$/, '/v3/[HIDDEN]');
     console.log('🌐 Using RPC URL:', sanitizedUrl);
 
-    // Initialize provider with retry logic
+    // Test connection with retry logic
     console.log('🔗 Connecting to Ethereum provider...');
-    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    const network = await rpcManager.executeWithRetry(async (provider) => {
+      return await provider.getNetwork();
+    });
 
-    // Test connection with timeout
-    const networkPromise = provider.getNetwork();
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Network connection timeout')), 10000)
-    );
-
-    const network = await Promise.race([networkPromise, timeoutPromise]) as any;
     console.log('✅ Connected to network:', network.name, 'Chain ID:', network.chainId.toString());
 
     // AssetDAO contract setup
     const assetDAOAddress = process.env.ASSET_DAO_CONTRACT_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8251bc4B3529';
     console.log('📋 AssetDAO contract address:', assetDAOAddress);
 
-    // Minimal ABI for fetching proposals
-    const assetDAOAbi = [
-      "function getProposalCount() external view returns (uint256)",
-      "function getProposal(uint256 proposalId) external view returns (uint256 id, uint8 proposalType, address token, uint256 amount, address proposer, uint256 createdAt, uint256 votingEnds, uint256 forVotes, uint256 againstVotes, uint8 state)"
+    const assetDAOABI = [
+      "function proposalCount() external view returns (uint256)",
+      "function proposals(uint256) external view returns (tuple(uint256 proposalType, address proposer, uint256 startTime, uint256 endTime, uint256 forVotes, uint256 againstVotes, bool executed, bool cancelled, string description, address[] targets, uint256[] values, bytes[] calldatas) proposal)",
+      "function state(uint256 proposalId) external view returns (uint8)"
     ];
 
-    const assetDAO = new ethers.Contract(assetDAOAddress, assetDAOAbi, provider);
-
-    // Fetch active proposals
+    // Get proposal count with retry logic
     console.log('📊 Fetching proposal count...');
-    const proposalCount = await assetDAO.getProposalCount();
-    console.log(`📊 Total proposals: ${proposalCount.toString()}`);
+    const proposalCount = await rpcManager.executeWithRetry(async (provider) => {
+      const contract = new ethers.Contract(assetDAOAddress, assetDAOABI, provider);
+      return await contract.proposalCount();
+    });
+
+    console.log('📊 Total proposals:', proposalCount.toString());
+
+    // Check last 10 proposals for active ones
+    const totalProposals = Number(proposalCount);
+    const startIndex = Math.max(1, totalProposals - 9); // Check last 10 proposals
+    const endIndex = totalProposals;
+
+    console.log(`🔍 Checking proposals ${startIndex} to ${endIndex}...`);
 
     const activeProposals = [];
 
-    if (Number(proposalCount) === 0) {
-      console.log('ℹ️ No proposals exist in the DAO');
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: true,
-          message: 'No proposals exist in the DAO',
-          timestamp: new Date().toISOString()
-        })
-      };
-    }
-
-    // Check recent proposals (last 10 or all if fewer)
-    const startId = Math.max(1, Number(proposalCount) - 9);
-    console.log(`🔍 Checking proposals ${startId} to ${proposalCount}...`);
-
-    for (let i = startId; i <= Number(proposalCount); i++) {
+    // Check each proposal sequentially with rate limiting
+    for (let i = startIndex; i <= endIndex; i++) {
       try {
-        const proposal = await assetDAO.getProposal(i);
-        console.log(`📋 Proposal ${i}: State ${proposal.state}, Type ${proposal.proposalType}`);
+        // Get proposal state and details with retry logic
+        const [proposalState, proposal] = await Promise.all([
+          rpcManager.executeWithRetry(async (provider) => {
+            const contract = new ethers.Contract(assetDAOAddress, assetDAOABI, provider);
+            return await contract.state(i);
+          }),
+          rpcManager.executeWithRetry(async (provider) => {
+            const contract = new ethers.Contract(assetDAOAddress, assetDAOABI, provider);
+            return await contract.proposals(i);
+          })
+        ]);
 
-        // State 1 = Active
-        if (proposal.state === 1) {
+        console.log(`📋 Proposal ${i}: State ${proposalState}, Type ${proposal.proposalType}`);
+
+        // State 1 = Active, State 4 = Pending
+        if (proposalState === 1n || proposalState === 4n) {
           activeProposals.push({
-            id: proposal.id.toString(),
-            proposalType: proposal.proposalType,
-            token: proposal.token,
-            amount: proposal.amount.toString(),
-            proposer: proposal.proposer,
-            votingEnds: new Date(Number(proposal.votingEnds) * 1000).toISOString()
+            id: i,
+            state: proposalState.toString(),
+            type: proposal.proposalType.toString(),
+            description: proposal.description,
+            startTime: proposal.startTime.toString(),
+            endTime: proposal.endTime.toString(),
+            forVotes: proposal.forVotes.toString(),
+            againstVotes: proposal.againstVotes.toString()
           });
-          console.log(`✅ Found active proposal ${i}`);
         }
-      } catch (error) {
-        console.log(`⚠️ Could not fetch proposal ${i}:`, error.message);
+
+      } catch (error: any) {
+        console.log(`⚠️ Could not fetch proposal ${i}: ${error.message?.substring(0, 100)}`);
+        // Continue with next proposal even if this one fails
+        continue;
       }
     }
 
@@ -194,7 +269,7 @@ export const handler: Handler = async (event, context) => {
 
     // Log the proposals found
     activeProposals.forEach(proposal => {
-      console.log(`📋 Proposal ${proposal.id}: Type ${proposal.proposalType}, Amount: ${proposal.amount}`);
+      console.log(`📋 Proposal ${proposal.id}: Type ${proposal.type}, Description: ${proposal.description.substring(0, 50)}...`);
     });
 
     return {
@@ -208,14 +283,14 @@ export const handler: Handler = async (event, context) => {
         message: `Found ${activeProposals.length} active proposals`,
         proposals: activeProposals,
         network: {
-          name: (network as any).name,
-          chainId: (network as any).chainId.toString()
+          name: network.name,
+          chainId: network.chainId.toString()
         },
         timestamp: new Date().toISOString()
       })
     };
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error details:', {
       message: error.message,
       code: error.code,
@@ -237,5 +312,11 @@ export const handler: Handler = async (event, context) => {
         troubleshooting: 'Check Netlify function logs for detailed error information'
       })
     };
+  } finally {
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    console.log(`${requestId} INFO   ⏱️  Execution duration: ${duration}ms`);
+    console.log(`${requestId} INFO   =====================================`);
+    console.log(`${requestId} INFO   ✅ Netlify Governance Agent Function finished`);
   }
 };
