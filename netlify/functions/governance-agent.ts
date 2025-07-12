@@ -187,16 +187,16 @@ export const handler = async (event: any, context: any) => {
     console.log('📋 AssetDAO contract address:', assetDAOAddress);
 
     const assetDAOABI = [
-      "function proposalCount() external view returns (uint256)",
-      "function proposals(uint256) external view returns (tuple(uint256 proposalType, address proposer, uint256 startTime, uint256 endTime, uint256 forVotes, uint256 againstVotes, bool executed, bool cancelled, string description, address[] targets, uint256[] values, bytes[] calldatas) proposal)",
-      "function state(uint256 proposalId) external view returns (uint8)"
+      "function getProposalCount() external view returns (uint256)",
+      "function getProposal(uint256) external view returns (tuple(address proposer, uint8 proposalType, address assetAddress, uint256 amount, string description, uint256 votesFor, uint256 votesAgainst, uint256 startTime, uint256 endTime, bool executed, bool cancelled, uint8 state) proposal)",
+      "function hasVoted(uint256 proposalId, address voter) external view returns (bool)"
     ];
 
     // Get proposal count with retry logic
     console.log('📊 Fetching proposal count...');
     const proposalCount = await rpcManager.executeWithRetry(async (provider) => {
       const contract = new ethers.Contract(assetDAOAddress, assetDAOABI, provider);
-      return await contract.proposalCount();
+      return await contract.getProposalCount();
     });
 
     console.log('📊 Total proposals:', proposalCount.toString());
@@ -213,17 +213,13 @@ export const handler = async (event: any, context: any) => {
     // Check each proposal sequentially with rate limiting
     for (let i = startIndex; i <= endIndex; i++) {
       try {
-        // Get proposal state and details with retry logic
-        const [proposalState, proposal] = await Promise.all([
-          rpcManager.executeWithRetry(async (provider) => {
-            const contract = new ethers.Contract(assetDAOAddress, assetDAOABI, provider);
-            return await contract.state(i);
-          }),
-          rpcManager.executeWithRetry(async (provider) => {
-            const contract = new ethers.Contract(assetDAOAddress, assetDAOABI, provider);
-            return await contract.proposals(i);
-          })
-        ]);
+        // Get proposal details with retry logic
+        const proposal = await rpcManager.executeWithRetry(async (provider) => {
+          const contract = new ethers.Contract(assetDAOAddress, assetDAOABI, provider);
+          return await contract.getProposal(i);
+        });
+
+        const proposalState = proposal.state;
 
         console.log(`📋 Proposal ${i}: State ${proposalState}, Type ${proposal.proposalType}`);
 
@@ -234,10 +230,13 @@ export const handler = async (event: any, context: any) => {
             state: proposalState.toString(),
             type: proposal.proposalType.toString(),
             description: proposal.description,
+            proposer: proposal.proposer,
+            assetAddress: proposal.assetAddress,
+            amount: proposal.amount.toString(),
             startTime: proposal.startTime.toString(),
             endTime: proposal.endTime.toString(),
-            forVotes: proposal.forVotes.toString(),
-            againstVotes: proposal.againstVotes.toString()
+            forVotes: proposal.votesFor.toString(),
+            againstVotes: proposal.votesAgainst.toString()
           });
         }
 
