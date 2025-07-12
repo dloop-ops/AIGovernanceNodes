@@ -54,8 +54,7 @@ export class ProposalService {
     } catch (error) {
       throw new GovernanceError(
         `Failed to generate proposals: ${error instanceof Error ? error.message : String(error)}`,
-        'PROPOSAL_GENERATION_ERROR',
-        nodeId
+        'PROPOSAL_GENERATION_ERROR'
       );
     }
   }

@@ -95,9 +95,8 @@ export interface ContractAddresses {
     soulboundNft: string;
 }
 export declare class GovernanceError extends Error {
-    code: string;
-    nodeId?: string;
-    constructor(message: string, code: string, nodeId?: string);
+    readonly code: string;
+    constructor(message: string, code?: string);
 }
 export interface CryptoCompareResponse {
     Response: string;

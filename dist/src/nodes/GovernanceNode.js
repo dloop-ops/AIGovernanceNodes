@@ -149,7 +149,7 @@ export class GovernanceNode {
             logger.error(`Failed to create proposal for node ${this.nodeId}`, {
                 error: error instanceof Error ? error.message : String(error)
             });
-            throw new GovernanceError(`Proposal creation failed for ${this.nodeId}: ${error instanceof Error ? error.message : String(error)}`, 'PROPOSAL_CREATION_ERROR', this.nodeId);
+            throw new GovernanceError(`Proposal creation failed for ${this.nodeId}: ${error instanceof Error ? error.message : String(error)}`, 'PROPOSAL_CREATION_ERROR');
         }
     }
     /**
@@ -258,7 +258,7 @@ export class GovernanceNode {
                 component: 'governance',
                 error: error instanceof Error ? error.message : String(error)
             });
-            throw new GovernanceError(`Voting failed for ${this.nodeId}: ${error instanceof Error ? error.message : String(error)}`, 'VOTING_ERROR', this.nodeId);
+            throw new GovernanceError(`Voting failed for ${this.nodeId}: ${error instanceof Error ? error.message : String(error)}`, 'VOTING_ERROR');
         }
     }
     /**

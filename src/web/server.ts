@@ -21,7 +21,7 @@ export class WebServer {
     return new Promise((resolve, reject) => {
       // Use override port if provided, otherwise use instance port
       const targetPort = portOverride || this.port;
-      
+
       this.server = createServer((req, res) => {
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Access-Control-Allow-Origin', '*');
@@ -47,7 +47,7 @@ export class WebServer {
       this.server.on('error', (error: any) => {
         if (error.code === 'EADDRINUSE') {
           logger.warn(`Port ${targetPort} is in use, retrying with next port...`);
-          
+
           // If we're using an override port, try the next one
           if (portOverride) {
             this.start(portOverride + 1).then(resolve).catch(reject);
@@ -109,10 +109,10 @@ export class WebServer {
   private async handleTriggerVoting(res: any) {
     try {
       logger.info('Manual voting trigger requested via API');
-      
+
       // Execute immediate voting round
       await this.nodeManager.triggerVotingRound();
-      
+
       res.writeHead(200);
       res.end(JSON.stringify({
         success: true,
@@ -132,11 +132,11 @@ export class WebServer {
   private async handleEmergencyVoting(res: any) {
     try {
       logger.info('🚨 Emergency voting trigger requested via API');
-      
+
       // For now, use the existing NodeManager trigger voting as emergency fallback
       // TODO: Integrate proper emergency service when NodeManager exposes services
       await this.nodeManager.triggerVotingRound();
-      
+
       res.writeHead(200);
       res.end(JSON.stringify({
         success: true,
@@ -167,7 +167,7 @@ export class WebServer {
       }
 
       const activeProposals = await this.nodeManager.getActiveProposals();
-      
+
       res.writeHead(200);
       res.end(JSON.stringify({
         success: true,

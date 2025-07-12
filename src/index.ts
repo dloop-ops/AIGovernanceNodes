@@ -13,6 +13,7 @@ import { WebServer } from './web/server.js';
 import logger from './utils/logger.js';
 import { GovernanceError } from './types/index.js';
 import { createServer } from 'http';
+import * as process from 'process';
 
 // Load environment variables
 dotenv.config();
@@ -276,43 +277,50 @@ class DLoopGovernanceAgent {
 
 // CLI execution
 async function main(): Promise<void> {
-  const agent = new DLoopGovernanceAgent();
-  
-  // Handle CLI commands
-  const command = process.argv[2];
-  
-  switch (command) {
-    case 'status': {
-      const status = await agent.getStatus();
-      console.log(JSON.stringify(status, null, 2));
-      break;
-    }
-      
-    case 'health':
-      console.log('🏥 Running health check...');
-      try {
-        await agent.initialize();
-        console.log('✅ Health check passed - Enhanced governance system operational');
+  try {
+    const agent = new DLoopGovernanceAgent();
+    
+    // Handle CLI commands
+    const command = process.argv[2];
+    
+    switch (command) {
+      case 'status': {
+        const status = await agent.getStatus();
+        console.log(JSON.stringify(status, null, 2));
         process.exit(0);
-      } catch (error) {
-        console.error('❌ Health check failed:', error);
-        process.exit(1);
+        break;
       }
-      break;
-      
-    default:
-      // Default: start the agent
-      console.log('🤖 Starting Enhanced DLoop AI Governance Nodes...');
-      await agent.start();
-      break;
+        
+      case 'health':
+        console.log('🏥 Running health check...');
+        try {
+          await agent.initialize();
+          console.log('✅ Health check passed - Enhanced governance system operational');
+          process.exit(0);
+        } catch (error) {
+          console.error('❌ Health check failed:', error);
+          process.exit(1);
+        }
+        break;
+        
+      default:
+        // Default: start the agent
+        console.log('🤖 Starting Enhanced DLoop AI Governance Nodes...');
+        await agent.start();
+        break;
+    }
+  } catch (error) {
+    console.error('❌ Main function failed:', error);
+    process.exit(1);
   }
 }
 
 // Export for module usage
 export { DLoopGovernanceAgent };
 
-// Run if called directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Run if called directly - Fixed module detection
+const isMainModule = process.argv[1] && process.argv[1].endsWith('index.js');
+if (isMainModule || process.env.NODE_ENV !== 'test') {
   main().catch((error) => {
     console.error('❌ Enhanced governance system failed:', error);
     process.exit(1);

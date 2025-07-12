@@ -113,13 +113,17 @@ export interface ContractAddresses {
 
 // Error Types
 export class GovernanceError extends Error {
-  constructor(
-    message: string,
-    public code: string,
-    public nodeId?: string
-  ) {
+  public readonly code: string;
+
+  constructor(message: string, code: string = 'GOVERNANCE_ERROR') {
     super(message);
     this.name = 'GovernanceError';
+    this.code = code;
+
+    // Maintain proper stack trace
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, GovernanceError);
+    }
   }
 }
 

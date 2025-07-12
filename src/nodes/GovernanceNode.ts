@@ -191,8 +191,7 @@ export class GovernanceNode {
       });
       throw new GovernanceError(
         `Proposal creation failed for ${this.nodeId}: ${error instanceof Error ? error.message : String(error)}`,
-        'PROPOSAL_CREATION_ERROR',
-        this.nodeId
+        'PROPOSAL_CREATION_ERROR'
       );
     }
   }
@@ -324,8 +323,7 @@ export class GovernanceNode {
       });
       throw new GovernanceError(
         `Voting failed for ${this.nodeId}: ${error instanceof Error ? error.message : String(error)}`,
-        'VOTING_ERROR',
-        this.nodeId
+        'VOTING_ERROR'
       );
     }
   }

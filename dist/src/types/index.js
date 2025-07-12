@@ -17,12 +17,14 @@ export var ProposalState;
 // Error Types
 export class GovernanceError extends Error {
     code;
-    nodeId;
-    constructor(message, code, nodeId) {
+    constructor(message, code = 'GOVERNANCE_ERROR') {
         super(message);
-        this.code = code;
-        this.nodeId = nodeId;
         this.name = 'GovernanceError';
+        this.code = code;
+        // Maintain proper stack trace
+        if (Error.captureStackTrace) {
+            Error.captureStackTrace(this, GovernanceError);
+        }
     }
 }
 //# sourceMappingURL=index.js.map
