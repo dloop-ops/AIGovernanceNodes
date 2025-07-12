@@ -174,7 +174,7 @@ export const handler: Handler = async (event, context) => {
         const assetDAOAddress = process.env.ASSET_DAO_CONTRACT_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8251bc4B3529';
         const assetDAOABI = [
           "function getProposalCount() external view returns (uint256)",
-          "function getProposal(uint256) external view returns (tuple(address proposer, uint8 proposalType, address assetAddress, uint256 amount, string description, uint256 votesFor, uint256 votesAgainst, uint256 startTime, uint256 endTime, bool executed, bool cancelled, uint8 state) proposal)"
+          "function getProposal(uint256) external view returns (uint256, uint8, address, uint256, string, address, uint256, uint256, uint256, uint256, uint8, bool)"
         ];
 
         // Get proposal count with 3 second timeout
@@ -220,31 +220,43 @@ export const handler: Handler = async (event, context) => {
             const proposalResult = await Promise.race([
               (async () => {
                 try {
-                  const proposal = await rpcManager.executeWithRetry(async (provider) => {
+                  const proposalData = await rpcManager.executeWithRetry(async (provider) => {
                     const contract = new ethers.Contract(assetDAOAddress, assetDAOABI, provider);
                     return await contract.getProposal(i);
                   }, 1); // Only 1 retry
 
-                  // Quick validation
-                  if (proposal.proposer === '0x0000000000000000000000000000000000000000') {
+                  // Parse the returned array structure: [id, type, proposer, amount, description, assetAddress, votesFor, votesAgainst, startTime, endTime, state, executed]
+                  const proposer = proposalData[2];
+                  
+                  // Quick validation - check if proposer is zero address
+                  if (proposer === '0x0000000000000000000000000000000000000000') {
                     return null;
                   }
 
-                  const proposalState = proposal.state;
+                  const proposalState = proposalData[10]; // state is at index 10
                   if (proposalState === 1n || proposalState === 4n) { // Active or Pending
-                    return {
-                      id: i,
-                      state: proposalState.toString(),
-                      type: proposal.proposalType.toString(),
-                      description: proposal.description || `Proposal ${i}`,
-                      proposer: proposal.proposer,
-                      assetAddress: proposal.assetAddress,
-                      amount: proposal.amount.toString(),
-                      startTime: proposal.startTime.toString(),
-                      endTime: proposal.endTime.toString(),
-                      forVotes: proposal.votesFor.toString(),
-                      againstVotes: proposal.votesAgainst.toString()
-                    };
+                    const currentTime = Math.floor(Date.now() / 1000);
+                    const endTime = Number(proposalData[9]);
+                    
+                    // Check if proposal is still within voting period
+                    if (endTime > currentTime) {
+                      return {
+                        id: i,
+                        state: proposalState.toString(),
+                        type: proposalData[1].toString(),
+                        description: proposalData[4] || `Proposal ${i}`,
+                        proposer: proposer,
+                        assetAddress: proposalData[5],
+                        amount: proposalData[3].toString(),
+                        startTime: proposalData[8].toString(),
+                        endTime: endTime.toString(),
+                        forVotes: proposalData[6].toString(),
+                        againstVotes: proposalData[7].toString(),
+                        timeLeft: endTime - currentTime
+                      };
+                    } else {
+                      console.log(`${requestId} INFO   ⏰ Proposal ${i} voting period expired`);
+                    }
                   }
                   return null;
                 } catch (error) {

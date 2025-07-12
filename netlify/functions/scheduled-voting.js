@@ -52,7 +52,7 @@ class NetlifyVotingService {
       ]);
       
       const totalCount = Number(count);
-      const startFrom = Math.max(1, totalCount - 9); // Check last 10 proposals only
+      const startFrom = Math.max(1, totalCount - 19); // Check last 20 proposals to find active ones
       
       console.log(`📊 Checking proposals ${startFrom}-${totalCount} for active ones...`);
       
@@ -68,33 +68,43 @@ class NetlifyVotingService {
             )
           ]);
           
+          // Validate proposal exists (check if proposer is not zero address)
+          const proposer = proposalData[2];
+          if (proposer === '0x0000000000000000000000000000000000000000') {
+            console.log(`   ❌ Proposal ${i} does not exist (zero address proposer)`);
+            continue;
+          }
+          
           const state = proposalData[10];
           
           if (Number(state) === 1) { // ACTIVE
             const currentTime = Math.floor(Date.now() / 1000);
-            const votingEnds = Number(proposalData[7]);
+            const votingEnds = Number(proposalData[9]); // endTime is at index 9
             const timeLeft = votingEnds - currentTime;
             
             if (timeLeft > 0) {
               activeProposals.push({
                 id: i.toString(),
-                proposer: proposalData[2],
+                proposer: proposer,
                 proposalType: proposalData[1],
                 state: 1,
                 assetAddress: proposalData[5],
-                amount: ethers.formatEther(proposalData[6]),
+                amount: ethers.formatEther(proposalData[3]), // amount is at index 3
                 description: proposalData[4],
-                votesFor: "0",
-                votesAgainst: "0",
+                votesFor: ethers.formatEther(proposalData[6]),
+                votesAgainst: ethers.formatEther(proposalData[7]),
                 startTime: Number(proposalData[8]),
                 endTime: votingEnds,
                 executed: false,
-                cancelled: false
+                cancelled: false,
+                timeLeft: timeLeft
               });
               console.log(`   ✅ Found VALID active proposal ${i} (${Math.floor(timeLeft/3600)}h left)`);
             } else {
               console.log(`   ⏰ Skipped proposal ${i} - voting period expired ${Math.abs(timeLeft)}s ago`);
             }
+          } else {
+            console.log(`   ℹ️  Proposal ${i} state: ${state} (not active)`);
           }
         } catch (error) {
           console.log(`   ❌ Error checking proposal ${i}:`, error instanceof Error ? error.message.substring(0, 50) : 'Unknown error');
