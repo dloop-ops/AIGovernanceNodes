@@ -169,8 +169,13 @@ class NetlifyVotingService {
     console.log('=====================================');
     console.log(`⏰ Start time: ${new Date().toISOString()}`);
 
-    // Get active proposals
-    const proposals = await this.getActiveProposals();
+    // Get active proposals with timeout
+    const proposals = await Promise.race([
+      this.getActiveProposals(),
+      new Promise<any[]>((_, reject) => 
+        setTimeout(() => reject(new Error('getActiveProposals timeout')), 15000)
+      )
+    ]);
     
     if (proposals.length === 0) {
       console.log('ℹ️  No active proposals found');
@@ -220,8 +225,13 @@ class NetlifyVotingService {
             continue;
           }
           
-          // Cast vote
-          const txHash = await this.castVote(proposal.id, nodeIndex, shouldVote.support);
+          // Cast vote with timeout
+          const txHash = await Promise.race([
+            this.castVote(proposal.id, nodeIndex, shouldVote.support),
+            new Promise<string>((_, reject) => 
+              setTimeout(() => reject(new Error('Vote transaction timeout')), 30000)
+            )
+          ]);
           console.log(`      ✅ Vote cast: ${txHash.slice(0, 10)}...`);
           totalVotes++;
           

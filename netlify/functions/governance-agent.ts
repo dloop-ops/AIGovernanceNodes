@@ -126,234 +126,156 @@ export const handler: Handler = async (event, context) => {
   const requestPromise = (async () => {
     const startTime = Date.now();
     const requestId = Math.random().toString(36).substring(2, 10);
-    const TIMEOUT_LIMIT = 25000; // 25 seconds to leave buffer for response
-    
+    const TIMEOUT_LIMIT = 20000; // 20 seconds to leave buffer for response
+
     try {
 
-      // Timeout wrapper
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Function timeout after 25 seconds')), TIMEOUT_LIMIT);
-      });
+      // Main function logic wrapped in a promise with proper timeout handling
+      const mainLogicPromise = (async () => {
+        console.log(`${requestId} INFO   🤖 Netlify Governance Agent Function triggered`);
+        console.log(`${requestId} INFO   ⏰ Execution time: ${new Date().toISOString()}`);
+        console.log(`${requestId} INFO   🔧 Event type: ${event.httpMethod}`);
 
-      console.log(`${requestId} INFO   🤖 Netlify Governance Agent Function triggered`);
-      console.log(`${requestId} INFO   ⏰ Execution time: ${new Date().toISOString()}`);
-      console.log(`${requestId} INFO   🔧 Event type: ${event.httpMethod}`);
-      console.log(`${requestId} INFO   🔧 Function path: ${event.path}`);
+        console.log(`${requestId} INFO   🗳️ STARTING NETLIFY GOVERNANCE AGENT`);
 
-      console.log(`${requestId} INFO   🗳️ STARTING NETLIFY GOVERNANCE AGENT`);
-      console.log(`${requestId} INFO   =====================================`);
-      console.log(`${requestId} INFO   ⏰ Start time: ${new Date().toISOString()}`);
-      console.log(`${requestId} INFO   🔍 Checking environment variables...`);
-
-      const rpcUrl = process.env.ETHEREUM_RPC_URL;
-      const etherscanApiKey = process.env.ETHERSCAN_API_KEY;
-
-      console.log(`${requestId} INFO   📋 Available environment variables:`);
-      console.log(`${requestId} INFO      AI_NODE_3_PRIVATE_KEY: ${process.env.AI_NODE_3_PRIVATE_KEY ? '✅ SET' : '❌ NOT SET'}`);
-      console.log(`${requestId} INFO      ETHEREUM_RPC_URL: ${rpcUrl ? '✅ SET' : '❌ NOT SET'}`);
-      console.log(`${requestId} INFO      AI_NODE_5_PRIVATE_KEY: ${process.env.AI_NODE_5_PRIVATE_KEY ? '✅ SET' : '❌ NOT SET'}`);
-      console.log(`${requestId} INFO      AI_NODE_2_PRIVATE_KEY: ${process.env.AI_NODE_2_PRIVATE_KEY ? '✅ SET' : '❌ NOT SET'}`);
-      console.log(`${requestId} INFO      ETHERSCAN_API_KEY: ${etherscanApiKey ? '✅ SET' : '❌ NOT SET'}`);
-      console.log(`${requestId} INFO      AI_NODE_4_PRIVATE_KEY: ${process.env.AI_NODE_4_PRIVATE_KEY ? '✅ SET' : '❌ NOT SET'}`);
-      console.log(`${requestId} INFO      AI_NODE_1_PRIVATE_KEY: ${process.env.AI_NODE_1_PRIVATE_KEY ? '✅ SET' : '❌ NOT SET'}`);
-
-      if (!rpcUrl || !etherscanApiKey) {
-        const missingVars: string[] = [];
-        if (!rpcUrl) missingVars.push('ETHEREUM_RPC_URL');
-        if (!etherscanApiKey) missingVars.push('ETHERSCAN_API_KEY');
-
-        // Check for AI node private keys
-        for (let i = 1; i <= 5; i++) {
-          const keyName = `AI_NODE_${i}_PRIVATE_KEY`;
-          if (!process.env[keyName]) {
-            missingVars.push(keyName);
-          }
-        }
-
-        console.log(`${requestId} ERROR  ❌ Environment validation failed: Missing required environment variables: ${missingVars.join(', ')}`);
-        console.log(`${requestId} INFO   💡 Environment Setup Guide:`);
-        console.log(`${requestId} INFO      1. Go to Netlify Dashboard > Site Settings > Environment Variables`);
-        console.log(`${requestId} INFO      2. Set ETHEREUM_RPC_URL=https://sepolia.infura.io/v3/YOUR_PROJECT_ID`);
-        console.log(`${requestId} INFO      3. Set ETHERSCAN_API_KEY=HG7DAYXKN5B6AZE35WRDVQRSNN5IDC3ZG6`);
-        console.log(`${requestId} INFO      4. Set AI_NODE_1_PRIVATE_KEY=0x... (64 hex characters)`);
-        console.log(`${requestId} INFO      5. Repeat for AI_NODE_2_PRIVATE_KEY through AI_NODE_5_PRIVATE_KEY`);
-
-        return {
-          statusCode: 500,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          },
-          body: JSON.stringify({
-            error: 'Environment configuration error',
-            message: `Missing or invalid environment variables: ${missingVars.join(', ')}`,
-            timestamp: new Date().toISOString(),
-            setup_guide: {
-              step1: 'Go to Netlify Dashboard > Site Settings > Environment Variables',
-              step2: 'Set ETHEREUM_RPC_URL to your Infura Sepolia endpoint',
-              step3: 'Set ETHERSCAN_API_KEY=HG7DAYXKN5B6AZE35WRDVQRSNN5IDC3ZG6',
-              step4: 'Set AI_NODE_*_PRIVATE_KEY variables (must be 64 hex characters)',
-              step5: 'Redeploy the site after setting environment variables'
+        const rpcUrl = process.env.ETHEREUM_RPC_URL;
+        if (!rpcUrl) {
+          return {
+            statusCode: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
             },
-            required_vars: [
-              'ETHEREUM_RPC_URL',
-              'ETHERSCAN_API_KEY',
-              'AI_NODE_1_PRIVATE_KEY',
-              'AI_NODE_2_PRIVATE_KEY',
-              'AI_NODE_3_PRIVATE_KEY',
-              'AI_NODE_4_PRIVATE_KEY',
-              'AI_NODE_5_PRIVATE_KEY'
-            ]
-          })
-        };
-      }
-
-      // Initialize RPC Manager
-      const rpcManager = new NetlifyRpcManager();
-
-      // Log sanitized URL (hide the key)
-      const sanitizedUrl = rpcUrl.replace(/\/v3\/.*$/, '/v3/[HIDDEN]');
-      console.log('🌐 Using RPC URL:', sanitizedUrl);
-
-      // Test connection with retry logic
-      console.log('🔗 Connecting to Ethereum provider...');
-      const network = await rpcManager.executeWithRetry(async (provider) => {
-        return await provider.getNetwork();
-      });
-
-      console.log('✅ Connected to network:', network.name, 'Chain ID:', network.chainId.toString());
-
-      // AssetDAO contract setup
-      const assetDAOAddress = process.env.ASSET_DAO_CONTRACT_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8251bc4B3529';
-      console.log('📋 AssetDAO contract address:', assetDAOAddress);
-
-      const assetDAOABI = [
-        "function getProposalCount() external view returns (uint256)",
-        "function getProposal(uint256) external view returns (tuple(address proposer, uint8 proposalType, address assetAddress, uint256 amount, string description, uint256 votesFor, uint256 votesAgainst, uint256 startTime, uint256 endTime, bool executed, bool cancelled, uint8 state) proposal)",
-        "function hasVoted(uint256 proposalId, address voter) external view returns (bool)"
-      ];
-
-      // Get proposal count with retry logic
-      console.log('📊 Fetching proposal count...');
-      const proposalCount = await rpcManager.executeWithRetry(async (provider) => {
-        const contract = new ethers.Contract(assetDAOAddress, assetDAOABI, provider);
-        return await contract.getProposalCount();
-      });
-
-      console.log('📊 Total proposals:', proposalCount.toString());
-
-      // Check last 10 proposals for active ones, but ensure we don't exceed actual proposal count
-      const totalProposals = Number(proposalCount);
-
-      if (totalProposals === 0) {
-        console.log('ℹ️ No proposals exist yet');
-        return {
-          statusCode: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          },
-          body: JSON.stringify({
-            success: true,
-            message: 'No proposals exist yet',
-            proposalsChecked: 0,
-            timestamp: new Date().toISOString()
-          })
-        };
-      }
-
-      // Calculate safe range - proposals are 1-indexed
-      const startIndex = Math.max(1, totalProposals - 9); // Check last 10 proposals
-      const endIndex = Math.min(totalProposals, totalProposals); // Don't exceed actual count
-
-      console.log(`🔍 Checking proposals ${startIndex} to ${endIndex} (total: ${totalProposals})...`);
-
-      const activeProposals = [];
-
-      // Check each proposal sequentially with rate limiting
-      for (let i = startIndex; i <= endIndex; i++) {
-        try {
-          // First check if proposal exists by checking proposal count
-          if (i > totalProposals) {
-            console.log(`⏭️ Skipping proposal ${i}: exceeds total count (${totalProposals})`);
-            continue;
-          }
-
-          // Get proposal details with enhanced error handling
-          const proposal = await rpcManager.executeWithRetry(async (provider) => {
-            const contract = new ethers.Contract(assetDAOAddress, assetDAOABI, provider);
-
-            try {
-              const result = await contract.getProposal(i);
-
-              // Validate proposal structure
-              if (!result || typeof result !== 'object') {
-                throw new Error(`Invalid proposal structure for proposal ${i}`);
-              }
-
-              // Check if proposal has required fields
-              if (result.proposer === '0x0000000000000000000000000000000000000000') {
-                throw new Error(`Proposal ${i} appears to be empty or deleted`);
-              }
-
-              return result;
-            } catch (contractError: any) {
-              // Handle specific ABI decoding errors
-              if (contractError.message?.includes('deferred error during ABI decoding') ||
-                contractError.message?.includes('accessing index 0')) {
-                throw new Error(`Proposal ${i} does not exist or has invalid data structure`);
-              }
-              throw contractError;
-            }
-          });
-
-          const proposalState = proposal.state;
-
-          console.log(`📋 Proposal ${i}: State ${proposalState}, Type ${proposal.proposalType}, Proposer ${proposal.proposer?.substring(0, 8)}...`);
-
-          // State 1 = Active, State 4 = Pending
-          if (proposalState === 1n || proposalState === 4n) {
-            activeProposals.push({
-              id: i,
-              state: proposalState.toString(),
-              type: proposal.proposalType.toString(),
-              description: proposal.description || `Proposal ${i}`,
-              proposer: proposal.proposer,
-              assetAddress: proposal.assetAddress,
-              amount: proposal.amount.toString(),
-              startTime: proposal.startTime.toString(),
-              endTime: proposal.endTime.toString(),
-              forVotes: proposal.votesFor.toString(),
-              againstVotes: proposal.votesAgainst.toString()
-            });
-          } else {
-            console.log(`⏭️ Proposal ${i}: Not active (state ${proposalState})`);
-          }
-
-        } catch (error: any) {
-          const errorMsg = error.message?.substring(0, 100) || 'Unknown error';
-
-          // Different handling for different error types
-          if (errorMsg.includes('does not exist') ||
-            errorMsg.includes('invalid data structure') ||
-            errorMsg.includes('empty or deleted')) {
-            console.log(`⚠️ Proposal ${i}: ${errorMsg}`);
-          } else if (errorMsg.includes('deferred error during ABI decoding')) {
-            console.log(`⚠️ Proposal ${i}: ABI decoding failed - proposal may not exist`);
-          } else {
-            console.log(`⚠️ Proposal ${i}: Unexpected error - ${errorMsg}`);
-          }
-
-          // Continue with next proposal even if this one fails
-          continue;
+            body: JSON.stringify({
+              error: 'Environment configuration error',
+              message: 'Missing ETHEREUM_RPC_URL',
+              timestamp: new Date().toISOString()
+            })
+          };
         }
 
-        // Add small delay between proposal checks to prevent overwhelming the RPC
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
+        // Initialize RPC Manager with shorter timeouts
+        const rpcManager = new NetlifyRpcManager();
 
-      if (activeProposals.length === 0) {
-        console.log('ℹ️ No active proposals found');
+        // Quick connection test with 5 second timeout
+        const network = await Promise.race([
+          rpcManager.executeWithRetry(async (provider) => {
+            return await provider.getNetwork();
+          }, 1), // Only 1 retry
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Network connection timeout')), 5000)
+          )
+        ]);
+
+        console.log(`${requestId} INFO   ✅ Connected to network: ${network.name}`);
+
+        // AssetDAO contract setup
+        const assetDAOAddress = process.env.ASSET_DAO_CONTRACT_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8251bc4B3529';
+        const assetDAOABI = [
+          "function getProposalCount() external view returns (uint256)",
+          "function getProposal(uint256) external view returns (tuple(address proposer, uint8 proposalType, address assetAddress, uint256 amount, string description, uint256 votesFor, uint256 votesAgainst, uint256 startTime, uint256 endTime, bool executed, bool cancelled, uint8 state) proposal)"
+        ];
+
+        // Get proposal count with 5 second timeout
+        const proposalCount = await Promise.race([
+          rpcManager.executeWithRetry(async (provider) => {
+            const contract = new ethers.Contract(assetDAOAddress, assetDAOABI, provider);
+            return await contract.getProposalCount();
+          }, 1), // Only 1 retry
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Proposal count timeout')), 5000)
+          )
+        ]);
+
+        const totalProposals = Number(proposalCount);
+        console.log(`${requestId} INFO   📊 Total proposals: ${totalProposals}`);
+
+        if (totalProposals === 0) {
+          return {
+            statusCode: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+              success: true,
+              message: 'No proposals exist yet',
+              proposalsChecked: 0,
+              timestamp: new Date().toISOString()
+            })
+          };
+        }
+
+        // Only check last 5 proposals to stay within time limit
+        const startIndex = Math.max(1, totalProposals - 4);
+        const endIndex = totalProposals;
+        const activeProposals = [];
+
+        console.log(`${requestId} INFO   🔍 Checking proposals ${startIndex} to ${endIndex}...`);
+
+        // Process proposals with strict time limit
+        const proposalPromises = [];
+        for (let i = startIndex; i <= endIndex; i++) {
+          const proposalPromise = Promise.race([
+            (async () => {
+              try {
+                const proposal = await rpcManager.executeWithRetry(async (provider) => {
+                  const contract = new ethers.Contract(assetDAOAddress, assetDAOABI, provider);
+                  return await contract.getProposal(i);
+                }, 1); // Only 1 retry
+
+                // Quick validation
+                if (proposal.proposer === '0x0000000000000000000000000000000000000000') {
+                  return null;
+                }
+
+                const proposalState = proposal.state;
+                if (proposalState === 1n || proposalState === 4n) { // Active or Pending
+                  return {
+                    id: i,
+                    state: proposalState.toString(),
+                    type: proposal.proposalType.toString(),
+                    description: proposal.description || `Proposal ${i}`,
+                    proposer: proposal.proposer,
+                    assetAddress: proposal.assetAddress,
+                    amount: proposal.amount.toString(),
+                    startTime: proposal.startTime.toString(),
+                    endTime: proposal.endTime.toString(),
+                    forVotes: proposal.votesFor.toString(),
+                    againstVotes: proposal.votesAgainst.toString()
+                  };
+                }
+                return null;
+              } catch (error) {
+                console.log(`${requestId} WARN   ⚠️ Proposal ${i}: ${error instanceof Error ? error.message.substring(0, 50) : 'Unknown error'}`);
+                return null;
+              }
+            })(),
+            new Promise<null>((resolve) => 
+              setTimeout(() => resolve(null), 3000) // 3 second timeout per proposal
+            )
+          ]);
+          
+          proposalPromises.push(proposalPromise);
+        }
+
+        // Wait for all proposals with overall timeout
+        const proposalResults = await Promise.race([
+          Promise.all(proposalPromises),
+          new Promise<null[]>((resolve) => 
+            setTimeout(() => resolve(new Array(proposalPromises.length).fill(null)), 10000)
+          )
+        ]);
+
+        // Filter out null results
+        for (const result of proposalResults) {
+          if (result) {
+            activeProposals.push(result);
+          }
+        }
+
+        console.log(`${requestId} INFO   🗳️ Found ${activeProposals.length} active proposals`);
+
         return {
           statusCode: 200,
           headers: {
@@ -362,37 +284,27 @@ export const handler: Handler = async (event, context) => {
           },
           body: JSON.stringify({
             success: true,
-            message: 'No active proposals to vote on',
-            proposalsChecked: Number(proposalCount),
+            message: `Found ${activeProposals.length} active proposals`,
+            proposals: activeProposals,
+            network: {
+              name: network.name,
+              chainId: network.chainId.toString()
+            },
             timestamp: new Date().toISOString()
           })
         };
-      }
+      })();
 
-      console.log(`🗳️ Found ${activeProposals.length} active proposals`);
-
-      // Log the proposals found
-      activeProposals.forEach(proposal => {
-        console.log(`📋 Proposal ${proposal.id}: Type ${proposal.type}, Description: ${proposal.description.substring(0, 50)}...`);
+      // Create timeout promise
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          console.log(`${requestId} ERROR  ⏰ Function timeout after ${TIMEOUT_LIMIT / 1000} seconds`);
+          reject(new Error(`Function timeout after ${TIMEOUT_LIMIT / 1000} seconds`));
+        }, TIMEOUT_LIMIT);
       });
 
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({
-          success: true,
-          message: `Found ${activeProposals.length} active proposals`,
-          proposals: activeProposals,
-          network: {
-            name: network.name,
-            chainId: network.chainId.toString()
-          },
-          timestamp: new Date().toISOString()
-        })
-      };
+      // Race between main logic and timeout
+      return await Promise.race([mainLogicPromise, timeoutPromise]);
 
     } catch (error: any) {
       console.error('❌ Error details:', {

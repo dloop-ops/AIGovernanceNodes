@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
-import path from 'path';
-import dotenv from 'dotenv';
+import * as path from 'path';
+import * as dotenv from 'dotenv';
 dotenv.config();
 const assetDaoAbi = require(path.join(process.cwd(), 'abis', 'assetdao.abi.v1.json')).abi;
 const dloopTokenAbi = require(path.join(process.cwd(), 'abis', 'dlooptoken.abi.v1.json')).abi;

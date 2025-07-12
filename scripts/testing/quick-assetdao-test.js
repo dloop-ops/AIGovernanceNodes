@@ -1,11 +1,13 @@
+
 import { ethers } from 'ethers';
-import * as path from 'path';
-import * as dotenv from 'dotenv';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { config } from 'dotenv';
 
-dotenv.config();
+config();
 
-const assetDaoAbi = require(path.join(process.cwd(), 'abis', 'assetdao.abi.v1.json')).abi;
-const dloopTokenAbi = require(path.join(process.cwd(), 'abis', 'dlooptoken.abi.v1.json')).abi;
+const assetDaoAbi = JSON.parse(readFileSync(join(process.cwd(), 'abis', 'assetdao.abi.v1.json'), 'utf8')).abi;
+const dloopTokenAbi = JSON.parse(readFileSync(join(process.cwd(), 'abis', 'dlooptoken.abi.v1.json'), 'utf8')).abi;
 
 async function quickTest() {
   const provider = new ethers.JsonRpcProvider('https://sepolia.infura.io/v3/ca485bd6567e4c5fb5693ee66a5885d8');
@@ -29,10 +31,10 @@ async function quickTest() {
     try {
       const dloopBalance = await dloopToken.balanceOf(nodes[i]);
       console.log(`Node ${i+1}: ${ethers.formatEther(dloopBalance)} DLOOP`);
-    } catch (e: any) {
+    } catch (e) {
       console.log(`Node ${i+1}: Error fetching balance - ${e.message}`);
     }
   }
 }
 
-quickTest().catch(console.error); 
+quickTest().catch(console.error);
