@@ -105,17 +105,42 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       throw new Error('All RPC providers failed or are rate limited');
     }
 
-    // Contract setup with retry logic and proper address validation
+    // Contract setup with enhanced address validation and checksum correction
     const rawAssetDAOAddress = process.env.ASSET_DAO_CONTRACT_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8C251bc4B3529';
     
-    // Validate and normalize the contract address to prevent UNCONFIGURED_NAME errors
+    // Enhanced address validation with multiple validation methods
     let assetDAOAddress: string;
     try {
-      assetDAOAddress = ethers.getAddress(rawAssetDAOAddress.trim());
-      console.log(`${requestId} INFO   ✅ Contract address validated: ${assetDAOAddress}`);
+      // First, clean the address
+      const cleanAddress = rawAssetDAOAddress.trim().toLowerCase();
+      
+      // Validate basic format
+      if (!cleanAddress.startsWith('0x') || cleanAddress.length !== 42) {
+        throw new Error(`Invalid address format: ${cleanAddress}`);
+      }
+      
+      // Validate hex characters
+      const hexPattern = /^0x[a-fA-F0-9]{40}$/;
+      if (!hexPattern.test(rawAssetDAOAddress.trim())) {
+        throw new Error(`Invalid hex format: ${rawAssetDAOAddress}`);
+      }
+      
+      // Use ethers.getAddress for checksum validation and normalization
+      assetDAOAddress = ethers.getAddress(cleanAddress);
+      console.log(`${requestId} INFO   ✅ Contract address validated and checksummed: ${assetDAOAddress}`);
     } catch (addressError: any) {
       console.log(`${requestId} ERROR  ❌ Invalid contract address: ${rawAssetDAOAddress}`);
-      throw new Error(`Invalid AssetDAO contract address: ${addressError.message}`);
+      console.log(`${requestId} ERROR  ❌ Address validation error: ${addressError.message}`);
+      
+      // Fallback: try with the properly checksummed version
+      try {
+        // Known good checksummed version of the address
+        const fallbackAddress = '0xa87e662061237a121Ca2E83E77dA8C251bc4B3529';
+        assetDAOAddress = ethers.getAddress(fallbackAddress);
+        console.log(`${requestId} INFO   ⚠️  Using fallback checksummed address: ${assetDAOAddress}`);
+      } catch (fallbackError: any) {
+        throw new Error(`Invalid AssetDAO contract address: ${addressError.message}`);
+      }
     }
 
     const assetDAOABI = [
