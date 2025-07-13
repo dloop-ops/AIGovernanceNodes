@@ -186,13 +186,32 @@ export const handler = async (event, context) => {
                                     }
                                     const proposalState = Number(proposalData[10]); // state is at index 10, convert to number
                                     console.log(`${requestId} INFO   📊 Proposal ${i} state: ${proposalState}`);
+                                    // CRITICAL FIX: Proper timestamp handling
+                                    const rawEndTime = proposalData[9];
+                                    let endTime;
+                                    if (typeof rawEndTime === 'bigint') {
+                                        endTime = Number(rawEndTime);
+                                    }
+                                    else {
+                                        endTime = Number(rawEndTime);
+                                    }
+                                    const currentTimeMs = Date.now();
+                                    const currentTimeSec = Math.floor(currentTimeMs / 1000);
+                                    // FIXED: Better timestamp detection logic
+                                    // If endTime is much larger than current timestamp in seconds, it's likely milliseconds
+                                    // Use a more conservative threshold: if > year 2030 in seconds, it's probably milliseconds
+                                    const year2030InSeconds = 1893456000; // Jan 1, 2030
+                                    const isMilliseconds = endTime > year2030InSeconds;
+                                    const normalizedEndTime = isMilliseconds ? Math.floor(endTime / 1000) : endTime;
+                                    const normalizedCurrentTime = currentTimeSec;
+                                    console.log(`${requestId} DEBUG  🕐 Proposal ${i} - Raw endTime: ${endTime}, Normalized: ${normalizedEndTime}, Current: ${normalizedCurrentTime}`);
+                                    console.log(`${requestId} DEBUG  📅 Proposal ${i} - End date: ${new Date(normalizedEndTime * 1000).toISOString()}, Current: ${new Date(normalizedCurrentTime * 1000).toISOString()}`);
                                     if (proposalState === 1 || proposalState === 4) { // Active (1) or Pending (4)
-                                        const currentTime = Math.floor(Date.now() / 1000);
-                                        const endTime = Number(proposalData[9]);
                                         // Check if proposal is still within voting period
-                                        if (endTime > currentTime) {
-                                            const timeLeftHours = Math.floor((endTime - currentTime) / 3600);
-                                            console.log(`${requestId} INFO   ✅ Found ACTIVE proposal ${i} (${timeLeftHours}h remaining)`);
+                                        if (normalizedEndTime > normalizedCurrentTime) {
+                                            const timeLeftSeconds = normalizedEndTime - normalizedCurrentTime;
+                                            const timeLeftHours = Math.floor(timeLeftSeconds / 3600);
+                                            console.log(`${requestId} INFO   ✅ Found ACTIVE proposal ${i} (${timeLeftHours}h ${Math.floor((timeLeftSeconds % 3600) / 60)}m remaining)`);
                                             return {
                                                 id: i,
                                                 state: proposalState.toString(),
@@ -202,16 +221,26 @@ export const handler = async (event, context) => {
                                                 assetAddress: proposalData[5],
                                                 amount: proposalData[3].toString(),
                                                 startTime: proposalData[8].toString(),
-                                                endTime: endTime.toString(),
+                                                endTime: normalizedEndTime.toString(),
                                                 forVotes: proposalData[6].toString(),
                                                 againstVotes: proposalData[7].toString(),
-                                                timeLeft: endTime - currentTime
+                                                timeLeft: timeLeftSeconds
                                             };
                                         }
                                         else {
-                                            const expiredHours = Math.floor((currentTime - endTime) / 3600);
-                                            console.log(`${requestId} INFO   ⏰ Proposal ${i} voting period expired ${expiredHours}h ago`);
+                                            const expiredSeconds = normalizedCurrentTime - normalizedEndTime;
+                                            const expiredHours = Math.floor(expiredSeconds / 3600);
+                                            const expiredDays = Math.floor(expiredHours / 24);
+                                            if (expiredDays > 0) {
+                                                console.log(`${requestId} INFO   ⏰ Proposal ${i} voting period expired ${expiredDays}d ${expiredHours % 24}h ago`);
+                                            }
+                                            else {
+                                                console.log(`${requestId} INFO   ⏰ Proposal ${i} voting period expired ${expiredHours}h ${Math.floor((expiredSeconds % 3600) / 60)}m ago`);
+                                            }
                                         }
+                                    }
+                                    else {
+                                        console.log(`${requestId} INFO   ℹ️  Proposal ${i} not active (state: ${proposalState})`);
                                     }
                                     return null;
                                 }

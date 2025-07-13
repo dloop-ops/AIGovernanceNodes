@@ -1,1 +1,1 @@
-{"version":3,"file":"proposal-diagnostic.d.ts","sourceRoot":"","sources":["../../../scripts/testing/proposal-diagnostic.js"],"names":[],"mappings":"AAGA,mDAmFC"}
+{"version":3,"file":"proposal-diagnostic.d.ts","sourceRoot":"","sources":["../../../scripts/testing/proposal-diagnostic.ts"],"names":[],"mappings":"AAGA,iBAAe,iBAAiB,IAAI,OAAO,CAAC,IAAI,CAAC,CAiHhD;AAOD,OAAO,EAAE,iBAAiB,EAAE,CAAC"}

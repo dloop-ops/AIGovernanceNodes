@@ -1,4 +1,4 @@
-const { ethers } = require('ethers');
+import { ethers } from 'ethers';
 
 // 🗳️ NETLIFY SCHEDULED VOTING FUNCTION
 // Runs every 30 minutes to check for and vote on new proposals
@@ -77,9 +77,27 @@ class NetlifyVotingService {
           console.log(`   📊 Proposal ${i} state: ${state}`);
 
           if (state === 1) { // ACTIVE state
-            const currentTime = Math.floor(Date.now() / 1000);
-            const votingEnds = Number(proposalData[9]); // endTime is at index 9
-            const timeLeft = votingEnds - currentTime;
+            // CRITICAL FIX: Proper timestamp handling
+            const rawEndTime = proposalData[9];
+            let votingEnds: number;
+            
+            if (typeof rawEndTime === 'bigint') {
+              votingEnds = Number(rawEndTime);
+            } else {
+              votingEnds = Number(rawEndTime);
+            }
+            
+            const currentTimeMs = Date.now();
+            const currentTimeSec = Math.floor(currentTimeMs / 1000);
+            
+            // FIXED: Conservative timestamp detection
+            // Use year 2030 as threshold - if timestamp > this, it's milliseconds
+            const year2030InSeconds = 1893456000;
+            const isMilliseconds = votingEnds > year2030InSeconds;
+            const normalizedEndTime = isMilliseconds ? Math.floor(votingEnds / 1000) : votingEnds;
+            const timeLeft = normalizedEndTime - currentTimeSec;
+
+            console.log(`   🕐 DEBUG: Raw endTime: ${votingEnds}, Normalized: ${normalizedEndTime}, Current: ${currentTimeSec}, TimeLeft: ${timeLeft}s`);
 
             if (timeLeft > 0) {
               activeProposals.push({
@@ -93,14 +111,20 @@ class NetlifyVotingService {
                 votesFor: ethers.formatEther(proposalData[6]),
                 votesAgainst: ethers.formatEther(proposalData[7]),
                 startTime: Number(proposalData[8]),
-                endTime: votingEnds,
+                endTime: normalizedEndTime,
                 executed: false,
                 cancelled: false,
                 timeLeft: timeLeft
               });
-              console.log(`   ✅ Found VALID active proposal ${i} (${Math.floor(timeLeft/3600)}h left)`);
+              console.log(`   ✅ Found VALID active proposal ${i} (${Math.floor(timeLeft/3600)}h ${Math.floor((timeLeft % 3600) / 60)}m left)`);
             } else {
-              console.log(`   ⏰ Skipped proposal ${i} - voting period expired ${Math.abs(timeLeft)}s ago`);
+              const expiredHours = Math.floor(Math.abs(timeLeft) / 3600);
+              const expiredDays = Math.floor(expiredHours / 24);
+              if (expiredDays > 0) {
+                console.log(`   ⏰ Skipped proposal ${i} - voting period expired ${expiredDays}d ${expiredHours % 24}h ago`);
+              } else {
+                console.log(`   ⏰ Skipped proposal ${i} - voting period expired ${expiredHours}h ${Math.floor((Math.abs(timeLeft) % 3600) / 60)}m ago`);
+              }
             }
           } else {
             console.log(`   ℹ️  Proposal ${i} state: ${state} (not active)`);
@@ -281,7 +305,7 @@ class NetlifyVotingService {
 }
 
 // Netlify function handler
-exports.handler = async (event, context) => {
+export const handler = async (event, context) => {
   console.log('🤖 Netlify Scheduled Voting Function triggered');
   console.log(`⏰ Execution time: ${new Date().toISOString()}`);
   console.log(`🔧 Event type: ${event.httpMethod || 'scheduled'}`);
