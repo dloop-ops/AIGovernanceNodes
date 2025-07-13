@@ -12,11 +12,11 @@
   external_node_modules = ["ethers", "@elizaos/core", "node-cron", "winston"]
 
 [functions."governance-agent"]
-  timeout = 30
+  timeout = 25
 
 [functions."scheduled-voting"]
   timeout = 25
-  schedule = "*/5 * * * *"
+  schedule = "*/10 * * * *"
 
 [[redirects]]
   from = "/api/status"
