@@ -127,15 +127,15 @@ class NetlifyVotingService {
             if (timeLeft > 0) {
               activeProposals.push({
                 id: i.toString(),
-                proposer: proposalData[2],
-                proposalType: proposalData[1],
+                proposer: proposalData[5] || proposalData[2],
+                proposalType: Number(proposalData[1]) || 0,
                 state: 1,
-                assetAddress: proposalData[5],
-                amount: ethers.formatEther(proposalData[6]),
-                description: proposalData[4],
-                votesFor: "0",
-                votesAgainst: "0",
-                startTime: Number(proposalData[6]),
+                assetAddress: proposalData[2] || proposalData[5],
+                amount: proposalData[3] ? proposalData[3].toString() : '0',
+                description: proposalData[4] || `Proposal ${i}`,
+                votesFor: proposalData[8] ? proposalData[8].toString() : '0',
+                votesAgainst: proposalData[9] ? proposalData[9].toString() : '0',
+                startTime: Number(proposalData[6]) || 0,
                 endTime: votingEnds,
                 executed: false,
                 cancelled: false
@@ -176,25 +176,45 @@ class NetlifyVotingService {
   }
 
   makeVotingDecision(proposal: Proposal): { vote: boolean; support: boolean } {
-    const isUSDC = proposal.assetAddress.toLowerCase().includes('1c7d4b196cb0c7b01d743fbc6116a902379c7238');
+    // Check for USDC-related proposals by description and asset address
+    const isUSDCProposal = proposal.description.toLowerCase().includes('usdc') || 
+                          proposal.assetAddress.toLowerCase().includes('1c7d4b196cb0c7b01d743fbc6116a902379c7238') ||
+                          proposal.assetAddress.toLowerCase().includes('37d5cfe5f3d8b8be80ee7e521949daefac692a67') ||
+                          proposal.assetAddress.toLowerCase().includes('3639d1f746a977775522221f53d0b1ea5749b8b9');
+    
     const amount = parseFloat(proposal.amount);
+    const amountInUSDC = amount / 1000000; // Convert to USDC (6 decimals)
     
-    console.log(`   🔍 Asset analysis: ${proposal.assetAddress.slice(0, 12)}... (USDC: ${isUSDC})`);
-    console.log(`   💰 Amount analysis: ${amount} ETH (${amount} threshold)`);
+    console.log(`   🔍 Asset analysis: ${proposal.assetAddress.slice(0, 12)}...`);
+    console.log(`   💰 Amount: ${amountInUSDC} USDC (${amount} raw)`);
+    console.log(`   📄 USDC proposal: ${isUSDCProposal}`);
+    console.log(`   📝 Type: ${proposal.proposalType === 0 ? 'INVEST' : proposal.proposalType === 1 ? 'DIVEST' : 'OTHER'}`);
     
-    // For testing: vote on all small proposals (not just USDC)
-    if (amount <= 1) { // Very small amount in ETH
-      console.log(`   ✅ Small amount proposal - voting YES`);
+    // Vote YES on small USDC investment proposals (up to 10 USDC)
+    if (isUSDCProposal && proposal.proposalType === 0 && amountInUSDC <= 10) {
+      console.log(`   ✅ USDC investment proposal under 10 USDC - voting YES`);
       return { vote: true, support: true };
     }
     
-    // Conservative approach: vote on small USDC proposals
-    if (isUSDC && amount <= 5000) {
-      console.log(`   ✅ USDC proposal under threshold - voting YES`);
+    // Vote NO on large USDC investments (over 10 USDC)
+    if (isUSDCProposal && proposal.proposalType === 0 && amountInUSDC > 10) {
+      console.log(`   ❌ USDC investment too large (${amountInUSDC} USDC) - voting NO`);
+      return { vote: true, support: false };
+    }
+    
+    // Vote NO on WBTC divestment proposals (conservative approach)
+    if (proposal.proposalType === 1 && proposal.description.toLowerCase().includes('wbtc')) {
+      console.log(`   ❌ WBTC divestment proposal - voting NO (conservative)`);
+      return { vote: true, support: false };
+    }
+    
+    // Vote YES on other small investment proposals
+    if (proposal.proposalType === 0 && amountInUSDC <= 5) {
+      console.log(`   ✅ Small investment proposal - voting YES`);
       return { vote: true, support: true };
     }
     
-    console.log(`   ❌ Proposal doesn't meet criteria (amount too large or risky asset)`);
+    console.log(`   ⏭️  Proposal doesn't meet voting criteria - abstaining`);
     return { vote: false, support: false };
   }
 
@@ -250,13 +270,14 @@ class NetlifyVotingService {
     let totalVotes = 0;
     const results = [];
 
-    // Limit to first proposal to prevent timeout
-    const proposalsToProcess = proposals.slice(0, 1);
+    // Process up to 3 proposals to balance coverage and timeout risk
+    const proposalsToProcess = proposals.slice(0, 3);
 
     for (const proposal of proposalsToProcess) {
       console.log(`\n📋 Processing Proposal ${proposal.id}`);
-      console.log(`   💰 Amount: ${proposal.amount} ETH`);
+      console.log(`   💰 Amount: ${proposal.amount}`);
       console.log(`   📍 Asset: ${proposal.assetAddress.slice(0, 10)}...`);
+      console.log(`   📄 Description: ${proposal.description.substring(0, 50)}...`);
       
       // Determine voting decision
       const shouldVote = this.makeVotingDecision(proposal);
@@ -275,9 +296,14 @@ class NetlifyVotingService {
       };
 
       // Vote with each of the 5 nodes
-      for (let nodeIndex = 0; nodeIndex < 5; nodeIndex++) {
+      for (let nodeIndex = 0; nodeIndex < Math.min(5, this.wallets.length); nodeIndex++) {
+        if (!this.wallets[nodeIndex]) {
+          console.log(`   ⚠️  Node ${nodeIndex + 1}: Wallet not available`);
+          continue;
+        }
+
         const nodeId = `ai-gov-${String(nodeIndex + 1).padStart(2, '0')}`;
-        const nodeAddress = this.wallets[nodeIndex]?.address || 'N/A';
+        const nodeAddress = this.wallets[nodeIndex].address;
         
         console.log(`\n   🤖 Node ${nodeIndex + 1} (${nodeId}): ${nodeAddress.slice(0, 10)}...`);
         
@@ -286,7 +312,7 @@ class NetlifyVotingService {
           const hasVoted = await Promise.race([
             this.hasVoted(proposal.id, nodeIndex),
             new Promise<boolean>((_, reject) => 
-              setTimeout(() => reject(new Error('hasVoted timeout')), 5000)
+              setTimeout(() => reject(new Error('hasVoted timeout')), 3000)
             )
           ]);
           
@@ -300,7 +326,7 @@ class NetlifyVotingService {
           const txHash = await Promise.race([
             this.castVote(proposal.id, nodeIndex, shouldVote.support),
             new Promise<string>((_, reject) => 
-              setTimeout(() => reject(new Error('Vote transaction timeout')), 20000)
+              setTimeout(() => reject(new Error('Vote transaction timeout')), 15000)
             )
           ]);
           console.log(`      ✅ Vote cast: ${txHash.slice(0, 10)}...`);
@@ -312,26 +338,35 @@ class NetlifyVotingService {
             txHash: txHash.slice(0, 10) + '...' 
           });
           
-          // Delay between nodes to avoid rate limiting
-          if (nodeIndex < 4) {
-            await new Promise(resolve => setTimeout(resolve, 2000));
-          }
+          // Staggered delays to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 1500 + (nodeIndex * 500)));
           
         } catch (error) {
-          console.error(`      ❌ Failed to vote:`, error);
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          console.error(`      ❌ Failed to vote:`, errorMsg.substring(0, 100));
           proposalResults.votes.push({ 
             nodeIndex: nodeIndex + 1, 
             status: 'failed', 
-            error: error instanceof Error ? error.message.substring(0, 100) : String(error)
+            error: errorMsg.substring(0, 100)
           });
+          
+          // Add delay even on failure to prevent overwhelming RPC
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
       
       results.push(proposalResults);
+      
+      // Add delay between proposals
+      if (proposal !== proposalsToProcess[proposalsToProcess.length - 1]) {
+        console.log(`   ⏳ Waiting before next proposal...`);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
     }
 
     console.log(`\n📊 NETLIFY VOTING SUMMARY`);
     console.log(`   📝 Total votes cast: ${totalVotes}`);
+    console.log(`   📋 Proposals processed: ${results.length}`);
     
     return { totalVotes, results };
   }
