@@ -11,8 +11,14 @@
   node_bundler = "esbuild"
   external_node_modules = ["ethers", "@elizaos/core", "node-cron", "winston"]
 
+[functions."governance-agent"]
+  timeout = 30
+
 [functions."scheduled-voting"]
-  schedule = "*/30 * * * *"
+  timeout = 25
+
+[functions."scheduled-voting"]
+  schedule = "*/5 * * * *"
 
 [[redirects]]
   from = "/api/status"

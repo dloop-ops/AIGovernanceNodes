@@ -466,4 +466,4 @@ export const handler: Handler = async (event, context) => {
 };
 
 // Export the scheduled handler with cron schedule
-export const handler = schedule('*/30 * * * *', scheduledHandler); // Every 30 minutes
+export const handler = schedule('*/30 * * * *', handler); // Every 30 minutes
