@@ -71,49 +71,48 @@ async function diagnoseProposals() {
         }
 
         const timeLeft = finalEndTime - currentTimeSec;
-        const proposer = proposalData[2];
-        const description = proposalData[4] || `Proposal ${i}`;
 
         // Enhanced status determination with proper state mapping
-        let status = 'UNKNOWN';
-        if (proposer === '0x0000000000000000000000000000000000000000') {
-          status = 'INVALID';
+        let proposalStatus = 'UNKNOWN';
+        const proposerAddress = proposalData[5]; // proposer is at index 5 according to ABI
+        if (proposerAddress === '0x0000000000000000000000000000000000000000') {
+          proposalStatus = 'INVALID';
         } else {
           switch (state) {
             case 0:
-              status = 'PENDING';
+              proposalStatus = 'PENDING';
               break;
             case 1:
               if (timeLeft > 0) {
                 const hoursLeft = Math.floor(timeLeft / 3600);
                 const daysLeft = Math.floor(hoursLeft / 24);
-                status = daysLeft > 0 ? `ACTIVE (${daysLeft}d ${hoursLeft % 24}h left)` : `ACTIVE (${hoursLeft}h left)`;
+                proposalStatus = daysLeft > 0 ? `ACTIVE (${daysLeft}d ${hoursLeft % 24}h left)` : `ACTIVE (${hoursLeft}h left)`;
               } else {
                 const expiredHours = Math.floor(Math.abs(timeLeft) / 3600);
                 const expiredDays = Math.floor(expiredHours / 24);
-                status = expiredDays > 0 ? `EXPIRED (${expiredDays}d ago)` : `EXPIRED (${expiredHours}h ago)`;
+                proposalStatus = expiredDays > 0 ? `EXPIRED (${expiredDays}d ago)` : `EXPIRED (${expiredHours}h ago)`;
               }
               break;
             case 2:
-              status = 'CANCELLED';
+              proposalStatus = 'CANCELLED';
               break;
             case 3:
-              status = 'DEFEATED';
+              proposalStatus = 'DEFEATED';
               break;
             case 4:
-              status = 'SUCCEEDED';
+              proposalStatus = 'SUCCEEDED';
               break;
             case 5:
-              status = 'QUEUED';
+              proposalStatus = 'QUEUED';
               break;
             case 6:
-              status = 'EXPIRED';
+              proposalStatus = 'EXPIRED';
               break;
             case 7:
-              status = 'EXECUTED';
+              proposalStatus = 'EXECUTED';
               break;
             default:
-              status = `STATE_${state}`;
+              proposalStatus = `STATE_${state}`;
           }
         }
 
@@ -121,8 +120,8 @@ async function diagnoseProposals() {
 
         // Protected console output to prevent EPIPE
         try {
-          console.log(`${String(i).padStart(4)} | ${String(state).padStart(5)} | ${endTimeFormatted} | ${status.padEnd(15)} | ${description.slice(0, 40)}...`);
-          console.log(`     | RAW: ${normalizedEndTime} | NORM: ${finalEndTime} | LEFT: ${timeLeft}s | CURRENT: ${currentTimeSec}`);
+          console.log(`${String(i).padStart(4)} | ${String(state).padStart(5)} | ${endTimeFormatted} | ${proposalStatus.padEnd(15)} | ${description.slice(0, 40)}...`);
+          console.log(`     | RAW: ${votingEnds} | NORM: ${finalEndTime} | LEFT: ${timeLeft}s | CURRENT: ${currentTimeSec}`);
         } catch (writeError) {
           // If console write fails, break to prevent EPIPE crash
           break;

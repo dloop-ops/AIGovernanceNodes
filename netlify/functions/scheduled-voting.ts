@@ -97,36 +97,12 @@ class NetlifyVotingService {
             continue;
           }
           
-          const state = proposalData[10];
-          
-          if (Number(state) === 1) { // ACTIVE
+          if (state === 1) { // ACTIVE
             const currentTime = Math.floor(Date.now() / 1000);
             
-            // Enhanced timestamp parsing - check multiple fields for valid endTime
-            let votingEnds = Number(proposalData[7]);
-            
-            // If endTime is 0 or invalid, search through proposal data for valid timestamps
-            if (votingEnds === 0 || votingEnds < 1000000000) {
-              console.log(`🔍 Searching for valid endTime in proposal ${i}...`);
-              
-              for (let idx = 6; idx < proposalData.length; idx++) {
-                const value = Number(proposalData[idx]);
-                
-                // Skip obviously non-timestamp values
-                if (value === 0 || value < 1000000000) continue;
-                
-                // Convert from milliseconds if needed
-                const asSeconds = value > currentTime * 1000 ? Math.floor(value / 1000) : value;
-                
-                // Check if it's a reasonable future timestamp (within 1 year)
-                const oneYearFromNow = currentTime + (365 * 24 * 60 * 60);
-                if (asSeconds > currentTime && asSeconds < oneYearFromNow) {
-                  votingEnds = asSeconds;
-                  console.log(`📅 Found valid endTime at index ${idx}: ${votingEnds}`);
-                  break;
-                }
-              }
-            }
+            // Use the same field mapping as the working diagnostic script
+            const votingEnds = Number(proposalData[7]);  // Correct field index for end time
+            const state = Number(proposalData[10]);       // Correct field index for state
             
             const timeLeft = votingEnds - currentTime;
             

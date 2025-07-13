@@ -27,5 +27,6 @@ export declare class GovernanceNode {
     private castVote;
     private isValidProposal;
     private delay;
+    private getActiveProposalsDirectly;
 }
 //# sourceMappingURL=GovernanceNode.d.ts.map

@@ -66,15 +66,10 @@ export class GovernanceNode {
   async processActiveProposals(): Promise<void> {
     const startTime = Date.now();
     console.log('🗳️  Starting optimized proposal processing...');
-    
+
     try {
-      // Get active proposals with timeout protection
-      const proposals = await Promise.race([
-        this.contractService.getProposals(),
-        new Promise<Proposal[]>((_, reject) => 
-          setTimeout(() => reject(new Error('Proposal fetching timeout')), 30000)
-        )
-      ]);
+      // Use direct contract access like the diagnostic script
+      const proposals = await this.getActiveProposalsDirectly();
 
       if (!proposals || proposals.length === 0) {
         console.log('📊 No active proposals found');
@@ -82,13 +77,13 @@ export class GovernanceNode {
       }
 
       console.log(`📊 Found ${proposals.length} active proposals to process`);
-      
+
       // Filter for USDC proposals first (highest priority)
       const usdcProposals = proposals.filter((proposal: any) => 
         proposal.assetAddress === '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238' ||
         proposal.description.toLowerCase().includes('usdc')
       );
-      
+
       const otherProposals = proposals.filter((proposal: any) => 
         proposal.assetAddress !== '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238' &&
         !proposal.description.toLowerCase().includes('usdc')
@@ -99,11 +94,11 @@ export class GovernanceNode {
 
       // Process USDC proposals first with extra time allocation
       await this.processProposalBatch(usdcProposals, 'USDC Priority', 1000, 3000);
-      
+
       // Process remaining proposals if time permits
       const elapsedTime = Date.now() - startTime;
       const remainingTime = 90000 - elapsedTime; // 90 second total limit
-      
+
       if (remainingTime > 10000 && otherProposals.length > 0) {
         console.log(`⏱️  ${remainingTime}ms remaining, processing ${otherProposals.length} other proposals`);
         await this.processProposalBatch(otherProposals.slice(0, 10), 'Other', 800, 2000);
@@ -113,7 +108,7 @@ export class GovernanceNode {
 
       const totalTime = Date.now() - startTime;
       console.log(`✅ Proposal processing completed in ${totalTime}ms`);
-      
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('❌ Error in processActiveProposals:', errorMessage);
@@ -129,9 +124,9 @@ export class GovernanceNode {
   ): Promise<void> {
     const batchStartTime = Date.now();
     let processed = 0;
-    
+
     console.log(`🔄 Starting ${batchName} batch: ${proposals.length} proposals`);
-    
+
     for (const proposal of proposals) {
       try {
         // Check time limit for this batch
@@ -149,7 +144,7 @@ export class GovernanceNode {
         }
 
         console.log(`🗳️  Processing proposal ${proposal.id} (${processed + 1}/${proposals.length})`);
-        
+
         // Process with individual timeout
         await Promise.race([
           this.processProposalWithTimeout(proposal),
@@ -157,15 +152,15 @@ export class GovernanceNode {
             setTimeout(() => reject(new Error(`Proposal ${proposal.id} processing timeout`)), 8000)
           )
         ]);
-        
+
         processed++;
-        
+
         // Add extra delay after voting transactions
         if (processed % 3 === 0) {
           console.log('⏳ Extra cooling period after 3 proposals...');
           await this.delay(2000);
         }
-        
+
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         console.error(`❌ Failed to process proposal ${proposal.id}:`, errorMessage);
@@ -173,7 +168,7 @@ export class GovernanceNode {
         processed++;
       }
     }
-    
+
     const batchTime = Date.now() - batchStartTime;
     console.log(`✅ ${batchName} batch completed: ${processed}/${proposals.length} in ${batchTime}ms`);
   }
@@ -181,7 +176,7 @@ export class GovernanceNode {
   private async processProposalWithTimeout(proposal: Proposal): Promise<void> {
     try {
       console.log(`🔍 Analyzing proposal ${proposal.id}: ${proposal.description.substring(0, 50)}...`);
-      
+
       // Quick validation first
       if (!this.isValidProposal(proposal)) {
         console.log(`⚠️  Proposal ${proposal.id} failed validation, skipping`);
@@ -203,13 +198,13 @@ export class GovernanceNode {
 
       // Make voting decision
       const decision = await this.makeVotingDecision(proposal);
-      
+
       if (decision.shouldVote) {
         console.log(`🗳️  Voting ${decision.voteFor ? 'FOR' : 'AGAINST'} proposal ${proposal.id}`);
-        
+
         // Add delay before voting transaction
         await this.delay(1000);
-        
+
         // Execute vote with timeout protection
         await Promise.race([
           this.castVote(proposal.id, decision.voteFor, decision.reason),
@@ -217,14 +212,14 @@ export class GovernanceNode {
             setTimeout(() => reject(new Error('Vote transaction timeout')), 15000)
           )
         ]);
-        
+
         // Add delay after voting transaction
         await this.delay(2000);
-        
+
       } else {
         console.log(`❌ Decided not to vote on proposal ${proposal.id}: ${decision.reason}`);
       }
-      
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error(`❌ Error processing proposal ${proposal.id}:`, errorMessage);
@@ -245,7 +240,7 @@ export class GovernanceNode {
     try {
       // Add a small delay to make this properly async and prevent blocking
       await Promise.resolve();
-      
+
       // Simple strategy for now - vote FOR USDC investment proposals
       if (proposal.assetAddress === '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238' && 
           proposal.description.toLowerCase().includes('invest')) {
@@ -294,20 +289,20 @@ export class GovernanceNode {
       if (!proposal.id || !proposal.proposer) {
         return false;
       }
-      
+
       // Check if proposal is still active
       if (proposal.state !== ProposalState.ACTIVE) {
         return false;
       }
-      
+
       // Check if proposal hasn't expired
       const now = Math.floor(Date.now() / 1000);
       if (proposal.endTime && proposal.endTime < now) {
         return false;
       }
-      
+
       return true;
-      
+
     } catch (error) {
       console.error('❌ Error validating proposal:', error instanceof Error ? error.message : 'Unknown error');
       return false;
@@ -317,4 +312,69 @@ export class GovernanceNode {
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
-} 
+
+    private async getActiveProposalsDirectly(): Promise<Proposal[]> {
+        try {
+            const provider = this.contractService.getProvider();
+            const assetDaoAddress = '0xa87e662061237a121Ca2E83E77dA8251bc4B3529';
+            const assetDaoABI = [
+                "function getProposalCount() external view returns (uint256)",
+                "function getProposal(uint256) external view returns (uint256, uint8, address, uint256, string, address, uint256, uint256, uint256, uint256, uint8, bool)"
+            ];
+
+            const contract = new ethers.Contract(assetDaoAddress, assetDaoABI, provider);
+
+            // Get total proposal count
+            const totalCount = await contract.getProposalCount();
+            const startFrom = Math.max(1, Number(totalCount) - 19); // Check last 20 proposals
+
+            console.log(`📊 Checking proposals ${startFrom} to ${totalCount} for active ones...`);
+
+            const activeProposals: Proposal[] = [];
+            const currentTime = Math.floor(Date.now() / 1000);
+
+            for (let i = startFrom; i <= Number(totalCount); i++) {
+                try {
+                    const proposalData = await contract.getProposal(i);
+
+                    // Use EXACT same field mapping as diagnostic script
+                    const state = Number(proposalData[10]);       // Correct field index for state
+                    const votingEnds = Number(proposalData[7]);   // Correct field index for end time
+
+                    if (state === 1) { // ACTIVE
+                        const timeLeft = votingEnds - currentTime;
+
+                        if (timeLeft > 0) {
+                            activeProposals.push({
+                                id: i.toString(),
+                                proposer: proposalData[5] || proposalData[2],
+                                proposalType: Number(proposalData[1]) || 0,
+                                state: 1,
+                                assetAddress: proposalData[2] || proposalData[5],
+                                amount: proposalData[3] ? proposalData[3].toString() : '0',
+                                description: proposalData[4] || `Proposal ${i}`,
+                                votesFor: proposalData[8] ? proposalData[8].toString() : '0',
+                                votesAgainst: proposalData[9] ? proposalData[9].toString() : '0',
+                                startTime: Number(proposalData[6]) || 0,
+                                endTime: votingEnds,
+                                executed: false,
+                                cancelled: false
+                            });
+
+                            const hoursLeft = Math.floor(timeLeft / 3600);
+                            console.log(`   ✅ Found ACTIVE proposal ${i} (${hoursLeft}h remaining)`);
+                        }
+                    }
+                } catch (error) {
+                    console.log(`   ❌ Error checking proposal ${i}:`, error);
+                }
+            }
+
+            console.log(`📋 Found ${activeProposals.length} active proposals using diagnostic logic`);
+            return activeProposals;
+        } catch (error) {
+            console.error('❌ Failed to fetch proposals directly:', error);
+            return [];
+        }
+    }
+}

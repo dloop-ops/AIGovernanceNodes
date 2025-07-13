@@ -153,8 +153,10 @@ class EmergencyGovernanceFix {
                         // 0 = PENDING, 1 = ACTIVE, 2 = SUCCEEDED, 3 = DEFEATED, 4 = QUEUED, 5 = EXECUTED, 6 = CANCELLED
                         if (Number(state) === 1) {
                             // Check if voting period is still valid (not expired)
+                            // Use EXACT same field mapping as diagnostic script
                             const currentTime = Math.floor(Date.now() / 1000);
-                            const votingEnds = Number(proposalData[7]);
+                            const state = Number(proposalData[10]); // Correct field index for state  
+                            const votingEnds = Number(proposalData[7]); // Correct field index for end time
                             const timeLeft = votingEnds - currentTime;
                             if (timeLeft > 0) {
                                 activeProposals.push({

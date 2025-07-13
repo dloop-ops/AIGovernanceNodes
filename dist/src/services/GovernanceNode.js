@@ -1,3 +1,4 @@
+import { ethers } from 'ethers';
 import { ContractService } from './ContractService.js';
 import { ProposalState } from '../types/index.js';
 import { MarketDataService } from './MarketDataService.js';
@@ -56,11 +57,8 @@ export class GovernanceNode {
         const startTime = Date.now();
         console.log('🗳️  Starting optimized proposal processing...');
         try {
-            // Get active proposals with timeout protection
-            const proposals = await Promise.race([
-                this.contractService.getProposals(),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Proposal fetching timeout')), 30000))
-            ]);
+            // Use direct contract access like the diagnostic script
+            const proposals = await this.getActiveProposalsDirectly();
             if (!proposals || proposals.length === 0) {
                 console.log('📊 No active proposals found');
                 return;
@@ -254,6 +252,62 @@ export class GovernanceNode {
     }
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    async getActiveProposalsDirectly() {
+        try {
+            const provider = this.contractService.getProvider();
+            const assetDaoAddress = '0xa87e662061237a121Ca2E83E77dA8251bc4B3529';
+            const assetDaoABI = [
+                "function getProposalCount() external view returns (uint256)",
+                "function getProposal(uint256) external view returns (uint256, uint8, address, uint256, string, address, uint256, uint256, uint256, uint256, uint8, bool)"
+            ];
+            const contract = new ethers.Contract(assetDaoAddress, assetDaoABI, provider);
+            // Get total proposal count
+            const totalCount = await contract.getProposalCount();
+            const startFrom = Math.max(1, Number(totalCount) - 19); // Check last 20 proposals
+            console.log(`📊 Checking proposals ${startFrom} to ${totalCount} for active ones...`);
+            const activeProposals = [];
+            const currentTime = Math.floor(Date.now() / 1000);
+            for (let i = startFrom; i <= Number(totalCount); i++) {
+                try {
+                    const proposalData = await contract.getProposal(i);
+                    // Use EXACT same field mapping as diagnostic script
+                    const state = Number(proposalData[10]); // Correct field index for state
+                    const votingEnds = Number(proposalData[7]); // Correct field index for end time
+                    if (state === 1) { // ACTIVE
+                        const timeLeft = votingEnds - currentTime;
+                        if (timeLeft > 0) {
+                            activeProposals.push({
+                                id: i.toString(),
+                                proposer: proposalData[5] || proposalData[2],
+                                proposalType: Number(proposalData[1]) || 0,
+                                state: 1,
+                                assetAddress: proposalData[2] || proposalData[5],
+                                amount: proposalData[3] ? proposalData[3].toString() : '0',
+                                description: proposalData[4] || `Proposal ${i}`,
+                                votesFor: proposalData[8] ? proposalData[8].toString() : '0',
+                                votesAgainst: proposalData[9] ? proposalData[9].toString() : '0',
+                                startTime: Number(proposalData[6]) || 0,
+                                endTime: votingEnds,
+                                executed: false,
+                                cancelled: false
+                            });
+                            const hoursLeft = Math.floor(timeLeft / 3600);
+                            console.log(`   ✅ Found ACTIVE proposal ${i} (${hoursLeft}h remaining)`);
+                        }
+                    }
+                }
+                catch (error) {
+                    console.log(`   ❌ Error checking proposal ${i}:`, error);
+                }
+            }
+            console.log(`📋 Found ${activeProposals.length} active proposals using diagnostic logic`);
+            return activeProposals;
+        }
+        catch (error) {
+            console.error('❌ Failed to fetch proposals directly:', error);
+            return [];
+        }
     }
 }
 //# sourceMappingURL=GovernanceNode.js.map
