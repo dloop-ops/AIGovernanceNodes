@@ -105,8 +105,19 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       throw new Error('All RPC providers failed or are rate limited');
     }
 
-    // Contract setup with retry logic
-    const assetDAOAddress = '0xa87e662061237a121Ca2E83E77dA8C251bc4B3529';
+    // Contract setup with retry logic and proper address validation
+    const rawAssetDAOAddress = process.env.ASSET_DAO_CONTRACT_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8C251bc4B3529';
+    
+    // Validate and normalize the contract address to prevent UNCONFIGURED_NAME errors
+    let assetDAOAddress: string;
+    try {
+      assetDAOAddress = ethers.getAddress(rawAssetDAOAddress.trim());
+      console.log(`${requestId} INFO   ✅ Contract address validated: ${assetDAOAddress}`);
+    } catch (addressError: any) {
+      console.log(`${requestId} ERROR  ❌ Invalid contract address: ${rawAssetDAOAddress}`);
+      throw new Error(`Invalid AssetDAO contract address: ${addressError.message}`);
+    }
+
     const assetDAOABI = [
       "function getProposalCount() external view returns (uint256)",
       "function getProposal(uint256) external view returns (uint256, uint8, address, uint256, string, address, uint256, uint256, uint256, uint256, uint8, bool)"

@@ -40,8 +40,13 @@ class NetlifyVotingService {
     // Initialize wallets
     this.initializeWallets();
 
-    // Initialize contract
-    const assetDaoAddress = process.env.ASSET_DAO_CONTRACT_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8251bc4B3529';
+    // Initialize contract with proper address validation
+    const rawAssetDaoAddress = process.env.ASSET_DAO_CONTRACT_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8C251bc4B3529';
+
+    // Validate and normalize the contract address
+    const assetDaoAddress = ethers.getAddress(rawAssetDaoAddress.trim());
+    console.log(`✅ Validated AssetDAO address: ${assetDaoAddress}`);
+
     const assetDaoAbi = [
       "function getProposalCount() view returns (uint256)",
       "function getProposal(uint256) view returns (uint256, uint8, address, uint256, string, address, uint256, uint256, uint256, uint256, uint8, bool)",

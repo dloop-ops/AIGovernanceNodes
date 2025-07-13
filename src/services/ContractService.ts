@@ -45,27 +45,33 @@ export class ContractService {
     try {
       const addresses = getCurrentContractAddresses();
 
+      // Validate and normalize contract addresses to prevent UNCONFIGURED_NAME errors
+      const validatedAssetDaoAddress = ethers.getAddress(addresses.assetDao.trim());
+      const validatedAiNodeRegistryAddress = ethers.getAddress(addresses.aiNodeRegistry.trim());
+      const validatedDloopTokenAddress = ethers.getAddress(addresses.dloopToken.trim());
+      const validatedSoulboundNftAddress = ethers.getAddress(addresses.soulboundNft.trim());
+
       // Initialize contracts with read-only provider
       this.assetDaoContract = new ethers.Contract(
-        addresses.assetDao,
+        validatedAssetDaoAddress,
         assetDaoAbi,
         this.provider
       );
 
       this.aiNodeRegistryContract = new ethers.Contract(
-        addresses.aiNodeRegistry,
+        validatedAiNodeRegistryAddress,
         aiNodeRegistryAbi,
         this.provider
       );
 
       this.dloopTokenContract = new ethers.Contract(
-        addresses.dloopToken,
+        validatedDloopTokenAddress,
         dloopTokenAbi,
         this.provider
       );
 
       this.soulboundNftContract = new ethers.Contract(
-        addresses.soulboundNft,
+        validatedSoulboundNftAddress,
         soulboundNftAbi,
         this.provider
       );
@@ -73,10 +79,10 @@ export class ContractService {
       logger.info('Smart contracts initialized', {
         component: 'contract',
         addresses: {
-          assetDao: addresses.assetDao,
-          aiNodeRegistry: addresses.aiNodeRegistry,
-          dloopToken: addresses.dloopToken,
-          soulboundNft: addresses.soulboundNft
+          assetDao: validatedAssetDaoAddress,
+          aiNodeRegistry: validatedAiNodeRegistryAddress,
+          dloopToken: validatedDloopTokenAddress,
+          soulboundNft: validatedSoulboundNftAddress
         }
       });
     } catch (error) {
