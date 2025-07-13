@@ -1,13 +1,11 @@
-
 import * as cron from 'node-cron';
-import logger from './logger.js';
+import { logger } from './logger.js';
 
 export interface ScheduledTask {
   name: string;
   schedule: string;
-  task: () => Promise<void> | void;
-  enabled: boolean;
-  instance?: cron.ScheduledTask;
+  task: cron.ScheduledTask;
+  isRunning: boolean;
 }
 
 export class Scheduler {
@@ -17,135 +15,109 @@ export class Scheduler {
     logger.info('Scheduler initialized');
   }
 
-  /**
-   * Add a scheduled task
-   */
-  addTask(task: ScheduledTask): void {
-    if (this.tasks.has(task.name)) {
-      logger.warn(`Task ${task.name} already exists, replacing it`);
-      this.stopTask(task.name);
-    }
-
-    if (task.enabled) {
-      try {
-        const scheduledTask = cron.schedule(task.schedule, async () => {
-          try {
-            logger.info(`Executing scheduled task: ${task.name}`);
-            await task.task();
-            logger.info(`Completed scheduled task: ${task.name}`);
-          } catch (error) {
-            logger.error(`Error in scheduled task ${task.name}:`, { error });
-          }
-        }, {
-          scheduled: false,
-          timezone: 'UTC'
-        });
-
-        task.instance = scheduledTask;
-        this.tasks.set(task.name, task);
-        
-        logger.info(`Added scheduled task: ${task.name} with schedule: ${task.schedule}`);
-      } catch (error) {
-        logger.error(`Failed to add task ${task.name}:`, { error });
-      }
-    } else {
-      this.tasks.set(task.name, task);
-      logger.info(`Added disabled task: ${task.name}`);
-    }
-  }
-
-  /**
-   * Start a specific task
-   */
-  startTask(taskName: string): void {
-    const task = this.tasks.get(taskName);
-    if (task && task.instance) {
-      task.instance.start();
-      logger.info(`Started task: ${taskName}`);
-    } else {
-      logger.warn(`Task ${taskName} not found or has no instance`);
-    }
-  }
-
-  /**
-   * Stop a specific task
-   */
-  stopTask(taskName: string): void {
-    const task = this.tasks.get(taskName);
-    if (task && task.instance) {
-      task.instance.stop();
-      logger.info(`Stopped task: ${taskName}`);
-    }
-  }
-
-  /**
-   * Start all enabled tasks
-   */
-  startAll(): void {
-    this.tasks.forEach((task, name) => {
-      if (task.enabled && task.instance) {
-        this.startTask(name);
-      }
-    });
-    logger.info('All enabled tasks started');
-  }
-
-  /**
-   * Stop all running tasks
-   */
-  stopAll(): void {
-    this.tasks.forEach((task, name) => {
-      if (task.instance) {
+  addTask(name: string, schedule: string, taskFunction: () => Promise<void> | void): void {
+    try {
+      // Remove existing task if it exists
+      if (this.tasks.has(name)) {
         this.stopTask(name);
       }
-    });
-    logger.info('All tasks stopped');
-  }
 
-  /**
-   * Remove a task
-   */
-  removeTask(taskName: string): void {
-    const task = this.tasks.get(taskName);
-    if (task) {
-      this.stopTask(taskName);
-      if (task.instance) {
-        task.instance.destroy();
-      }
-      this.tasks.delete(taskName);
-      logger.info(`Removed task: ${taskName}`);
+      // Create the scheduled task using node-cron
+      const task = cron.schedule(schedule, async () => {
+        const scheduledTask = this.tasks.get(name);
+        if (!scheduledTask) return;
+
+        if (scheduledTask.isRunning) {
+          logger.warn(`Task "${name}" is already running, skipping this execution`);
+          return;
+        }
+
+        try {
+          scheduledTask.isRunning = true;
+          logger.info(`Starting scheduled task: ${name}`);
+          await taskFunction();
+          logger.info(`Completed scheduled task: ${name}`);
+        } catch (error) {
+          logger.error(`Error in scheduled task "${name}":`, error);
+        } finally {
+          scheduledTask.isRunning = false;
+        }
+      }, {
+        timezone: 'UTC'
+      });
+
+      // Store the task
+      this.tasks.set(name, {
+        name,
+        schedule,
+        task,
+        isRunning: false
+      });
+
+      logger.info(`Added scheduled task "${name}" with schedule: ${schedule}`);
+    } catch (error) {
+      logger.error(`Failed to add scheduled task "${name}":`, error);
+      throw error;
     }
   }
 
-  /**
-   * Get status of all tasks
-   */
-  getTaskStatus(): Array<{ name: string; schedule: string; enabled: boolean; running: boolean }> {
-    const status: Array<{ name: string; schedule: string; enabled: boolean; running: boolean }> = [];
-    
-    this.tasks.forEach((task, name) => {
-      status.push({
-        name,
-        schedule: task.schedule,
-        enabled: task.enabled,
-        running: task.instance ? true : false
-      });
-    });
+  startTask(name: string): void {
+    const scheduledTask = this.tasks.get(name);
+    if (!scheduledTask) {
+      throw new Error(`Task "${name}" not found`);
+    }
 
-    return status;
+    scheduledTask.task.start();
+    logger.info(`Started task: ${name}`);
   }
 
-  /**
-   * Get task count
-   */
-  getTaskCount(): number {
-    return this.tasks.size;
+  stopTask(name: string): void {
+    const scheduledTask = this.tasks.get(name);
+    if (!scheduledTask) {
+      logger.warn(`Task "${name}" not found when attempting to stop`);
+      return;
+    }
+
+    scheduledTask.task.stop();
+    this.tasks.delete(name);
+    logger.info(`Stopped and removed task: ${name}`);
   }
 
-  /**
-   * Check if a task exists
-   */
-  hasTask(taskName: string): boolean {
-    return this.tasks.has(taskName);
+  startAll(): void {
+    for (const [name, scheduledTask] of this.tasks) {
+      try {
+        scheduledTask.task.start();
+        logger.info(`Started task: ${name}`);
+      } catch (error) {
+        logger.error(`Failed to start task "${name}":`, error);
+      }
+    }
+  }
+
+  stopAll(): void {
+    for (const [name, scheduledTask] of this.tasks) {
+      try {
+        scheduledTask.task.stop();
+        logger.info(`Stopped task: ${name}`);
+      } catch (error) {
+        logger.error(`Failed to stop task "${name}":`, error);
+      }
+    }
+    this.tasks.clear();
+    logger.info('All scheduled tasks stopped');
+  }
+
+  getTaskStatus(name: string): { exists: boolean; isRunning: boolean } {
+    const scheduledTask = this.tasks.get(name);
+    if (!scheduledTask) {
+      return { exists: false, isRunning: false };
+    }
+    return { exists: true, isRunning: scheduledTask.isRunning };
+  }
+
+  getAllTasks(): ScheduledTask[] {
+    return Array.from(this.tasks.values());
   }
 }
+
+export const scheduler = new Scheduler();

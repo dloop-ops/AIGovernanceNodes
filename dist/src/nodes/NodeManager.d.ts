@@ -1,5 +1,4 @@
 import { GovernanceNode } from './GovernanceNode.js';
-import { Scheduler } from '../utils/scheduler.js';
 export declare class NodeManager {
     private nodes;
     private walletService;
@@ -108,7 +107,7 @@ export declare class NodeManager {
     /**
      * Get scheduler instance
      */
-    getScheduler(): Scheduler;
+    getScheduler(): scheduler;
     /**
      * Public method to trigger immediate voting round (for manual triggers)
      */
@@ -121,5 +120,9 @@ export declare class NodeManager {
    * Check and Vote on Proposals - Public method for scheduled tasks
    */
     checkAndVoteOnProposals(): Promise<void>;
+    private performBalanceCheck;
+    private performRegistrationCheck;
+    private performNodeHealthCheck;
+    private performSystemCheck;
 }
 //# sourceMappingURL=NodeManager.d.ts.map

@@ -7,7 +7,7 @@ import { TokenService } from '../services/TokenService.js';
 import { SoulboundNFTService } from '../services/SoulboundNFTService.js';
 import { NFTTransferService } from '../services/NFTTransferService.js';
 import { DLoopGovernanceRegistration } from '../services/DLoopGovernanceRegistration.js';
-import { Scheduler, ScheduledTask } from '../utils/scheduler.js';
+import { scheduler } from '../utils/scheduler.js';
 import { NodeConfig, GovernanceError } from '../types/index.js';
 import logger, { governanceLogger } from '../utils/logger.js';
 
@@ -21,12 +21,12 @@ export class NodeManager {
   private soulboundNftService!: SoulboundNFTService;
   private nftTransferService!: NFTTransferService;
   private dloopRegistrationService!: DLoopGovernanceRegistration;
-  private scheduler: Scheduler;
+  private scheduler: scheduler;
   private isRunning: boolean = false;
 
   constructor() {
     this.initializeServices();
-    this.scheduler = new Scheduler();
+    this.scheduler = new scheduler();
   }
 
   /**
@@ -298,7 +298,7 @@ export class NodeManager {
     logger.info('Setting up scheduled tasks');
 
     // Daily proposal creation - 12:00 UTC daily
-    const proposalCreationTask: ScheduledTask = {
+    const proposalCreationTask = {
       name: 'daily-proposal-creation',
       schedule: '0 12 * * *',
       task: async () => {
@@ -308,7 +308,7 @@ export class NodeManager {
     };
 
     // Voting checks - every 2 hours for active governance (was every 8 hours)
-    const votingTask: ScheduledTask = {
+    const votingTask = {
       name: 'proposal-voting',
       schedule: '0 */2 * * *', // Changed from 8 hours to 2 hours for active governance
       task: async () => {
@@ -318,7 +318,7 @@ export class NodeManager {
     };
 
     // Market data refresh - every 8 hours
-    const marketDataTask: ScheduledTask = {
+    const marketDataTask = {
       name: 'market-data-refresh',
       schedule: '30 */8 * * *', // 30 minutes after voting to ensure fresh data
       task: async () => {
@@ -328,7 +328,7 @@ export class NodeManager {
     };
 
     // System health check - every hour
-    const healthCheckTask: ScheduledTask = {
+    const healthCheckTask = {
       name: 'system-health-check',
       schedule: '0 * * * *',
       task: async () => {
@@ -338,7 +338,7 @@ export class NodeManager {
     };
 
     // Status logging - every 6 hours
-    const statusTask: ScheduledTask = {
+    const statusTask = {
       name: 'status-logging',
       schedule: '0 */6 * * *',
       task: async () => {
@@ -348,7 +348,7 @@ export class NodeManager {
     };
 
     // Token monitoring - every 4 hours
-    const tokenMonitoringTask: ScheduledTask = {
+    const tokenMonitoringTask = {
       name: 'token-monitoring',
       schedule: '0 */4 * * *',
       task: async () => {
@@ -358,7 +358,7 @@ export class NodeManager {
     };
 
     // SoulBound NFT authentication check - every 6 hours
-    const authenticationTask: ScheduledTask = {
+    const authenticationTask = {
       name: 'authentication-monitoring',
       schedule: '0 */6 * * *',
       task: () => Promise.resolve(this.performAuthenticationChecks()),
@@ -695,7 +695,7 @@ export class NodeManager {
   /**
    * Get scheduler instance
    */
-  getScheduler(): Scheduler {
+  getScheduler(): scheduler {
     return this.scheduler;
   }
 
@@ -766,5 +766,18 @@ export class NodeManager {
       if (failed > 0) {
         logger.error('Some voting operations failed', { errors });
       }
+    }
+
+    private performBalanceCheck() {
+      this.performTokenChecks()
+    }
+    private performRegistrationCheck() {
+      this.registerGovernanceNodes()
+    }
+    private performNodeHealthCheck() {
+      this.performHealthCheck()
+    }
+    private performSystemCheck() {
+      this.logSystemStatus()
     }
 }

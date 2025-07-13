@@ -7,7 +7,7 @@ import { TokenService } from '../services/TokenService.js';
 import { SoulboundNFTService } from '../services/SoulboundNFTService.js';
 import { NFTTransferService } from '../services/NFTTransferService.js';
 import { DLoopGovernanceRegistration } from '../services/DLoopGovernanceRegistration.js';
-import { Scheduler } from '../utils/scheduler.js';
+import { scheduler } from '../utils/scheduler.js';
 import { GovernanceError } from '../types/index.js';
 import logger, { governanceLogger } from '../utils/logger.js';
 export class NodeManager {
@@ -24,7 +24,7 @@ export class NodeManager {
     isRunning = false;
     constructor() {
         this.initializeServices();
-        this.scheduler = new Scheduler();
+        this.scheduler = new scheduler();
     }
     /**
      * Initialize all required services
@@ -625,6 +625,18 @@ export class NodeManager {
         if (failed > 0) {
             logger.error('Some voting operations failed', { errors });
         }
+    }
+    performBalanceCheck() {
+        this.performTokenChecks();
+    }
+    performRegistrationCheck() {
+        this.registerGovernanceNodes();
+    }
+    performNodeHealthCheck() {
+        this.performHealthCheck();
+    }
+    performSystemCheck() {
+        this.logSystemStatus();
     }
 }
 //# sourceMappingURL=NodeManager.js.map
