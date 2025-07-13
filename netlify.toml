@@ -16,8 +16,6 @@
 
 [functions."scheduled-voting"]
   timeout = 25
-
-[functions."scheduled-voting"]
   schedule = "*/5 * * * *"
 
 [[redirects]]

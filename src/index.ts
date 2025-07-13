@@ -284,6 +284,32 @@ class DLoopGovernanceAgent {
 // CLI execution
 async function main(): Promise<void> {
   try {
+    logger.info('🤖 Starting Enhanced DLoop AI Governance Nodes...');
+    logger.info('🚀 Initializing DLoop AI Governance Nodes - Enhanced Edition...');
+
+    // Validate environment variables first
+    const requiredEnvVars = [
+      'ETHEREUM_RPC_URL',
+      'AI_NODE_1_PRIVATE_KEY',
+      'AI_NODE_2_PRIVATE_KEY',
+      'AI_NODE_3_PRIVATE_KEY',
+      'AI_NODE_4_PRIVATE_KEY',
+      'AI_NODE_5_PRIVATE_KEY'
+    ];
+
+    const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+    if (missingVars.length > 0) {
+      logger.error(`❌ Missing required environment variables: ${missingVars.join(', ')}`);
+      logger.info('📝 Please check your .env file or environment configuration');
+      process.exit(1);
+    }
+
+    // Test RPC connection before initializing services
+    logger.info('🔗 Testing RPC connections...');
+    const { rpcManager } = await import('./utils/RpcConnectionManager.js');
+    await rpcManager.validateAllProviders();
+
+    // Create the governance agent
     const agent = new DLoopGovernanceAgent();
 
     // Handle CLI commands

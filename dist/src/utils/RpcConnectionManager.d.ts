@@ -24,6 +24,10 @@ export declare class RpcConnectionManager {
      */
     executeContractCall<T>(contractCall: (provider: ethers.JsonRpcProvider) => Promise<T>, maxRetries?: number): Promise<T>;
     /**
+     * Validate all providers at startup
+     */
+    validateAllProviders(): Promise<void>;
+    /**
      * Get current provider status for monitoring
      */
     getProviderStatus(): any;

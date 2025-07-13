@@ -61,7 +61,7 @@ export class WebServer {
                     reject(error);
                 }
             });
-            this.server.listen(targetPort, () => {
+            this.server.listen(targetPort, '0.0.0.0', () => {
                 this.port = targetPort; // Update instance port to the actually used port
                 logger.info(`Web server started on port ${targetPort}`);
                 resolve();

@@ -8,12 +8,19 @@ export class RpcConnectionManager {
     HEALTH_CHECK_INTERVAL = 30000; // 30 seconds between health checks
     MAX_FAILURES_BEFORE_DISABLE = 3;
     constructor() {
+        // Validate environment variables first
+        const primaryRpcUrl = process.env.ETHEREUM_RPC_URL;
+        if (!primaryRpcUrl) {
+            logger.error('❌ ETHEREUM_RPC_URL environment variable is not set');
+            logger.info('📝 Please set ETHEREUM_RPC_URL in your environment variables');
+            logger.info('💡 Example: ETHEREUM_RPC_URL=https://sepolia.infura.io/v3/YOUR_PROJECT_ID');
+        }
         this.providers = [
             {
-                url: process.env.ETHEREUM_RPC_URL || 'https://sepolia.infura.io/v3/ca485bd6567e4c5fb5693ee66a5885d8',
-                name: 'Infura',
+                url: primaryRpcUrl || 'https://ethereum-sepolia-rpc.publicnode.com',
+                name: primaryRpcUrl ? 'Primary RPC' : 'PublicNode (Fallback)',
                 priority: 1,
-                maxRetries: 2,
+                maxRetries: 3,
                 lastUsed: 0,
                 failureCount: 0,
                 isHealthy: true
@@ -44,8 +51,18 @@ export class RpcConnectionManager {
                 lastUsed: 0,
                 failureCount: 0,
                 isHealthy: true
+            },
+            {
+                url: 'https://rpc-sepolia.rockx.com',
+                name: 'RockX',
+                priority: 5,
+                maxRetries: 2,
+                lastUsed: 0,
+                failureCount: 0,
+                isHealthy: true
             }
         ];
+        logger.info(`🔗 Initialized RPC manager with ${this.providers.length} providers`);
     }
     /**
      * Get a working RPC provider with intelligent failover
@@ -69,10 +86,21 @@ export class RpcConnectionManager {
             try {
                 logger.info(`🔄 Testing provider: ${config.name}`);
                 const provider = new ethers.JsonRpcProvider(config.url);
-                // Test connection with timeout
+                // Test connection with multiple validation steps
+                const connectionTest = async () => {
+                    // First, test basic connectivity
+                    const blockNumber = await provider.getBlockNumber();
+                    // Then validate we're on the correct network (Sepolia = 11155111)
+                    const network = await provider.getNetwork();
+                    if (Number(network.chainId) !== 11155111) {
+                        throw new Error(`Wrong network: expected Sepolia (11155111), got ${network.chainId}`);
+                    }
+                    logger.info(`✅ Provider ${config.name} validated: block ${blockNumber}, network ${network.name}`);
+                    return blockNumber;
+                };
                 await Promise.race([
-                    provider.getBlockNumber(),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 8000))
+                    connectionTest(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout after 10s')), 10000))
                 ]);
                 // Success - update state
                 config.lastUsed = now;
@@ -168,6 +196,35 @@ export class RpcConnectionManager {
             }
         }
         throw new Error('All retry attempts failed');
+    }
+    /**
+     * Validate all providers at startup
+     */
+    async validateAllProviders() {
+        logger.info('🔍 Validating all RPC providers at startup...');
+        const validationResults = await Promise.allSettled(this.providers.map(async (config) => {
+            try {
+                const provider = new ethers.JsonRpcProvider(config.url);
+                const result = await Promise.race([
+                    provider.getBlockNumber(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+                ]);
+                logger.info(`✅ ${config.name}: Working (block ${result})`);
+                return { name: config.name, status: 'working', block: result };
+            }
+            catch (error) {
+                logger.warn(`❌ ${config.name}: Failed - ${error.message.substring(0, 50)}`);
+                config.isHealthy = false;
+                config.failureCount = 1;
+                return { name: config.name, status: 'failed', error: error.message };
+            }
+        }));
+        const workingProviders = validationResults.filter((result) => result.status === 'fulfilled' && result.value.status === 'working').length;
+        if (workingProviders === 0) {
+            logger.error('❌ No RPC providers are working! Please check your network connection and RPC URLs.');
+            throw new Error('All RPC providers failed validation');
+        }
+        logger.info(`✅ Startup validation complete: ${workingProviders}/${this.providers.length} providers working`);
     }
     /**
      * Get current provider status for monitoring
