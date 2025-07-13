@@ -111,18 +111,25 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     // Enhanced address validation with proper checksum handling
     let assetDAOAddress: string;
     try {
-      // First, clean and validate the address
+      // First, clean the address
       const trimmedAddress = rawAssetDAOAddress.trim();
       
-      // Validate basic format
-      if (!trimmedAddress.startsWith('0x') || trimmedAddress.length !== 42) {
-        throw new Error(`Invalid address format: address must start with 0x and be 42 characters long`);
+      console.log(`${requestId} DEBUG  🔍 Validating address: "${trimmedAddress}" (length: ${trimmedAddress.length})`);
+      
+      // Validate basic format - check actual requirements
+      if (!trimmedAddress || !trimmedAddress.startsWith('0x')) {
+        throw new Error(`Address must start with 0x`);
       }
       
-      // Validate hex characters (case-insensitive)
-      const hexPattern = /^0x[a-fA-F0-9]{40}$/i;
-      if (!hexPattern.test(trimmedAddress)) {
-        throw new Error(`Invalid hex format: address contains invalid characters`);
+      if (trimmedAddress.length !== 42) {
+        throw new Error(`Address must be exactly 42 characters long, got ${trimmedAddress.length}`);
+      }
+      
+      // Validate hex characters (case-insensitive) - only the part after 0x should be hex
+      const hexPart = trimmedAddress.slice(2); // Remove '0x' prefix
+      const hexPattern = /^[a-fA-F0-9]{40}$/;
+      if (!hexPattern.test(hexPart)) {
+        throw new Error(`Address contains invalid hex characters`);
       }
       
       // Use ethers.getAddress for checksum validation and normalization
@@ -130,16 +137,16 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       assetDAOAddress = ethers.getAddress(trimmedAddress);
       console.log(`${requestId} INFO   ✅ Contract address validated and checksummed: ${assetDAOAddress}`);
     } catch (addressError: any) {
-      console.log(`${requestId} ERROR  ❌ Invalid contract address: ${rawAssetDAOAddress}`);
-      console.log(`${requestId} ERROR  ❌ Address validation error: ${addressError.message}`);
+      console.log(`${requestId} ERROR  ❌ Address validation failed for: "${rawAssetDAOAddress}"`);
+      console.log(`${requestId} ERROR  ❌ Validation error: ${addressError.message}`);
       
-      // Fallback: try with the properly checksummed version
+      // If ethers.getAddress fails, try direct usage (it might be a checksum issue)
       try {
-        // Known good checksummed version of the address
-        const fallbackAddress = '0xa87e662061237a121Ca2E83E77dA8C251bc4B3529';
-        assetDAOAddress = ethers.getAddress(fallbackAddress);
-        console.log(`${requestId} INFO   ⚠️  Using fallback checksummed address: ${assetDAOAddress}`);
+        console.log(`${requestId} INFO   🔄 Attempting direct ethers.getAddress on raw input...`);
+        assetDAOAddress = ethers.getAddress(rawAssetDAOAddress.trim());
+        console.log(`${requestId} INFO   ✅ Direct validation successful: ${assetDAOAddress}`);
       } catch (fallbackError: any) {
+        console.log(`${requestId} ERROR  ❌ All validation attempts failed`);
         throw new Error(`Invalid AssetDAO contract address: ${addressError.message}`);
       }
     }
