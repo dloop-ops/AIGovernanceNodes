@@ -247,17 +247,17 @@ export const handler: Handler = async (event, context) => {
                   // CRITICAL FIX: Handle zero timestamps and search for actual timestamp fields
                   const currentTimeSec = Math.floor(Date.now() / 1000);
                   let foundEndTime = 0;
-                  
+
                   // Search through all proposal data fields for a valid timestamp
                   for (let idx = 0; idx < proposalData.length; idx++) {
                     const value = typeof proposalData[idx] === 'bigint' ? Number(proposalData[idx]) : Number(proposalData[idx]);
-                    
+
                     // Skip zero values and obviously non-timestamp values
                     if (value === 0 || value < 1000000000) continue;
-                    
+
                     // Convert from milliseconds if needed
                     const asSeconds = value > currentTimeSec * 1000 ? Math.floor(value / 1000) : value;
-                    
+
                     // Check if it's a reasonable future timestamp (between now and 1 year from now)
                     const oneYearFromNow = currentTimeSec + (365 * 24 * 60 * 60);
                     if (asSeconds > currentTimeSec && asSeconds < oneYearFromNow) {
@@ -266,7 +266,7 @@ export const handler: Handler = async (event, context) => {
                       break;
                     }
                   }
-                  
+
                   const normalizedEndTime = foundEndTime;
                   const normalizedCurrentTime = currentTimeSec;
 

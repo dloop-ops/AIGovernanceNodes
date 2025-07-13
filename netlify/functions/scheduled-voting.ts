@@ -79,10 +79,15 @@ class NetlifyVotingService {
       // Process proposals sequentially with timeout for each
       for (let i = startFrom; i <= totalCount; i++) {
         try {
+          // Add delay between requests to avoid rate limiting
+          if (i > startFrom) {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+          }
+
           const proposalData = await Promise.race([
             this.assetDaoContract.getProposal(i),
             new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error('Proposal fetch timeout')), 3000)
+              setTimeout(() => reject(new Error('Proposal fetch timeout')), 5000)
             )
           ]);
           
@@ -90,7 +95,33 @@ class NetlifyVotingService {
           
           if (Number(state) === 1) { // ACTIVE
             const currentTime = Math.floor(Date.now() / 1000);
-            const votingEnds = Number(proposalData[7]);
+            
+            // Enhanced timestamp parsing - check multiple fields for valid endTime
+            let votingEnds = Number(proposalData[7]);
+            
+            // If endTime is 0 or invalid, search through proposal data for valid timestamps
+            if (votingEnds === 0 || votingEnds < 1000000000) {
+              console.log(`🔍 Searching for valid endTime in proposal ${i}...`);
+              
+              for (let idx = 6; idx < proposalData.length; idx++) {
+                const value = Number(proposalData[idx]);
+                
+                // Skip obviously non-timestamp values
+                if (value === 0 || value < 1000000000) continue;
+                
+                // Convert from milliseconds if needed
+                const asSeconds = value > currentTime * 1000 ? Math.floor(value / 1000) : value;
+                
+                // Check if it's a reasonable future timestamp (within 1 year)
+                const oneYearFromNow = currentTime + (365 * 24 * 60 * 60);
+                if (asSeconds > currentTime && asSeconds < oneYearFromNow) {
+                  votingEnds = asSeconds;
+                  console.log(`📅 Found valid endTime at index ${idx}: ${votingEnds}`);
+                  break;
+                }
+              }
+            }
+            
             const timeLeft = votingEnds - currentTime;
             
             if (timeLeft > 0) {
@@ -104,18 +135,35 @@ class NetlifyVotingService {
                 description: proposalData[4],
                 votesFor: "0",
                 votesAgainst: "0",
-                startTime: Number(proposalData[8]),
+                startTime: Number(proposalData[6]),
                 endTime: votingEnds,
                 executed: false,
                 cancelled: false
               });
-              console.log(`   ✅ Found VALID active proposal ${i} (${Math.floor(timeLeft/3600)}h left)`);
+              
+              const hoursLeft = Math.floor(timeLeft / 3600);
+              const daysLeft = Math.floor(hoursLeft / 24);
+              const timeLeftStr = daysLeft > 0 ? `${daysLeft}d ${hoursLeft % 24}h` : `${hoursLeft}h`;
+              
+              console.log(`   ✅ Found ACTIVE proposal ${i} (${timeLeftStr} remaining)`);
             } else {
-              console.log(`   ⏰ Skipped proposal ${i} - voting period expired ${Math.abs(timeLeft)}s ago`);
+              const expiredTime = Math.abs(timeLeft);
+              const expiredHours = Math.floor(expiredTime / 3600);
+              const expiredDays = Math.floor(expiredHours / 24);
+              const expiredStr = expiredDays > 0 ? `${expiredDays}d ${expiredHours % 24}h` : `${expiredHours}h`;
+              
+              console.log(`   ⏰ Skipped proposal ${i} - voting period expired ${expiredStr} ago`);
             }
           }
         } catch (error) {
           console.log(`   ❌ Error checking proposal ${i}:`, error instanceof Error ? error.message.substring(0, 50) : 'Unknown error');
+          
+          // If rate limited, add extra delay
+          if (error instanceof Error && error.message.includes('Too Many Requests')) {
+            console.log(`   ⏸️  Rate limited, adding 3 second delay...`);
+            await new Promise(resolve => setTimeout(resolve, 3000));
+          }
+          
           // Continue to next proposal instead of breaking
         }
       }
