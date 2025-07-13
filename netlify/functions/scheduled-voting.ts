@@ -91,6 +91,12 @@ class NetlifyVotingService {
             )
           ]);
           
+          // Validate proposal data structure
+          if (!proposalData || proposalData.length < 12) {
+            console.log(`   ⚠️  Proposal ${i} has invalid data structure - skipping`);
+            continue;
+          }
+          
           const state = proposalData[10];
           
           if (Number(state) === 1) { // ACTIVE

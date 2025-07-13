@@ -44,7 +44,7 @@ export class ContractService {
   private initializeContracts(): void {
     try {
       const addresses = getCurrentContractAddresses();
-      
+
       // Initialize contracts with read-only provider
       this.assetDaoContract = new ethers.Contract(
         addresses.assetDao,
@@ -114,9 +114,9 @@ export class ContractService {
 
       // Apply safety buffer with maximum limits
       const MAX_GAS_LIMIT = 500000n; // Maximum gas limit for safety
-      
+
       let gasLimit = gasEstimate * 120n / 100n; // 20% buffer
-      
+
       // Ensure gas limit is within safe bounds
       if (gasLimit > MAX_GAS_LIMIT) {
         gasLimit = MAX_GAS_LIMIT;
@@ -152,7 +152,7 @@ export class ContractService {
       });
 
       const receipt = await tx.wait();
-      
+
       if (!receipt) {
         throw new Error('Transaction receipt not found');
       }
@@ -203,7 +203,7 @@ export class ContractService {
   private async getOptimizedGasPrice(): Promise<bigint> {
     try {
       const feeData = await this.provider.getFeeData();
-      
+
       if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
         // EIP-1559 transaction
         return feeData.maxFeePerGas;
@@ -265,7 +265,7 @@ export class ContractService {
       const txHash = await this.rpcManager.executeWithRetry(
         async (provider) => {
           const assetDaoWithProvider = this.assetDaoContract.connect(wallet.connect(provider));
-          
+
           // Get optimized gas settings
           const gasPrice = await this.getOptimizedGasPrice();
           const gasEstimate = await assetDaoWithProvider.vote.estimateGas(proposalId, support);
@@ -309,7 +309,7 @@ export class ContractService {
   async getProposal(proposalId: string): Promise<Proposal> {
     try {
       const proposalData = await this.assetDaoContract.getProposal(proposalId);
-      
+
       // Enhanced logging for debugging field mappings
       logger.debug(`Raw proposal data for ${proposalId}:`, {
         proposer: proposalData.proposer,
@@ -333,24 +333,23 @@ export class ContractService {
         executed: proposalData.executed,
         cancelled: proposalData.cancelled
       });
-      
+
+      // Map proposal data according to exact ABI structure from assetdao.abi.v1.json
+      // getProposal returns: [id, proposalType, assetAddress, amount, description, proposer, createdAt, votingEnds, yesVotes, noVotes, status, executed]
       return {
         id: proposalId,
-        proposer: proposalData.proposer || '',
-        proposalType: this.mapProposalType(proposalData.proposalType),
-        assetAddress: proposalData.assetAddress || '',
-        amount: ethers.formatEther(proposalData.amount || 0),
-        description: proposalData.description || `Proposal ${proposalId}`,
-        // Fix field mapping: prioritize contract ABI field names (yesVotes/noVotes)
-        votesFor: ethers.formatEther(proposalData.yesVotes || proposalData.votesFor || 0),
-        votesAgainst: ethers.formatEther(proposalData.noVotes || proposalData.votesAgainst || 0),
-        // Fix field mapping: prioritize contract ABI field names (createdAt/votingEnds)  
-        startTime: Number(proposalData.createdAt || proposalData.startTime || 0),
-        endTime: Number(proposalData.votingEnds || proposalData.endTime || 0),
-        executed: proposalData.executed || false,
-        cancelled: proposalData.cancelled || false,
-        // Fix field mapping: prioritize contract ABI field names (status)
-        state: this.mapProposalState(proposalData.status !== undefined ? proposalData.status : proposalData.state || 0)
+        proposer: proposalData[5] || '',
+        proposalType: this.mapProposalType(proposalData[1]),
+        assetAddress: proposalData[2] || '',
+        amount: ethers.formatEther(proposalData[3] || 0),
+        description: proposalData[4] || `Proposal ${proposalId}`,
+        votesFor: ethers.formatEther(proposalData[8] || 0),   // yesVotes at index 8
+        votesAgainst: ethers.formatEther(proposalData[9] || 0), // noVotes at index 9
+        startTime: Number(proposalData[6] || 0),              // createdAt at index 6
+        endTime: Number(proposalData[7] || 0),                // votingEnds at index 7
+        executed: proposalData[11] || false,                  // executed at index 11
+        cancelled: false,                                     // Not directly available in ABI
+        state: this.mapProposalState(proposalData[10] || 0)   // status at index 10
       };
     } catch (error) {
       throw new GovernanceError(
@@ -389,7 +388,7 @@ export class ContractService {
       const CHUNK_SIZE = 5; // Process only 5 proposals at a time
       const DELAY_BETWEEN_CHUNKS = 2000; // 2 second delay between chunks
       const DELAY_BETWEEN_PROPOSALS = 500; // 500ms delay between individual proposals
-      
+
       for (let i = 0; i < Math.min(count, 50); i++) { // Limit to 50 proposals max to prevent overwhelming
         try {
           // Add progressive delay - longer delays for later proposals
@@ -397,7 +396,7 @@ export class ContractService {
             const delayTime = DELAY_BETWEEN_PROPOSALS + (Math.floor(i / CHUNK_SIZE) * 200);
             await new Promise(resolve => setTimeout(resolve, delayTime));
           }
-          
+
           // Extra delay every chunk
           if (i > 0 && i % CHUNK_SIZE === 0) {
             logger.info(`Processed ${i} proposals, taking ${DELAY_BETWEEN_CHUNKS}ms break to respect rate limits`);
@@ -412,7 +411,7 @@ export class ContractService {
             3,
             `Get Proposal ${i}`
           );
-          
+
           if (!proposalData) {
             logger.debug(`Proposal ${i} returned no data`);
             continue;
@@ -435,7 +434,7 @@ export class ContractService {
             executed: proposalData.executed || proposalData[11] || false,
             cancelled: false
           };
-          
+
           // Only include active proposals (state = 1 = ACTIVE)
           if (proposal.state === ProposalState.ACTIVE) {
             proposals.push(proposal);
@@ -509,7 +508,7 @@ export class ContractService {
   registerAINode(
     nodeIndex: number
   ): Promise<{ success: boolean; txHash?: string; error?: string }> {
-    
+
     // 🛑🛑🛑 ULTIMATE NUCLEAR OPTION: TOTAL REGISTRATION BLOCK 🛑🛑🛑
     const REGISTERED_ADDRESSES = [
       '0x0E354b735a6eee60726e6e3A431e3320Ba26ba45', // AI Node 1
@@ -520,7 +519,7 @@ export class ContractService {
     ];
 
     const nodeAddress = this.walletService.getWallet(nodeIndex).address;
-    
+
     logger.warn('🛑 REGISTRATION BLOCKED: All AI Governance Nodes already registered', {
       nodeIndex,
       nodeAddress,
@@ -541,7 +540,7 @@ export class ContractService {
     try {
       // Use explicit function signature to avoid ambiguity
       const nodeData = await this.aiNodeRegistryContract['getNodeInfo(address)'](nodeAddress);
-      
+
       return {
         owner: nodeData.nodeOwner || nodeData.owner,
         endpoint: nodeData.endpoint || '',
@@ -580,10 +579,10 @@ export class ContractService {
   async getTokenBalance(nodeIndex: number): Promise<string> {
     try {
       const wallet = this.walletService.getWallet(nodeIndex);
-      
+
       // Add delay to prevent rate limiting
       await this.delay(Math.random() * 500 + 200); // Random delay 200-700ms
-      
+
       // Use RPC manager with retry logic
       const balance = await this.rpcManager.executeWithRetry(
         async (provider) => {
@@ -597,7 +596,7 @@ export class ContractService {
         5, // Increased retry attempts
         `Get DLOOP Token Balance for ${wallet.address}`
       );
-      
+
       return ethers.formatEther(balance);
     } catch (error) {
       // Don't throw - return default value to prevent startup failures
@@ -606,7 +605,7 @@ export class ContractService {
         nodeIndex,
         error: error instanceof Error ? error.message : String(error)
       });
-      
+
       // Return a reasonable default instead of throwing
       return '1000.0';
     }
@@ -625,7 +624,7 @@ export class ContractService {
   async getVotingPower(nodeIndex: number): Promise<string> {
     try {
       const wallet = this.walletService.getWallet(nodeIndex);
-      
+
       // Check if the contract has a getVotingPower method
       if (typeof this.dloopTokenContract.getVotingPower === 'function') {
         const votingPower = await this.dloopTokenContract.getVotingPower(wallet.address);
@@ -648,7 +647,7 @@ export class ContractService {
   async hasVoted(proposalId: string, nodeIndex: number): Promise<boolean> {
     try {
       const wallet = this.walletService.getWallet(nodeIndex);
-      
+
       // Use RPC manager for better error handling and rate limiting
       const hasVotedResult = await this.rpcManager.executeWithRetry(
         async (provider) => {
@@ -658,7 +657,7 @@ export class ContractService {
         2, // Only 2 retries for vote checks
         `Check Vote Status for Proposal ${proposalId} Node ${nodeIndex}`
       );
-      
+
       return hasVotedResult;
     } catch (error) {
       // Enhanced error logging without BigInt serialization issues
@@ -668,7 +667,7 @@ export class ContractService {
         nodeIndex,
         proposalId
       });
-      
+
       // Return true if rate limited to avoid spam voting attempts
       if (errorMessage.includes('Too Many Requests') || errorMessage.includes('rate limit')) {
         logger.warn(`Rate limited while checking vote status for proposal ${proposalId}, assuming already voted`, {
@@ -677,7 +676,7 @@ export class ContractService {
         });
         return true; // Assume already voted to prevent voting spam
       }
-      
+
       return false;
     }
   }
@@ -689,14 +688,14 @@ export class ContractService {
     try {
       const wallet = this.walletService.getWallet(nodeIndex);
       const hasValidToken = await this.soulboundNftContract.hasValidToken(wallet.address);
-      
+
       logger.info('SoulBound NFT validation check', {
         component: 'contract',
         nodeIndex,
         nodeAddress: wallet.address,
         hasValidToken
       });
-      
+
       return hasValidToken;
     } catch (error) {
       logger.error('Failed to check SoulBound NFT validity', {
@@ -715,14 +714,14 @@ export class ContractService {
     try {
       const wallet = this.walletService.getWallet(nodeIndex);
       const tokens = await this.soulboundNftContract.getTokensByOwner(wallet.address);
-      
+
       logger.info('Retrieved SoulBound NFT tokens', {
         component: 'contract',
         nodeIndex,
         nodeAddress: wallet.address,
         tokenCount: tokens.length
       });
-      
+
       return tokens.map((token: any) => token.toString());
     } catch (error) {
       logger.error('Failed to get SoulBound NFT tokens', {
@@ -740,10 +739,10 @@ export class ContractService {
   async mintSoulboundNFT(nodeIndex: number, metadata: string): Promise<string> {
     try {
       const wallet = this.walletService.getWallet(nodeIndex);
-      
+
       // Check if wallet has minter role or use admin privileges
       const contract = this.soulboundNftContract.connect(wallet);
-      
+
       logger.info('Minting SoulBound NFT for node authentication', {
         component: 'contract',
         nodeIndex,
@@ -760,7 +759,7 @@ export class ContractService {
       });
 
       const receipt = await tx.wait();
-      
+
       if (!receipt) {
         throw new Error('SoulBound NFT minting transaction failed');
       }
@@ -815,7 +814,7 @@ export class ContractService {
       if (error instanceof Error && error.message.includes('NodeNotRegistered')) {
         return false;
       }
-      
+
       // Method 2: Try alternative verification if available
       try {
         const isActive = await this.isNodeActive(nodeAddress);
@@ -863,14 +862,14 @@ export class ContractService {
       // Method 3: Try static call to registration method to detect if already registered
       const wallet = this.walletService.getWallet(0); // Use first wallet for static call
       const contractWithWallet = this.aiNodeRegistryContract.connect(wallet);
-      
+
       // This should revert with NodeAlreadyRegistered if already registered
       await contractWithWallet.registerNodeWithStaking.staticCall(
         nodeAddress,
         '{"test":"metadata"}',
         0
       );
-      
+
       return false; // If static call succeeds, node is not registered
     } catch (error: any) {
       if (error.message.includes('0x06d919f2') || error.message.includes('NodeAlreadyRegistered')) {
@@ -888,23 +887,23 @@ export class ContractService {
     const chunkSize = 5; // Process only 5 proposals at a time
     const delayBetweenChunks = 2000; // 2 second delay between chunks
     const delayBetweenProposals = 500; // 500ms delay between individual proposals
-    
+
     try {
       console.log('🔍 Getting proposal count with optimized timeouts...');
       const proposalCount = await this.getProposalCountWithTimeout();
-      
+
       if (!proposalCount || proposalCount === 0) {
         console.log('📊 No proposals found in contract');
         return [];
       }
 
       console.log(`📊 Found ${proposalCount} total proposals, processing in chunks of ${chunkSize}...`);
-      
+
       // Process proposals in chunks to prevent blocking
       for (let i = 1; i <= proposalCount; i += chunkSize) {
         const chunkEnd = Math.min(i + chunkSize - 1, proposalCount);
         console.log(`🔄 Processing proposals ${i}-${chunkEnd}...`);
-        
+
         // Process each chunk with delays
         for (let proposalId = i; proposalId <= chunkEnd; proposalId++) {
           try {
@@ -912,38 +911,38 @@ export class ContractService {
             if (proposalId > i) {
               await this.delay(delayBetweenProposals);
             }
-            
+
             const proposal = await this.getProposalWithRetry(proposalId, maxRetries);
             if (proposal && proposal.state === ProposalState.ACTIVE) {
               proposals.push(proposal);
               console.log(`✅ Added active proposal ${proposalId} (${proposals.length} total active)`);
             }
-            
+
             // Emergency brake: if we're taking too long, stop processing
             if (proposals.length >= 20) {
               console.log(`⚠️  Stopping at 20 active proposals to prevent timeout`);
               break;
             }
-            
+
           } catch (error) {
             console.error(`❌ Failed to get proposal ${proposalId}:`, error instanceof Error ? error.message : 'Unknown error');
             // Continue with next proposal instead of failing completely
           }
         }
-        
+
         // Break if we found enough proposals or if processing the last chunk
         if (proposals.length >= 20 || chunkEnd >= proposalCount) {
           break;
         }
-        
+
         // Delay between chunks to prevent overwhelming the system
         console.log(`⏳ Waiting ${delayBetweenChunks}ms before next chunk...`);
         await this.delay(delayBetweenChunks);
       }
-      
+
       console.log(`✅ Successfully processed ${proposals.length} active proposals`);
       return proposals;
-      
+
     } catch (error) {
       console.error('❌ Critical error in getProposals:', error instanceof Error ? error.message : 'Unknown error');
       // Return empty array instead of throwing to prevent cron job failure
@@ -956,10 +955,10 @@ export class ContractService {
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Proposal count query timeout')), 5000);
       });
-      
+
       const countPromise = this.assetDaoContract.getProposalCount();
       const result = await Promise.race([countPromise, timeoutPromise]);
-      
+
       return result ? parseInt(result.toString()) : null;
           } catch (error) {
         console.error('❌ Failed to get proposal count:', error instanceof Error ? error.message : 'Unknown error');
@@ -974,10 +973,10 @@ export class ContractService {
         const timeoutPromise = new Promise<never>((_, reject) => {
           setTimeout(() => reject(new Error(`Proposal ${proposalId} query timeout`)), 3000);
         });
-        
+
         const proposalPromise = this.assetDaoContract.getProposal(proposalId);
         const result = await Promise.race([proposalPromise, timeoutPromise]);
-        
+
         if (!result) {
           console.log(`⚠️  Proposal ${proposalId} returned null`);
           return null;
@@ -1006,10 +1005,10 @@ export class ContractService {
            console.error(`❌ Error parsing proposal ${proposalId}:`, parseError instanceof Error ? parseError.message : 'Unknown parse error');
            return null;
          }
-        
+
              } catch (error) {
          console.error(`❌ Attempt ${attempt}/${maxRetries} failed for proposal ${proposalId}:`, error instanceof Error ? error.message : 'Unknown error');
-        
+
         if (attempt < maxRetries) {
           // Exponential backoff delay
           const backoffDelay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
@@ -1018,7 +1017,7 @@ export class ContractService {
         }
       }
     }
-    
+
     console.error(`❌ All ${maxRetries} attempts failed for proposal ${proposalId}`);
     return null;
   }

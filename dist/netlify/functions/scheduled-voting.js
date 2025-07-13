@@ -61,50 +61,35 @@ async function getActiveProposals() {
           proposalData = await contract.getProposal(i);
         }
 
-        // CRITICAL FIX: Search for valid timestamps instead of assuming fixed indices
-        const state = Number(proposalData[1]); // state at index 1
-        const proposer = proposalData[2];      // proposer at index 2
-        const description = proposalData[4] || `Proposal ${i}`; // description at index 4
-        
-        let foundStartTime = 0;
-        let foundEndTime = 0;
-        const currentTimeSec = Math.floor(Date.now() / 1000);
-        
-        // Search through all fields for valid timestamps
-        for (let idx = 0; idx < proposalData.length; idx++) {
-          const value = typeof proposalData[idx] === 'bigint' ? Number(proposalData[idx]) : Number(proposalData[idx]);
-          
-          // Skip zero and obviously invalid values
-          if (value === 0 || value < 1000000000) continue;
-          
-          // Convert from milliseconds if needed
-          const asSeconds = value > currentTimeSec * 1000 ? Math.floor(value / 1000) : value;
-          
-          // Check if it's a reasonable timestamp (between 2020 and 2030)
-          const year2020 = 1577836800;
-          const year2030 = 1893456000;
-          
-          if (asSeconds >= year2020 && asSeconds <= year2030) {
-            if (foundStartTime === 0) {
-              foundStartTime = asSeconds;
-              console.log(`📅 Found startTime at index ${idx}: ${foundStartTime}`);
-            } else if (foundEndTime === 0 && asSeconds !== foundStartTime) {
-              foundEndTime = asSeconds;
-              console.log(`📅 Found endTime at index ${idx}: ${foundEndTime}`);
-            }
-          }
-        }
-        
-        const normalizedStartTime = foundStartTime;
-        const normalizedEndTime = foundEndTime;
+        // Parse proposal data according to exact ABI structure
+        const currentTimestamp = Math.floor(Date.now() / 1000);
 
+        // Enhanced error checking for BigInt conversion
+        const safeBigIntToNumber = (value) => {
+          try {
+            if (typeof value === 'bigint') {
+              return Number(value);
+            }
+            return parseInt(value?.toString() || '0');
+          } catch (error) {
+            console.log(`⚠️  BigInt conversion error: ${error.message}`);
+            return 0;
+          }
+        };
+
+        // Map fields according to AssetDAO ABI: [id, proposalType, assetAddress, amount, description, proposer, createdAt, votingEnds, yesVotes, noVotes, status, executed]
         const proposal = {
-          id: i.toString(),
-          proposer: proposer,
-          description: description,
-          startTime: normalizedStartTime,
-          endTime: normalizedEndTime,
-          state: state,
+          id: i,
+          proposalType: safeBigIntToNumber(proposalData[1]),
+          assetAddress: proposalData[2]?.toString() || '',
+          amount: proposalData[3]?.toString() || '0',
+          description: proposalData[4]?.toString() || `Proposal ${i}`,
+          proposer: proposalData[5]?.toString() || '',
+          createdAt: safeBigIntToNumber(proposalData[6]),
+          votingEnds: safeBigIntToNumber(proposalData[7]),
+          yesVotes: proposalData[8]?.toString() || '0',
+          noVotes: proposalData[9]?.toString() || '0',
+          state: safeBigIntToNumber(proposalData[10]),
           executed: Boolean(proposalData[11])
         };
 

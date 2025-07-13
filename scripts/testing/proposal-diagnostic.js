@@ -36,21 +36,39 @@ async function diagnoseProposals() {
       try {
         const proposalData = await contract.getProposal(i);
 
-        // Enhanced debugging for timestamp issues
-        const rawEndTime = proposalData[9];
-        const rawStartTime = proposalData[8];
-        const state = Number(proposalData[10]);
+        // Enhanced debugging for timestamp issues - Fix field mapping based on ABI
+        // According to assetdao.abi.v1.json, getProposal returns:
+        // [id, proposalType, assetAddress, amount, description, proposer, createdAt, votingEnds, yesVotes, noVotes, status, executed]
+        const proposalId = proposalData[0];
+        const proposalType = proposalData[1];
+        const assetAddress = proposalData[2];
+        const amount = proposalData[3];
+        const description = proposalData[4];
+        const proposer = proposalData[5];
+        const createdAt = proposalData[6];  // Correct field index for start time
+        const votingEnds = proposalData[7]; // Correct field index for end time
+        const yesVotes = proposalData[8];
+        const noVotes = proposalData[9];
+        const status = proposalData[10];     // Correct field index for state
+        const executed = proposalData[11];
 
-        let normalizedEndTime = Number(rawEndTime);
-        let normalizedStartTime = Number(rawStartTime);
-
-        // FIXED: Proper timestamp detection and conversion
-        const year2025InSeconds = 1735689600; // Jan 1, 2025 in seconds
-        const endIsMs = normalizedEndTime > year2025InSeconds * 1000;
-        const startIsMs = normalizedStartTime > year2025InSeconds * 1000;
-
-        const finalEndTime = endIsMs ? Math.floor(normalizedEndTime / 1000) : normalizedEndTime;
-        const finalStartTime = startIsMs ? Math.floor(normalizedStartTime / 1000) : normalizedStartTime;
+        const state = Number(status);
+        let finalStartTime = Number(createdAt);
+        let finalEndTime = Number(votingEnds);
+        
+        // Validate and convert timestamps properly
+        if (finalStartTime === 0 || finalEndTime === 0) {
+          console.log(`     | ⚠️  Zero timestamps detected - proposal may be in invalid state`);
+          console.log(`     | 📊 Raw data: createdAt=${createdAt}, votingEnds=${votingEnds}`);
+          
+          // Try to use block timestamp or current time for invalid proposals
+          if (finalStartTime === 0) {
+            finalStartTime = currentTimeSec - 86400; // Assume created 24h ago
+          }
+          if (finalEndTime === 0) {
+            finalEndTime = finalStartTime + 259200; // 72 hour voting period
+          }
+        }
 
         const timeLeft = finalEndTime - currentTimeSec;
         const proposer = proposalData[2];

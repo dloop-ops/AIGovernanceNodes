@@ -233,10 +233,17 @@ export const handler: Handler = async (event, context) => {
                   }, 1); // Only 1 retry
 
                   // Parse the returned array structure: [id, type, proposer, amount, description, assetAddress, votesFor, votesAgainst, startTime, endTime, state, executed]
+                  
+                  // Enhanced validation - check if proposal data is valid
+                  if (!proposalData || proposalData.length < 12) {
+                    console.log(`${requestId} WARN   ⚠️ Proposal ${i} has invalid data structure - skipping`);
+                    return null;
+                  }
+
                   const proposer = proposalData[2];
 
                   // Quick validation - check if proposer is zero address
-                  if (proposer === '0x0000000000000000000000000000000000000000') {
+                  if (!proposer || proposer === '0x0000000000000000000000000000000000000000') {
                     console.log(`${requestId} WARN   ⚠️ Proposal ${i} has zero address proposer - skipping`);
                     return null;
                   }
@@ -247,35 +254,68 @@ export const handler: Handler = async (event, context) => {
                   // CRITICAL FIX: Handle zero timestamps and search for actual timestamp fields
                   const currentTimeSec = Math.floor(Date.now() / 1000);
                   let foundEndTime = 0;
+                  let foundStartTime = 0;
 
-                  // Search through all proposal data fields for a valid timestamp
+                  // Enhanced timestamp search - use the logs showing startTime at index 6, endTime at index 7
+                  console.log(`${requestId} DEBUG  🔍 Searching all proposal fields for timestamps...`);
+                  console.log(`${requestId} DEBUG  📋 Proposal data array length: ${proposalData.length}`);
+                  
+                  // Search ALL fields for any valid timestamps
                   for (let idx = 0; idx < proposalData.length; idx++) {
-                    const value = typeof proposalData[idx] === 'bigint' ? Number(proposalData[idx]) : Number(proposalData[idx]);
+                    try {
+                      const rawValue = proposalData[idx];
+                      const value = typeof rawValue === 'bigint' ? Number(rawValue) : Number(rawValue);
 
-                    // Skip zero values and obviously non-timestamp values
-                    if (value === 0 || value < 1000000000) continue;
+                      // Skip invalid values
+                      if (isNaN(value) || value === 0 || value < 1000000000) {
+                        console.log(`${requestId} DEBUG  ⏭️  Index ${idx}: ${rawValue} (skipped - invalid)`);
+                        continue;
+                      }
 
-                    // Convert from milliseconds if needed
-                    const asSeconds = value > currentTimeSec * 1000 ? Math.floor(value / 1000) : value;
+                      // Convert from milliseconds if needed
+                      const asSeconds = value > currentTimeSec * 1000 ? Math.floor(value / 1000) : value;
 
-                    // Check if it's a reasonable future timestamp (between now and 1 year from now)
-                    const oneYearFromNow = currentTimeSec + (365 * 24 * 60 * 60);
-                    if (asSeconds > currentTimeSec && asSeconds < oneYearFromNow) {
-                      foundEndTime = asSeconds;
-                      console.log(`${requestId} DEBUG  📅 Found valid endTime at index ${idx}: ${foundEndTime} (${new Date(foundEndTime * 1000).toISOString()})`);
-                      break;
+                      // Check if it's a reasonable timestamp (past or future, within 2 years)
+                      const twoYearsAgo = currentTimeSec - (2 * 365 * 24 * 60 * 60);
+                      const twoYearsFromNow = currentTimeSec + (2 * 365 * 24 * 60 * 60);
+                      
+                      if (asSeconds >= twoYearsAgo && asSeconds <= twoYearsFromNow) {
+                        console.log(`${requestId} DEBUG  📅 Index ${idx}: Found timestamp ${asSeconds} (${new Date(asSeconds * 1000).toISOString()})`);
+                        
+                        // Prioritize future timestamps as endTime
+                        if (asSeconds > currentTimeSec && foundEndTime === 0) {
+                          foundEndTime = asSeconds;
+                          console.log(`${requestId} DEBUG  ✅ Set as endTime: ${foundEndTime}`);
+                        } else if (asSeconds <= currentTimeSec && foundStartTime === 0) {
+                          foundStartTime = asSeconds;
+                          console.log(`${requestId} DEBUG  ✅ Set as startTime: ${foundStartTime}`);
+                        }
+                      } else {
+                        console.log(`${requestId} DEBUG  ⏭️  Index ${idx}: ${asSeconds} (out of reasonable range)`);
+                      }
+                    } catch (error) {
+                      console.log(`${requestId} DEBUG  ❌ Index ${idx}: Parse error`);
+                      continue;
                     }
+                  }
+                  
+                  // If we found a start time but no end time, calculate a reasonable end time
+                  if (foundStartTime > 0 && foundEndTime === 0) {
+                    // Default voting period is 72 hours (259200 seconds)
+                    foundEndTime = foundStartTime + 259200;
+                    console.log(`${requestId} DEBUG  🕐 Calculated endTime from startTime: ${foundEndTime} (${new Date(foundEndTime * 1000).toISOString()})`);
                   }
 
                   const normalizedEndTime = foundEndTime;
+                  const normalizedStartTime = foundStartTime;
                   const normalizedCurrentTime = currentTimeSec;
 
-                  console.log(`${requestId} DEBUG  🕐 Proposal ${i} - Raw endTime: ${proposalData[9]}, Normalized: ${normalizedEndTime}, Current: ${normalizedCurrentTime}`);
-                  console.log(`${requestId} DEBUG  📅 Proposal ${i} - End date: ${new Date(normalizedEndTime * 1000).toISOString()}, Current: ${new Date(normalizedCurrentTime * 1000).toISOString()}`);
+                  console.log(`${requestId} DEBUG  🕐 Proposal ${i} - Raw endTime: ${proposalData[9]}, Found endTime: ${normalizedEndTime}, Current: ${normalizedCurrentTime}`);
+                  console.log(`${requestId} DEBUG  📅 Proposal ${i} - End date: ${normalizedEndTime > 0 ? new Date(normalizedEndTime * 1000).toISOString() : 'NOT_FOUND'}, Current: ${new Date(normalizedCurrentTime * 1000).toISOString()}`);
 
-                  if (proposalState === 1 || proposalState === 4) { // Active (1) or Pending (4)
+                  if (proposalState === 1) { // Only check Active proposals (state = 1)
                     // Check if proposal is still within voting period
-                    if (normalizedEndTime > normalizedCurrentTime) {
+                    if (normalizedEndTime > 0 && normalizedEndTime > normalizedCurrentTime) {
                       const timeLeftSeconds = normalizedEndTime - normalizedCurrentTime;
                       const timeLeftHours = Math.floor(timeLeftSeconds / 3600);
                       console.log(`${requestId} INFO   ✅ Found ACTIVE proposal ${i} (${timeLeftHours}h ${Math.floor((timeLeftSeconds % 3600) / 60)}m remaining)`);
@@ -287,7 +327,7 @@ export const handler: Handler = async (event, context) => {
                         proposer: proposer,
                         assetAddress: proposalData[5],
                         amount: proposalData[3].toString(),
-                        startTime: proposalData[8].toString(),
+                        startTime: normalizedStartTime > 0 ? normalizedStartTime.toString() : proposalData[8].toString(),
                         endTime: normalizedEndTime.toString(),
                         forVotes: proposalData[6].toString(),
                         againstVotes: proposalData[7].toString(),
