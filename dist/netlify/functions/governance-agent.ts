@@ -108,25 +108,26 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     // Contract setup with enhanced address validation and checksum correction
     const rawAssetDAOAddress = process.env.ASSET_DAO_CONTRACT_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8C251bc4B3529';
     
-    // Enhanced address validation with multiple validation methods
+    // Enhanced address validation with proper checksum handling
     let assetDAOAddress: string;
     try {
-      // First, clean the address
-      const cleanAddress = rawAssetDAOAddress.trim().toLowerCase();
+      // First, clean and validate the address
+      const trimmedAddress = rawAssetDAOAddress.trim();
       
       // Validate basic format
-      if (!cleanAddress.startsWith('0x') || cleanAddress.length !== 42) {
-        throw new Error(`Invalid address format: ${cleanAddress}`);
+      if (!trimmedAddress.startsWith('0x') || trimmedAddress.length !== 42) {
+        throw new Error(`Invalid address format: address must start with 0x and be 42 characters long`);
       }
       
-      // Validate hex characters
-      const hexPattern = /^0x[a-fA-F0-9]{40}$/;
-      if (!hexPattern.test(rawAssetDAOAddress.trim())) {
-        throw new Error(`Invalid hex format: ${rawAssetDAOAddress}`);
+      // Validate hex characters (case-insensitive)
+      const hexPattern = /^0x[a-fA-F0-9]{40}$/i;
+      if (!hexPattern.test(trimmedAddress)) {
+        throw new Error(`Invalid hex format: address contains invalid characters`);
       }
       
       // Use ethers.getAddress for checksum validation and normalization
-      assetDAOAddress = ethers.getAddress(cleanAddress);
+      // This will automatically handle case conversion and checksumming
+      assetDAOAddress = ethers.getAddress(trimmedAddress);
       console.log(`${requestId} INFO   ✅ Contract address validated and checksummed: ${assetDAOAddress}`);
     } catch (addressError: any) {
       console.log(`${requestId} ERROR  ❌ Invalid contract address: ${rawAssetDAOAddress}`);
