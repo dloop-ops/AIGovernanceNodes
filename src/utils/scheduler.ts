@@ -1,62 +1,151 @@
-/**
- * Scheduler utility for governance operations
- * AI Governance Nodes only vote on proposals - they do not create them
- */
 
-import cron from 'node-cron';
-import { NodeManager } from '../nodes/NodeManager.js';
+import * as cron from 'node-cron';
 import logger from './logger.js';
 
+export interface ScheduledTask {
+  name: string;
+  schedule: string;
+  task: () => Promise<void> | void;
+  enabled: boolean;
+  instance?: cron.ScheduledTask;
+}
+
 export class Scheduler {
-  private nodeManager: NodeManager;
+  private tasks: Map<string, ScheduledTask> = new Map();
 
-  constructor(nodeManager: NodeManager) {
-    this.nodeManager = nodeManager;
+  constructor() {
+    logger.info('Scheduler initialized');
   }
 
   /**
-   * Start all scheduled tasks
+   * Add a scheduled task
    */
-  start(): void {
-    logger.info('Starting governance scheduler for voting-only operation');
+  addTask(task: ScheduledTask): void {
+    if (this.tasks.has(task.name)) {
+      logger.warn(`Task ${task.name} already exists, replacing it`);
+      this.stopTask(task.name);
+    }
 
-    // AI Governance Nodes do not create proposals - they only vote
-    // Proposals are created by Investment Nodes or human participants
-
-    // Voting checks every 8 hours
-    cron.schedule('0 */8 * * *', async () => {
+    if (task.enabled) {
       try {
-        logger.info('Starting scheduled voting checks');
-        await this.nodeManager.checkAndVoteOnProposals();
-      } catch (error) {
-        logger.error('Scheduled voting check failed', { error });
-      }
-    }, {
-      scheduled: true,
-      timezone: "UTC"
-    });
+        const scheduledTask = cron.schedule(task.schedule, async () => {
+          try {
+            logger.info(`Executing scheduled task: ${task.name}`);
+            await task.task();
+            logger.info(`Completed scheduled task: ${task.name}`);
+          } catch (error) {
+            logger.error(`Error in scheduled task ${task.name}:`, { error });
+          }
+        }, {
+          scheduled: false,
+          timezone: 'UTC'
+        });
 
-    // More frequent voting checks during active periods (every 2 hours during business hours)
-    cron.schedule('0 8-20/2 * * *', async () => {
-      try {
-        logger.info('Starting frequent voting checks (business hours)');
-        await this.nodeManager.checkAndVoteOnProposals();
+        task.instance = scheduledTask;
+        this.tasks.set(task.name, task);
+        
+        logger.info(`Added scheduled task: ${task.name} with schedule: ${task.schedule}`);
       } catch (error) {
-        logger.error('Frequent voting check failed', { error });
+        logger.error(`Failed to add task ${task.name}:`, { error });
       }
-    }, {
-      scheduled: true,
-      timezone: "UTC"
-    });
-
-    logger.info('Governance scheduler started successfully (voting-only operation)');
+    } else {
+      this.tasks.set(task.name, task);
+      logger.info(`Added disabled task: ${task.name}`);
+    }
   }
 
   /**
-   * Stop all scheduled tasks
+   * Start a specific task
    */
-  stop(): void {
-    logger.info('Stopping governance scheduler');
-    cron.destroy();
+  startTask(taskName: string): void {
+    const task = this.tasks.get(taskName);
+    if (task && task.instance) {
+      task.instance.start();
+      logger.info(`Started task: ${taskName}`);
+    } else {
+      logger.warn(`Task ${taskName} not found or has no instance`);
+    }
+  }
+
+  /**
+   * Stop a specific task
+   */
+  stopTask(taskName: string): void {
+    const task = this.tasks.get(taskName);
+    if (task && task.instance) {
+      task.instance.stop();
+      logger.info(`Stopped task: ${taskName}`);
+    }
+  }
+
+  /**
+   * Start all enabled tasks
+   */
+  startAll(): void {
+    this.tasks.forEach((task, name) => {
+      if (task.enabled && task.instance) {
+        this.startTask(name);
+      }
+    });
+    logger.info('All enabled tasks started');
+  }
+
+  /**
+   * Stop all running tasks
+   */
+  stopAll(): void {
+    this.tasks.forEach((task, name) => {
+      if (task.instance) {
+        this.stopTask(name);
+      }
+    });
+    logger.info('All tasks stopped');
+  }
+
+  /**
+   * Remove a task
+   */
+  removeTask(taskName: string): void {
+    const task = this.tasks.get(taskName);
+    if (task) {
+      this.stopTask(taskName);
+      if (task.instance) {
+        task.instance.destroy();
+      }
+      this.tasks.delete(taskName);
+      logger.info(`Removed task: ${taskName}`);
+    }
+  }
+
+  /**
+   * Get status of all tasks
+   */
+  getTaskStatus(): Array<{ name: string; schedule: string; enabled: boolean; running: boolean }> {
+    const status: Array<{ name: string; schedule: string; enabled: boolean; running: boolean }> = [];
+    
+    this.tasks.forEach((task, name) => {
+      status.push({
+        name,
+        schedule: task.schedule,
+        enabled: task.enabled,
+        running: task.instance ? true : false
+      });
+    });
+
+    return status;
+  }
+
+  /**
+   * Get task count
+   */
+  getTaskCount(): number {
+    return this.tasks.size;
+  }
+
+  /**
+   * Check if a task exists
+   */
+  hasTask(taskName: string): boolean {
+    return this.tasks.has(taskName);
   }
 }

@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "npm run build && npm run start:local",
     "build": "npm run clean && tsc && npm run build:netlify-functions",
-    "build:netlify-functions": "mkdir -p dist/netlify/functions && tsc netlify/functions/governance-agent.ts --outDir dist/netlify/functions --target ES2022 --module ESNext --moduleResolution node && cp public/index.html dist/ && cp netlify/functions/scheduled-voting.js dist/netlify/functions/",
+    "build:netlify-functions": "mkdir -p dist/netlify/functions && cp netlify/functions/*.js dist/netlify/functions/ && cp netlify/functions/*.ts dist/netlify/functions/ && cp public/index.html dist/ 2>/dev/null || true",
     "build:static": "mkdir -p dist/netlify/functions && cp -r public/* dist/ 2>/dev/null || true && tsc netlify/functions/governance-agent.ts --outDir dist/netlify/functions --target ES2022 --module ESNext --moduleResolution node",
     "build:netlify": "mkdir -p dist/netlify/functions && cp -r characters dist/ 2>/dev/null || true && cp netlify.toml dist/ 2>/dev/null || true && tsc netlify/functions/governance-agent.ts --outDir dist/netlify/functions --target ES2022 --module ESNext --moduleResolution node",
     "start": "npm run build && npm run start:local",

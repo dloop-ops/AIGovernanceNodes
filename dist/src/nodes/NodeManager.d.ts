@@ -118,8 +118,8 @@ export declare class NodeManager {
      */
     getActiveProposals(): Promise<any[]>;
     /**
-   * Check and Vote on Proposals
+   * Check and Vote on Proposals - Public method for scheduled tasks
    */
-    private checkAndVoteOnProposals;
+    checkAndVoteOnProposals(): Promise<void>;
 }
 //# sourceMappingURL=NodeManager.d.ts.map

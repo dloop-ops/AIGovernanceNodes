@@ -1,18 +1,54 @@
-/**
- * Scheduler utility for governance operations
- * AI Governance Nodes only vote on proposals - they do not create them
- */
-import { NodeManager } from '../nodes/NodeManager.js';
+import * as cron from 'node-cron';
+export interface ScheduledTask {
+    name: string;
+    schedule: string;
+    task: () => Promise<void> | void;
+    enabled: boolean;
+    instance?: cron.ScheduledTask;
+}
 export declare class Scheduler {
-    private nodeManager;
-    constructor(nodeManager: NodeManager);
+    private tasks;
+    constructor();
     /**
-     * Start all scheduled tasks
+     * Add a scheduled task
      */
-    start(): void;
+    addTask(task: ScheduledTask): void;
     /**
-     * Stop all scheduled tasks
+     * Start a specific task
      */
-    stop(): void;
+    startTask(taskName: string): void;
+    /**
+     * Stop a specific task
+     */
+    stopTask(taskName: string): void;
+    /**
+     * Start all enabled tasks
+     */
+    startAll(): void;
+    /**
+     * Stop all running tasks
+     */
+    stopAll(): void;
+    /**
+     * Remove a task
+     */
+    removeTask(taskName: string): void;
+    /**
+     * Get status of all tasks
+     */
+    getTaskStatus(): Array<{
+        name: string;
+        schedule: string;
+        enabled: boolean;
+        running: boolean;
+    }>;
+    /**
+     * Get task count
+     */
+    getTaskCount(): number;
+    /**
+     * Check if a task exists
+     */
+    hasTask(taskName: string): boolean;
 }
 //# sourceMappingURL=scheduler.d.ts.map

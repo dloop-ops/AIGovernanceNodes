@@ -7,9 +7,9 @@
   NODE_ENV = "development"
 
 [functions]
-  directory = "netlify/functions"
+  directory = "dist/netlify/functions"
   node_bundler = "esbuild"
-  external_node_modules = ["ethers", "@elizaos/core"]
+  external_node_modules = ["ethers", "@elizaos/core", "node-cron", "winston"]
 
 [functions."scheduled-voting"]
   schedule = "*/30 * * * *"

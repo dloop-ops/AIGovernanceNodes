@@ -259,21 +259,21 @@ export class ContractService {
                 cancelled: proposalData.cancelled
             });
             // Map proposal data according to exact ABI structure from assetdao.abi.v1.json
-            // getProposal returns: [id, proposalType, assetAddress, amount, description, proposer, createdAt, votingEnds, yesVotes, noVotes, status, executed]
+            // getProposal returns: [id, proposalType, proposer, amount, description, assetAddress, votesFor, votesAgainst, startTime, endTime, state, executed]
             return {
                 id: proposalId,
-                proposer: proposalData[5] || '',
-                proposalType: this.mapProposalType(proposalData[1]),
-                assetAddress: proposalData[2] || '',
-                amount: ethers.formatEther(proposalData[3] || 0),
-                description: proposalData[4] || `Proposal ${proposalId}`,
-                votesFor: ethers.formatEther(proposalData[8] || 0), // yesVotes at index 8
-                votesAgainst: ethers.formatEther(proposalData[9] || 0), // noVotes at index 9
-                startTime: Number(proposalData[6] || 0), // createdAt at index 6
-                endTime: Number(proposalData[7] || 0), // votingEnds at index 7
+                proposer: proposalData[2] || '', // proposer at index 2
+                proposalType: this.mapProposalType(proposalData[1]), // proposalType at index 1
+                assetAddress: proposalData[5] || '', // assetAddress at index 5
+                amount: ethers.formatEther(proposalData[3] || 0), // amount at index 3
+                description: proposalData[4] || `Proposal ${proposalId}`, // description at index 4
+                votesFor: ethers.formatEther(proposalData[6] || 0), // votesFor at index 6
+                votesAgainst: ethers.formatEther(proposalData[7] || 0), // votesAgainst at index 7
+                startTime: Number(proposalData[8] || 0), // startTime at index 8
+                endTime: Number(proposalData[9] || 0), // endTime at index 9
                 executed: proposalData[11] || false, // executed at index 11
                 cancelled: false, // Not directly available in ABI
-                state: this.mapProposalState(proposalData[10] || 0) // status at index 10
+                state: this.mapProposalState(proposalData[10] || 0) // state at index 10
             };
         }
         catch (error) {

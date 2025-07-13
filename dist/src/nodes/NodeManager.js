@@ -592,7 +592,7 @@ export class NodeManager {
         return await contractService.getActiveProposals();
     }
     /**
-   * Check and Vote on Proposals
+   * Check and Vote on Proposals - Public method for scheduled tasks
    */
     async checkAndVoteOnProposals() {
         logger.info('Checking and Voting on Proposals for all nodes');

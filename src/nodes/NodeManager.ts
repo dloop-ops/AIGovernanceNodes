@@ -729,22 +729,22 @@ export class NodeManager {
   }
 
     /**
-   * Check and Vote on Proposals
+   * Check and Vote on Proposals - Public method for scheduled tasks
    */
-     private async checkAndVoteOnProposals(): Promise<void> {
+    public async checkAndVoteOnProposals(): Promise<void> {
       logger.info('Checking and Voting on Proposals for all nodes');
 
       const activeNodes = Array.from(this.nodes.values()).filter(node => node.isNodeActive());
       let successful = 0;
       let failed = 0;
       const errors: any[] = [];
-  
+
       // Execute sequentially to avoid RPC batch limits
       for (const node of activeNodes) {
         try {
           await node.checkAndVoteOnProposals();
           successful++;
-  
+
           // Add delay between operations
           if (successful < activeNodes.length) {
             await new Promise(resolve => setTimeout(resolve, 400));
@@ -755,14 +755,14 @@ export class NodeManager {
           logger.warn(`Voting operation failed for node ${node.getNodeId()}`, { error });
         }
       }
-  
+
       logger.info('Checking and Voting Completed', {
         totalNodes: this.nodes.size,
         activeNodes: activeNodes.length,
         successful,
         failed
       });
-  
+
       if (failed > 0) {
         logger.error('Some voting operations failed', { errors });
       }
