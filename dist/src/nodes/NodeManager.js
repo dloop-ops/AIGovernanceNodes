@@ -24,7 +24,7 @@ export class NodeManager {
     isRunning = false;
     constructor() {
         this.initializeServices();
-        this.scheduler = new scheduler();
+        this.scheduler = scheduler;
     }
     /**
      * Initialize all required services
@@ -289,13 +289,13 @@ export class NodeManager {
             enabled: true
         };
         // Add tasks to scheduler
-        this.scheduler.addTask(proposalCreationTask);
-        this.scheduler.addTask(votingTask);
-        this.scheduler.addTask(marketDataTask);
-        this.scheduler.addTask(healthCheckTask);
-        this.scheduler.addTask(statusTask);
-        this.scheduler.addTask(tokenMonitoringTask);
-        this.scheduler.addTask(authenticationTask);
+        this.scheduler.addTask(proposalCreationTask.name, proposalCreationTask.schedule, proposalCreationTask.task);
+        this.scheduler.addTask(votingTask.name, votingTask.schedule, votingTask.task);
+        this.scheduler.addTask(marketDataTask.name, marketDataTask.schedule, marketDataTask.task);
+        this.scheduler.addTask(healthCheckTask.name, healthCheckTask.schedule, healthCheckTask.task);
+        this.scheduler.addTask(statusTask.name, statusTask.schedule, statusTask.task);
+        this.scheduler.addTask(tokenMonitoringTask.name, tokenMonitoringTask.schedule, tokenMonitoringTask.task);
+        this.scheduler.addTask(authenticationTask.name, authenticationTask.schedule, authenticationTask.task);
         // Start all tasks
         this.scheduler.startAll();
         logger.info('All scheduled tasks configured and started');
@@ -474,7 +474,7 @@ export class NodeManager {
             // Get node statuses
             const nodeStatuses = Array.from(this.nodes.values()).map(node => node.getStatus());
             // Get task statuses
-            const taskStatuses = this.scheduler.getTaskStatus();
+            const taskStatuses = this.scheduler.getAllTaskStatuses();
             // Calculate aggregate statistics
             const totalProposals = nodeStatuses.reduce((sum, status) => sum + status.stats.proposalsCreated, 0);
             const totalVotes = nodeStatuses.reduce((sum, status) => sum + status.stats.votesAcast, 0);

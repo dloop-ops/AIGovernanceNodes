@@ -1,4 +1,5 @@
 import { GovernanceNode } from './GovernanceNode.js';
+import { scheduler } from '../utils/scheduler.js';
 export declare class NodeManager {
     private nodes;
     private walletService;
@@ -107,7 +108,7 @@ export declare class NodeManager {
     /**
      * Get scheduler instance
      */
-    getScheduler(): scheduler;
+    getScheduler(): typeof scheduler;
     /**
      * Public method to trigger immediate voting round (for manual triggers)
      */

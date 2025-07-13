@@ -1,5 +1,5 @@
 import * as cron from 'node-cron';
-import { logger } from './logger.js';
+import logger from './logger.js';
 
 export interface ScheduledTask {
   name: string;
@@ -107,12 +107,26 @@ export class Scheduler {
     logger.info('All scheduled tasks stopped');
   }
 
+  /**
+   * Get task status
+   */
   getTaskStatus(name: string): { exists: boolean; isRunning: boolean } {
-    const scheduledTask = this.tasks.get(name);
-    if (!scheduledTask) {
-      return { exists: false, isRunning: false };
+    const task = this.tasks.get(name);
+    return {
+      exists: !!task,
+      isRunning: task ? task.isRunning : false
+    };
+  }
+
+  /**
+   * Get all task statuses
+   */
+  getAllTaskStatuses(): Record<string, { exists: boolean; isRunning: boolean }> {
+    const statuses: Record<string, { exists: boolean; isRunning: boolean }> = {};
+    for (const [name] of this.tasks) {
+      statuses[name] = this.getTaskStatus(name);
     }
-    return { exists: true, isRunning: scheduledTask.isRunning };
+    return statuses;
   }
 
   getAllTasks(): ScheduledTask[] {

@@ -21,12 +21,12 @@ export class NodeManager {
   private soulboundNftService!: SoulboundNFTService;
   private nftTransferService!: NFTTransferService;
   private dloopRegistrationService!: DLoopGovernanceRegistration;
-  private scheduler: scheduler;
+  private scheduler: typeof scheduler;
   private isRunning: boolean = false;
 
   constructor() {
     this.initializeServices();
-    this.scheduler = new scheduler();
+    this.scheduler = scheduler;
   }
 
   /**
@@ -366,13 +366,13 @@ export class NodeManager {
     };
 
     // Add tasks to scheduler
-    this.scheduler.addTask(proposalCreationTask);
-    this.scheduler.addTask(votingTask);
-    this.scheduler.addTask(marketDataTask);
-    this.scheduler.addTask(healthCheckTask);
-    this.scheduler.addTask(statusTask);
-    this.scheduler.addTask(tokenMonitoringTask);
-    this.scheduler.addTask(authenticationTask);
+    this.scheduler.addTask(proposalCreationTask.name, proposalCreationTask.schedule, proposalCreationTask.task);
+    this.scheduler.addTask(votingTask.name, votingTask.schedule, votingTask.task);
+    this.scheduler.addTask(marketDataTask.name, marketDataTask.schedule, marketDataTask.task);
+    this.scheduler.addTask(healthCheckTask.name, healthCheckTask.schedule, healthCheckTask.task);
+    this.scheduler.addTask(statusTask.name, statusTask.schedule, statusTask.task);
+    this.scheduler.addTask(tokenMonitoringTask.name, tokenMonitoringTask.schedule, tokenMonitoringTask.task);
+    this.scheduler.addTask(authenticationTask.name, authenticationTask.schedule, authenticationTask.task);
 
     // Start all tasks
     this.scheduler.startAll();
@@ -587,7 +587,7 @@ export class NodeManager {
       const nodeStatuses = Array.from(this.nodes.values()).map(node => node.getStatus());
 
       // Get task statuses
-      const taskStatuses = this.scheduler.getTaskStatus();
+      const taskStatuses = this.scheduler.getAllTaskStatuses();
 
       // Calculate aggregate statistics
       const totalProposals = nodeStatuses.reduce((sum, status) => sum + status.stats.proposalsCreated, 0);
@@ -695,7 +695,7 @@ export class NodeManager {
   /**
    * Get scheduler instance
    */
-  getScheduler(): scheduler {
+  getScheduler(): typeof scheduler {
     return this.scheduler;
   }
 
