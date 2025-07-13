@@ -97,12 +97,12 @@ class NetlifyVotingService {
             continue;
           }
           
-          if (state === 1) { // ACTIVE
+          // Use the same field mapping as the working diagnostic script
+          const proposalState = Number(proposalData[10]);  // Correct field index for state
+          const votingEnds = Number(proposalData[7]);       // Correct field index for end time
+          
+          if (proposalState === 1) { // ACTIVE
             const currentTime = Math.floor(Date.now() / 1000);
-            
-            // Use the same field mapping as the working diagnostic script
-            const votingEnds = Number(proposalData[7]);  // Correct field index for end time
-            const state = Number(proposalData[10]);       // Correct field index for state
             
             const timeLeft = votingEnds - currentTime;
             
@@ -111,7 +111,7 @@ class NetlifyVotingService {
                 id: i.toString(),
                 proposer: proposalData[5] || proposalData[2],
                 proposalType: Number(proposalData[1]) || 0,
-                state: 1,
+                state: proposalState,
                 assetAddress: proposalData[2] || proposalData[5],
                 amount: proposalData[3] ? proposalData[3].toString() : '0',
                 description: proposalData[4] || `Proposal ${i}`,

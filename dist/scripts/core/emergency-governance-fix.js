@@ -149,13 +149,12 @@ class EmergencyGovernanceFix {
                 for (let i = startFrom; i <= maxToCheck; i++) {
                     try {
                         const proposalData = await assetDao.getProposal(i);
-                        const state = proposalData[10]; // status field from ABI
+                        const proposalState = Number(proposalData[10]); // status field from ABI
                         // 0 = PENDING, 1 = ACTIVE, 2 = SUCCEEDED, 3 = DEFEATED, 4 = QUEUED, 5 = EXECUTED, 6 = CANCELLED
-                        if (Number(state) === 1) {
+                        if (Number(proposalState) === 1) {
                             // Check if voting period is still valid (not expired)
                             // Use EXACT same field mapping as diagnostic script
                             const currentTime = Math.floor(Date.now() / 1000);
-                            const state = Number(proposalData[10]); // Correct field index for state  
                             const votingEnds = Number(proposalData[7]); // Correct field index for end time
                             const timeLeft = votingEnds - currentTime;
                             if (timeLeft > 0) {
