@@ -207,12 +207,12 @@ export const handler: Handler = async (event, context) => {
           };
         }
 
-        // Only check last 3 proposals to stay within time limit
-        const startIndex = Math.max(1, totalProposals - 2);
+        // Check last 25 proposals to find active ones (expanded range)
+        const startIndex = Math.max(1, totalProposals - 24);
         const endIndex = totalProposals;
         const activeProposals = [];
 
-        console.log(`${requestId} INFO   🔍 Checking proposals ${startIndex} to ${endIndex}...`);
+        console.log(`${requestId} INFO   🔍 Checking proposals ${startIndex} to ${endIndex} (expanded range)...`);
 
         // Process proposals sequentially with strict time limits
         for (let i = startIndex; i <= endIndex; i++) {
@@ -230,16 +230,21 @@ export const handler: Handler = async (event, context) => {
                   
                   // Quick validation - check if proposer is zero address
                   if (proposer === '0x0000000000000000000000000000000000000000') {
+                    console.log(`${requestId} WARN   ⚠️ Proposal ${i} has zero address proposer - skipping`);
                     return null;
                   }
 
-                  const proposalState = proposalData[10]; // state is at index 10
-                  if (proposalState === 1n || proposalState === 4n) { // Active or Pending
+                  const proposalState = Number(proposalData[10]); // state is at index 10, convert to number
+                  console.log(`${requestId} INFO   📊 Proposal ${i} state: ${proposalState}`);
+                  
+                  if (proposalState === 1 || proposalState === 4) { // Active (1) or Pending (4)
                     const currentTime = Math.floor(Date.now() / 1000);
                     const endTime = Number(proposalData[9]);
                     
                     // Check if proposal is still within voting period
                     if (endTime > currentTime) {
+                      const timeLeftHours = Math.floor((endTime - currentTime) / 3600);
+                      console.log(`${requestId} INFO   ✅ Found ACTIVE proposal ${i} (${timeLeftHours}h remaining)`);
                       return {
                         id: i,
                         state: proposalState.toString(),
@@ -255,7 +260,8 @@ export const handler: Handler = async (event, context) => {
                         timeLeft: endTime - currentTime
                       };
                     } else {
-                      console.log(`${requestId} INFO   ⏰ Proposal ${i} voting period expired`);
+                      const expiredHours = Math.floor((currentTime - endTime) / 3600);
+                      console.log(`${requestId} INFO   ⏰ Proposal ${i} voting period expired ${expiredHours}h ago`);
                     }
                   }
                   return null;

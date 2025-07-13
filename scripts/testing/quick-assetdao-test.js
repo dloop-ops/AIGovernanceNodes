@@ -2,9 +2,11 @@
 import { ethers } from 'ethers';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { config } from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const assetDaoAbi = JSON.parse(readFileSync(join(process.cwd(), 'abis', 'assetdao.abi.v1.json'), 'utf8')).abi;
 const dloopTokenAbi = JSON.parse(readFileSync(join(process.cwd(), 'abis', 'dlooptoken.abi.v1.json'), 'utf8')).abi;
