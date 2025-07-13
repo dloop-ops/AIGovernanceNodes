@@ -1,0 +1,49 @@
+[
+  {
+    "inputs": [],
+    "name": "getProposalCount",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "uint256", "name": "proposalId", "type": "uint256"}],
+    "name": "proposals",
+    "outputs": [
+      {"internalType": "uint256", "name": "id", "type": "uint256"},
+      {"internalType": "uint8", "name": "proposalType", "type": "uint8"},
+      {"internalType": "address", "name": "proposer", "type": "address"},
+      {"internalType": "uint256", "name": "amount", "type": "uint256"},
+      {"internalType": "string", "name": "description", "type": "string"},
+      {"internalType": "address", "name": "assetAddress", "type": "address"},
+      {"internalType": "uint256", "name": "forVotes", "type": "uint256"},
+      {"internalType": "uint256", "name": "againstVotes", "type": "uint256"},
+      {"internalType": "uint256", "name": "startTime", "type": "uint256"},
+      {"internalType": "uint256", "name": "endTime", "type": "uint256"},
+      {"internalType": "uint8", "name": "state", "type": "uint8"},
+      {"internalType": "bool", "name": "executed", "type": "bool"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "uint256", "name": "proposalId", "type": "uint256"}],
+    "name": "getProposal",
+    "outputs": [
+      {"internalType": "uint256", "name": "id", "type": "uint256"},
+      {"internalType": "uint8", "name": "proposalType", "type": "uint8"},
+      {"internalType": "address", "name": "proposer", "type": "address"},
+      {"internalType": "uint256", "name": "amount", "type": "uint256"},
+      {"internalType": "string", "name": "description", "type": "string"},
+      {"internalType": "address", "name": "assetAddress", "type": "address"},
+      {"internalType": "uint256", "name": "forVotes", "type": "uint256"},
+      {"internalType": "uint256", "name": "againstVotes", "type": "uint256"},
+      {"internalType": "uint256", "name": "startTime", "type": "uint256"},
+      {"internalType": "uint256", "name": "endTime", "type": "uint256"},
+      {"internalType": "uint8", "name": "state", "type": "uint8"},
+      {"internalType": "bool", "name": "executed", "type": "bool"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

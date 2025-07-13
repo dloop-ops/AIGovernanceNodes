@@ -135,7 +135,8 @@ export const handler = async (event, context) => {
                 const assetDAOAddress = process.env.ASSET_DAO_CONTRACT_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8251bc4B3529';
                 const assetDAOABI = [
                     "function getProposalCount() external view returns (uint256)",
-                    "function getProposal(uint256) external view returns (uint256, uint8, address, uint256, string, address, uint256, uint256, uint256, uint256, uint8, bool)"
+                    "function getProposal(uint256) external view returns (uint256, uint8, address, uint256, string, address, uint256, uint256, uint256, uint256, uint8, bool)",
+                    "function proposals(uint256) external view returns (uint256, uint8, address, uint256, string, address, uint256, uint256, uint256, uint256, uint8, bool)"
                 ];
                 // Get proposal count with 3 second timeout
                 const proposalCount = await Promise.race([
@@ -173,9 +174,16 @@ export const handler = async (event, context) => {
                         const proposalResult = await Promise.race([
                             (async () => {
                                 try {
+                                    // Try proposals mapping first, fallback to getProposal
                                     const proposalData = await rpcManager.executeWithRetry(async (provider) => {
                                         const contract = new ethers.Contract(assetDAOAddress, assetDAOABI, provider);
-                                        return await contract.getProposal(i);
+                                        try {
+                                            return await contract.proposals(i);
+                                        }
+                                        catch (error) {
+                                            console.log(`${requestId} WARN   Proposals mapping failed for ${i}, trying getProposal...`);
+                                            return await contract.getProposal(i);
+                                        }
                                     }, 1); // Only 1 retry
                                     // Parse the returned array structure: [id, type, proposer, amount, description, assetAddress, votesFor, votesAgainst, startTime, endTime, state, executed]
                                     const proposer = proposalData[2];
@@ -186,25 +194,28 @@ export const handler = async (event, context) => {
                                     }
                                     const proposalState = Number(proposalData[10]); // state is at index 10, convert to number
                                     console.log(`${requestId} INFO   📊 Proposal ${i} state: ${proposalState}`);
-                                    // CRITICAL FIX: Proper timestamp handling
-                                    const rawEndTime = proposalData[9];
-                                    let endTime;
-                                    if (typeof rawEndTime === 'bigint') {
-                                        endTime = Number(rawEndTime);
+                                    // CRITICAL FIX: Handle zero timestamps and search for actual timestamp fields
+                                    const currentTimeSec = Math.floor(Date.now() / 1000);
+                                    let foundEndTime = 0;
+                                    // Search through all proposal data fields for a valid timestamp
+                                    for (let idx = 0; idx < proposalData.length; idx++) {
+                                        const value = typeof proposalData[idx] === 'bigint' ? Number(proposalData[idx]) : Number(proposalData[idx]);
+                                        // Skip zero values and obviously non-timestamp values
+                                        if (value === 0 || value < 1000000000)
+                                            continue;
+                                        // Convert from milliseconds if needed
+                                        const asSeconds = value > currentTimeSec * 1000 ? Math.floor(value / 1000) : value;
+                                        // Check if it's a reasonable future timestamp (between now and 1 year from now)
+                                        const oneYearFromNow = currentTimeSec + (365 * 24 * 60 * 60);
+                                        if (asSeconds > currentTimeSec && asSeconds < oneYearFromNow) {
+                                            foundEndTime = asSeconds;
+                                            console.log(`${requestId} DEBUG  📅 Found valid endTime at index ${idx}: ${foundEndTime} (${new Date(foundEndTime * 1000).toISOString()})`);
+                                            break;
+                                        }
                                     }
-                                    else {
-                                        endTime = Number(rawEndTime);
-                                    }
-                                    const currentTimeMs = Date.now();
-                                    const currentTimeSec = Math.floor(currentTimeMs / 1000);
-                                    // FIXED: Better timestamp detection logic
-                                    // If endTime is much larger than current timestamp in seconds, it's likely milliseconds
-                                    // Use a more conservative threshold: if > year 2030 in seconds, it's probably milliseconds
-                                    const year2030InSeconds = 1893456000; // Jan 1, 2030
-                                    const isMilliseconds = endTime > year2030InSeconds;
-                                    const normalizedEndTime = isMilliseconds ? Math.floor(endTime / 1000) : endTime;
+                                    const normalizedEndTime = foundEndTime;
                                     const normalizedCurrentTime = currentTimeSec;
-                                    console.log(`${requestId} DEBUG  🕐 Proposal ${i} - Raw endTime: ${endTime}, Normalized: ${normalizedEndTime}, Current: ${normalizedCurrentTime}`);
+                                    console.log(`${requestId} DEBUG  🕐 Proposal ${i} - Raw endTime: ${proposalData[9]}, Normalized: ${normalizedEndTime}, Current: ${normalizedCurrentTime}`);
                                     console.log(`${requestId} DEBUG  📅 Proposal ${i} - End date: ${new Date(normalizedEndTime * 1000).toISOString()}, Current: ${new Date(normalizedCurrentTime * 1000).toISOString()}`);
                                     if (proposalState === 1 || proposalState === 4) { // Active (1) or Pending (4)
                                         // Check if proposal is still within voting period

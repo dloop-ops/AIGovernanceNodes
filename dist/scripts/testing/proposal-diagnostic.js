@@ -8,7 +8,8 @@ async function diagnoseProposals() {
         const assetDAOAddress = '0xa87e662061237a121Ca2E83E77dA8251bc4B3529';
         const assetDAOABI = [
             "function getProposalCount() external view returns (uint256)",
-            "function getProposal(uint256) external view returns (uint256, uint8, address, uint256, string, address, uint256, uint256, uint256, uint256, uint8, bool)"
+            "function getProposal(uint256) external view returns (uint256, uint8, address, uint256, string, address, uint256, uint256, uint256, uint256, uint8, bool)",
+            "function proposals(uint256) external view returns (uint256, uint8, address, uint256, string, address, uint256, uint256, uint256, uint256, uint8, bool)"
         ];
         const contract = new ethers.Contract(assetDAOAddress, assetDAOABI, provider);
         // Get total proposal count
@@ -17,90 +18,184 @@ async function diagnoseProposals() {
         const currentTime = Math.floor(Date.now() / 1000);
         let activeFound = 0;
         let expiredFound = 0;
-        // Check last 50 proposals for comprehensive analysis
-        const startFrom = Math.max(1, Number(totalCount) - 49);
+        // Check last 20 proposals only to prevent EPIPE
+        const startFrom = Math.max(1, Number(totalCount) - 19);
         console.log(`\n🔍 Analyzing proposals ${startFrom} to ${totalCount}:`);
         console.log('ID   | State | End Time           | Status      | Description');
         console.log('-----|-------|--------------------|-----------  |------------');
         for (let i = startFrom; i <= Number(totalCount); i++) {
             try {
-                const proposalData = await contract.getProposal(i);
-                // Enhanced debugging for timestamp issues
-                const rawEndTime = proposalData[9];
-                const rawStartTime = proposalData[8];
-                const state = Number(proposalData[10]);
-                let normalizedEndTime;
-                let normalizedStartTime;
-                // Handle BigInt conversion
-                if (typeof rawEndTime === 'bigint') {
-                    normalizedEndTime = Number(rawEndTime);
+                console.log(`🔍 Testing proposal ${i} with both methods...`);
+                // Try proposals mapping first
+                let proposalData;
+                try {
+                    proposalData = await contract.proposals(i);
+                    console.log(`✅ proposals(${i}) successful`);
                 }
-                else {
-                    normalizedEndTime = Number(rawEndTime);
+                catch (mappingError) {
+                    console.log(`❌ proposals(${i}) failed, trying getProposal...`);
+                    // Fallback to getProposal
+                    try {
+                        proposalData = await contract.getProposal(i);
+                        console.log(`✅ getProposal(${i}) successful`);
+                    }
+                    catch (getError) {
+                        console.log(`❌ Both methods failed for proposal ${i}`);
+                        continue;
+                    }
                 }
-                if (typeof rawStartTime === 'bigint') {
-                    normalizedStartTime = Number(rawStartTime);
-                }
-                else {
-                    normalizedStartTime = Number(rawStartTime);
-                }
-                // FIXED: Better timestamp format detection
-                const currentTimeMs = Date.now();
-                const currentTimeSec = Math.floor(currentTimeMs / 1000);
-                // Use year 2030 as conservative threshold for milliseconds detection
-                const year2030InSeconds = 1893456000;
-                const endIsMs = normalizedEndTime > year2030InSeconds;
-                const startIsMs = normalizedStartTime > year2030InSeconds;
-                const finalEndTime = endIsMs ? Math.floor(normalizedEndTime / 1000) : normalizedEndTime;
-                const finalStartTime = startIsMs ? Math.floor(normalizedStartTime / 1000) : normalizedStartTime;
-                const timeLeft = finalEndTime - currentTimeSec;
+                // Parse proposal data more carefully
+                const proposalId = Number(proposalData[0]);
+                const proposalType = Number(proposalData[1]);
                 const proposer = proposalData[2];
+                const amount = proposalData[3];
                 const description = proposalData[4] || `Proposal ${i}`;
-                // Status determination
+                const assetAddress = proposalData[5];
+                const forVotes = proposalData[6];
+                const againstVotes = proposalData[7];
+                const startTime = Number(proposalData[8]);
+                const endTime = Number(proposalData[9]);
+                const state = Number(proposalData[10]);
+                const executed = Boolean(proposalData[11]);
+                // Enhanced timestamp analysis
+                let finalEndTime = endTime;
+                // Check if timestamp needs conversion from milliseconds
+                if (endTime > currentTime * 1000) {
+                    finalEndTime = Math.floor(endTime / 1000);
+                    console.log(`📅 Converted ${i} endTime from ms: ${endTime} -> ${finalEndTime}`);
+                }
+                // If still zero or invalid, search through all fields for valid timestamps
+                if (finalEndTime === 0 || finalEndTime < 1000000000) {
+                    console.log(`🔍 Searching for valid timestamps in proposal ${i}...`);
+                    for (let idx = 0; idx < proposalData.length; idx++) {
+                        const value = Number(proposalData[idx]);
+                        // Skip obviously non-timestamp values
+                        if (value === 0 || value < 1000000000)
+                            continue;
+                        // Convert from milliseconds if needed
+                        const asSeconds = value > currentTime * 1000 ? Math.floor(value / 1000) : value;
+                        // Check if it's a reasonable future timestamp
+                        const oneYearFromNow = currentTime + (365 * 24 * 60 * 60);
+                        if (asSeconds > currentTime && asSeconds < oneYearFromNow) {
+                            finalEndTime = asSeconds;
+                            console.log(`📅 Found valid endTime at index ${idx}: ${finalEndTime}`);
+                            break;
+                        }
+                    }
+                }
+                const timeLeft = finalEndTime - currentTime;
+                // Enhanced status determination
                 let status = 'UNKNOWN';
                 if (proposer === '0x0000000000000000000000000000000000000000') {
                     status = 'INVALID';
                 }
-                else if (state === 1 && timeLeft > 0) {
-                    status = `ACTIVE (${Math.floor(timeLeft / 3600)}h left)`;
-                }
-                else if (state === 1 && timeLeft <= 0) {
-                    const expiredHours = Math.floor(Math.abs(timeLeft) / 3600);
-                    status = `EXPIRED (${expiredHours}h ago)`;
-                }
                 else {
-                    status = `STATE_${state}`;
+                    switch (state) {
+                        case 0:
+                            status = 'PENDING';
+                            break;
+                        case 1:
+                            if (finalEndTime === 0) {
+                                status = 'ACTIVE (no end time)';
+                            }
+                            else if (timeLeft > 0) {
+                                const hoursLeft = Math.floor(timeLeft / 3600);
+                                const daysLeft = Math.floor(hoursLeft / 24);
+                                status = daysLeft > 0 ? `ACTIVE (${daysLeft}d ${hoursLeft % 24}h left)` : `ACTIVE (${hoursLeft}h left)`;
+                            }
+                            else {
+                                const expiredHours = Math.floor(Math.abs(timeLeft) / 3600);
+                                const expiredDays = Math.floor(expiredHours / 24);
+                                status = expiredDays > 0 ? `EXPIRED (${expiredDays}d ago)` : `EXPIRED (${expiredHours}h ago)`;
+                            }
+                            break;
+                        case 2:
+                            status = 'CANCELLED';
+                            break;
+                        case 3:
+                            status = 'DEFEATED';
+                            break;
+                        case 4:
+                            status = 'SUCCEEDED';
+                            break;
+                        case 5:
+                            status = 'QUEUED';
+                            break;
+                        case 6:
+                            status = 'EXPIRED';
+                            break;
+                        case 7:
+                            status = 'EXECUTED';
+                            break;
+                        default:
+                            status = `STATE_${state}`;
+                    }
                 }
-                const endTimeFormatted = new Date(finalEndTime * 1000).toISOString().slice(0, 19);
-                console.log(`${String(i).padStart(4)} | ${String(state).padStart(5)} | ${endTimeFormatted} | ${status.padEnd(15)} | ${description.slice(0, 40)}...`);
-                console.log(`     | RAW: ${normalizedEndTime} | NORM: ${finalEndTime} | LEFT: ${timeLeft}s`);
+                const endTimeFormatted = finalEndTime === 0 ?
+                    '1970-01-01T00:00:00' :
+                    new Date(finalEndTime * 1000).toISOString().slice(0, 19);
+                // Safe console output to prevent EPIPE
+                try {
+                    console.log(`${String(i).padStart(4)} | ${String(state).padStart(5)} | ${endTimeFormatted} | ${status.padEnd(15)} | ${description.slice(0, 40)}...`);
+                    console.log(`     | RAW: ${endTime} | NORM: ${finalEndTime} | LEFT: ${timeLeft}s | CURRENT: ${currentTime}`);
+                }
+                catch (writeError) {
+                    // If we can't write to console, just continue
+                    break;
+                }
                 if (state === 1 && timeLeft > 0) {
                     activeFound++;
                 }
                 else if (state === 1 && timeLeft <= 0) {
                     expiredFound++;
                 }
+                // Add small delay to prevent overwhelming output
+                await new Promise(resolve => setTimeout(resolve, 100));
             }
             catch (error) {
-                console.log(`${String(i).padStart(4)} | ERROR | ${error instanceof Error ? error.message.slice(0, 50) : 'Unknown error'}`);
+                try {
+                    console.log(`${String(i).padStart(4)} | ERROR | ${error instanceof Error ? error.message.slice(0, 50) : 'Unknown error'}`);
+                }
+                catch (writeError) {
+                    // If we can't write error either, break
+                    break;
+                }
             }
         }
-        console.log('\n📋 SUMMARY:');
-        console.log(`   ✅ Active proposals found: ${activeFound}`);
-        console.log(`   ⏰ Expired proposals found: ${expiredFound}`);
-        console.log(`   📊 Total proposals analyzed: ${Number(totalCount) - startFrom + 1}`);
-        if (activeFound === 0 && expiredFound > 0) {
-            console.log('\n🚨 ISSUE DETECTED: All state=1 proposals are expired!');
-            console.log('   This suggests a timestamp conversion problem.');
+        // Safe summary output
+        try {
+            console.log('\n📋 SUMMARY:');
+            console.log(`   ✅ Active proposals found: ${activeFound}`);
+            console.log(`   ⏰ Expired proposals found: ${expiredFound}`);
+            console.log(`   📊 Total proposals analyzed: ${Number(totalCount) - startFrom + 1}`);
+            if (activeFound === 0 && expiredFound > 0) {
+                console.log('\n🚨 ISSUE DETECTED: All state=1 proposals are expired!');
+                console.log('   This suggests a timestamp conversion problem.');
+            }
+            else if (activeFound > 0) {
+                console.log('\n✅ SUCCESS: Found active proposals!');
+            }
+        }
+        catch (writeError) {
+            // Silent exit if we can't write summary
         }
     }
     catch (error) {
-        console.error('❌ Diagnostic failed:', error);
+        try {
+            console.error('❌ Diagnostic failed:', error);
+        }
+        catch (writeError) {
+            // Silent exit
+        }
     }
 }
-// Run if called directly (ES module way to check)
+// Run if called directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-    diagnoseProposals();
+    diagnoseProposals().then(() => {
+        process.exit(0);
+    }).catch(() => {
+        process.exit(1);
+    });
 }
 export { diagnoseProposals };
 //# sourceMappingURL=proposal-diagnostic.js.map
