@@ -185,9 +185,9 @@ export class NodeManager {
 
     // Filter enabled nodes
     const enabledConfigs = configs.filter(config => config.enabled);
-    
+
     logger.info(`Loaded ${enabledConfigs.length} enabled node configurations out of ${configs.length} total`);
-    
+
     return enabledConfigs;
   }
 
@@ -381,43 +381,18 @@ export class NodeManager {
   }
 
   /**
-   * Execute daily proposal creation for all nodes
+   * AI Governance Nodes do not create proposals - they focus on voting
+   * Proposals are created by Investment Nodes or human participants
    */
   private async executeProposalCreation(): Promise<void> {
-    logger.info('Executing daily proposal creation for all nodes');
-
-    const activeNodes = Array.from(this.nodes.values()).filter(node => node.isNodeActive());
-    let successful = 0;
-    let failed = 0;
-    const errors: any[] = [];
-
-    // Execute sequentially to avoid RPC batch limits
-    for (const node of activeNodes) {
-      try {
-        await node.createDailyProposal();
-        successful++;
-        
-        // Add delay between operations
-        if (successful < activeNodes.length) {
-          await new Promise(resolve => setTimeout(resolve, 300));
-        }
-      } catch (error) {
-        failed++;
-        errors.push(error);
-        logger.warn(`Proposal creation failed for node ${node.getNodeId()}`, { error });
-      }
-    }
-
-    logger.info('Daily proposal creation completed', {
-      totalNodes: this.nodes.size,
-      activeNodes: activeNodes.length,
-      successful,
-      failed
+    logger.info('GovernanceNodes do not create proposals - focusing on voting automation', {
+      component: 'governance',
+      note: 'As per d-loop whitepaper: AI Governance Nodes vote, Investment Nodes create proposals'
     });
 
-    if (failed > 0) {
-      logger.error('Some proposal creations failed', { errors });
-    }
+    // No-op: Governance nodes only vote, they don't create proposals
+    // Instead, ensure all nodes are ready for voting
+    await this.checkAndVoteOnProposals();
   }
 
   /**
@@ -436,7 +411,7 @@ export class NodeManager {
       try {
         await node.checkAndVoteOnProposals();
         successful++;
-        
+
         // Add delay between operations
         if (successful < activeNodes.length) {
           await new Promise(resolve => setTimeout(resolve, 400));
@@ -466,13 +441,13 @@ export class NodeManager {
   private async refreshMarketData(): Promise<void> {
     try {
       logger.info('Refreshing market data');
-      
+
       // Clear cache to force fresh data fetch
       this.marketDataService.clearCache();
-      
+
       // Fetch fresh market data
       await this.marketDataService.fetchCurrentPrices();
-      
+
       logger.info('Market data refreshed successfully');
     } catch (error) {
       logger.error('Failed to refresh market data', { error });
@@ -488,13 +463,13 @@ export class NodeManager {
 
       // Check wallet connectivity
       const walletConnectivity = await this.walletService.validateConnectivity();
-      
+
       // Check market data freshness
       const marketDataFresh = this.marketDataService.isCacheValid();
-      
+
       // Count active nodes
       const activeNodes = Array.from(this.nodes.values()).filter(node => node.isNodeActive()).length;
-      
+
       // Check recent activity
       const nodeStatuses = Array.from(this.nodes.values()).map(node => node.getStatus());
       const recentlyActive = nodeStatuses.filter(status => 
@@ -514,11 +489,11 @@ export class NodeManager {
       if (!walletConnectivity) {
         logger.warn('Wallet connectivity issues detected');
       }
-      
+
       if (!marketDataFresh) {
         logger.warn('Market data may be stale');
       }
-      
+
       if (activeNodes < this.nodes.size) {
         logger.warn(`Some nodes are inactive: ${activeNodes}/${this.nodes.size} active`);
       }
@@ -537,11 +512,11 @@ export class NodeManager {
 
       // Get token status for all nodes
       const tokenStatuses = await this.tokenService.getTokenStatusForAllNodes();
-      
+
       // Log token status summary
       const totalNodes = tokenStatuses.length;
       const nodesWithSufficientTokens = tokenStatuses.filter(status => status.hasMinimum).length;
-      
+
       logger.info('Token balance check completed', {
         totalNodes,
         nodesWithSufficientTokens,
@@ -607,13 +582,13 @@ export class NodeManager {
 
       // Get wallet balances
       const balances = await this.walletService.getAllBalances();
-      
+
       // Get node statuses
       const nodeStatuses = Array.from(this.nodes.values()).map(node => node.getStatus());
-      
+
       // Get task statuses
       const taskStatuses = this.scheduler.getTaskStatus();
-      
+
       // Calculate aggregate statistics
       const totalProposals = nodeStatuses.reduce((sum, status) => sum + status.stats.proposalsCreated, 0);
       const totalVotes = nodeStatuses.reduce((sum, status) => sum + status.stats.votesAcast, 0);
@@ -737,7 +712,7 @@ export class NodeManager {
    */
   async getActiveProposals(): Promise<any[]> {
     const activeNodes = Array.from(this.nodes.values()).filter(node => node.isNodeActive());
-    
+
     if (activeNodes.length === 0) {
       throw new Error('No active nodes available to fetch proposals');
     }
@@ -745,11 +720,51 @@ export class NodeManager {
     // Use the first active node's contract service
     const firstNode = activeNodes[0];
     const contractService = (firstNode as any).contractService;
-    
+
     if (!contractService) {
       throw new Error('Contract service not available');
     }
 
     return await contractService.getActiveProposals();
   }
+
+    /**
+   * Check and Vote on Proposals
+   */
+     private async checkAndVoteOnProposals(): Promise<void> {
+      logger.info('Checking and Voting on Proposals for all nodes');
+
+      const activeNodes = Array.from(this.nodes.values()).filter(node => node.isNodeActive());
+      let successful = 0;
+      let failed = 0;
+      const errors: any[] = [];
+  
+      // Execute sequentially to avoid RPC batch limits
+      for (const node of activeNodes) {
+        try {
+          await node.checkAndVoteOnProposals();
+          successful++;
+  
+          // Add delay between operations
+          if (successful < activeNodes.length) {
+            await new Promise(resolve => setTimeout(resolve, 400));
+          }
+        } catch (error) {
+          failed++;
+          errors.push(error);
+          logger.warn(`Voting operation failed for node ${node.getNodeId()}`, { error });
+        }
+      }
+  
+      logger.info('Checking and Voting Completed', {
+        totalNodes: this.nodes.size,
+        activeNodes: activeNodes.length,
+        successful,
+        failed
+      });
+  
+      if (failed > 0) {
+        logger.error('Some voting operations failed', { errors });
+      }
+    }
 }

@@ -301,39 +301,17 @@ export class NodeManager {
         logger.info('All scheduled tasks configured and started');
     }
     /**
-     * Execute daily proposal creation for all nodes
+     * AI Governance Nodes do not create proposals - they focus on voting
+     * Proposals are created by Investment Nodes or human participants
      */
     async executeProposalCreation() {
-        logger.info('Executing daily proposal creation for all nodes');
-        const activeNodes = Array.from(this.nodes.values()).filter(node => node.isNodeActive());
-        let successful = 0;
-        let failed = 0;
-        const errors = [];
-        // Execute sequentially to avoid RPC batch limits
-        for (const node of activeNodes) {
-            try {
-                await node.createDailyProposal();
-                successful++;
-                // Add delay between operations
-                if (successful < activeNodes.length) {
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                }
-            }
-            catch (error) {
-                failed++;
-                errors.push(error);
-                logger.warn(`Proposal creation failed for node ${node.getNodeId()}`, { error });
-            }
-        }
-        logger.info('Daily proposal creation completed', {
-            totalNodes: this.nodes.size,
-            activeNodes: activeNodes.length,
-            successful,
-            failed
+        logger.info('GovernanceNodes do not create proposals - focusing on voting automation', {
+            component: 'governance',
+            note: 'As per d-loop whitepaper: AI Governance Nodes vote, Investment Nodes create proposals'
         });
-        if (failed > 0) {
-            logger.error('Some proposal creations failed', { errors });
-        }
+        // No-op: Governance nodes only vote, they don't create proposals
+        // Instead, ensure all nodes are ready for voting
+        await this.checkAndVoteOnProposals();
     }
     /**
      * Execute voting round for all nodes
@@ -612,6 +590,41 @@ export class NodeManager {
             throw new Error('Contract service not available');
         }
         return await contractService.getActiveProposals();
+    }
+    /**
+   * Check and Vote on Proposals
+   */
+    async checkAndVoteOnProposals() {
+        logger.info('Checking and Voting on Proposals for all nodes');
+        const activeNodes = Array.from(this.nodes.values()).filter(node => node.isNodeActive());
+        let successful = 0;
+        let failed = 0;
+        const errors = [];
+        // Execute sequentially to avoid RPC batch limits
+        for (const node of activeNodes) {
+            try {
+                await node.checkAndVoteOnProposals();
+                successful++;
+                // Add delay between operations
+                if (successful < activeNodes.length) {
+                    await new Promise(resolve => setTimeout(resolve, 400));
+                }
+            }
+            catch (error) {
+                failed++;
+                errors.push(error);
+                logger.warn(`Voting operation failed for node ${node.getNodeId()}`, { error });
+            }
+        }
+        logger.info('Checking and Voting Completed', {
+            totalNodes: this.nodes.size,
+            activeNodes: activeNodes.length,
+            successful,
+            failed
+        });
+        if (failed > 0) {
+            logger.error('Some voting operations failed', { errors });
+        }
     }
 }
 //# sourceMappingURL=NodeManager.js.map

@@ -70,10 +70,11 @@ class DLoopGovernanceAgent {
             logger.info(`🌐 Using port ${availablePort} for web server`);
             // Start the web server with the available port
             await this.webServer.start(availablePort);
-            // Add delay to prevent overwhelming RPC providers during startup
-            logger.info('⏳ Initializing with startup delay to prevent RPC rate limiting...');
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            // Start the node manager (this can take longer)
+            // Add longer delay to prevent overwhelming RPC providers during startup
+            logger.info('⏳ Initializing with extended startup delay to prevent RPC rate limiting...');
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            logger.info('🔗 Starting RPC connection initialization...');
+            // Start the node manager with extended timeout (this can take longer)
             await this.nodeManager.start();
             console.log('\n🎉 DLoop AI Governance Nodes are now OPERATIONAL!');
             console.log('====================================================');
@@ -136,12 +137,16 @@ class DLoopGovernanceAgent {
             'AI_NODE_2_PRIVATE_KEY',
             'AI_NODE_3_PRIVATE_KEY',
             'AI_NODE_4_PRIVATE_KEY',
-            'AI_NODE_5_PRIVATE_KEY',
-            'ETHEREUM_RPC_URL'
+            'AI_NODE_5_PRIVATE_KEY'
         ];
         const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
         if (missingVars.length > 0) {
             throw new GovernanceError(`Missing required environment variables: ${missingVars.join(', ')}`, 'MISSING_ENV_VARS');
+        }
+        // Check for RPC URL - use fallback if not provided
+        if (!process.env.ETHEREUM_RPC_URL && !process.env.INFURA_SEPOLIA_URL) {
+            logger.warn('No RPC URL provided, will use default endpoints with conservative rate limiting');
+            process.env.ETHEREUM_RPC_URL = 'https://sepolia.infura.io/v3/ca485bd6567e4c5fb5693ee66a5885d8';
         }
         // Validate private key formats
         for (let i = 1; i <= 5; i++) {

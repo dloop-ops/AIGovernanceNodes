@@ -115,42 +115,16 @@ export class GovernanceNode {
         this.state.isActive = false;
     }
     /**
-     * Create daily investment proposal
+     * AI Governance Nodes do not create proposals - they only vote on existing proposals
+     * Proposals are created by Investment Nodes or human participants
      */
     async createDailyProposal() {
-        if (!this.isActive) {
-            logger.warn(`Node ${this.nodeId} is not active, skipping proposal creation`);
-            return;
-        }
-        try {
-            logger.info(`Creating daily proposal for node ${this.nodeId}`);
-            // Get market analysis
-            await this.marketDataService.analyzeMarketData();
-            // Generate proposals based on strategy and market analysis
-            const proposals = await this.proposalService.generateProposals(this.nodeId);
-            if (!proposals || proposals.length === 0) {
-                logger.info(`Strategy decided not to create proposal for ${this.nodeId}`);
-                return;
-            }
-            // Select the first proposal (they should be prioritized)
-            const proposalData = proposals[0];
-            // Submit proposal to AssetDAO
-            const txHash = await this.contractService.createProposal(this.nodeIndex, proposalData);
-            this.state.proposalsCreated++;
-            this.state.lastProposalTime = Date.now();
-            logger.info(`Proposal created successfully`, {
-                nodeId: this.nodeId,
-                txHash,
-                proposalType: proposalData.proposalType,
-                amount: proposalData.amount
-            });
-        }
-        catch (error) {
-            logger.error(`Failed to create proposal for node ${this.nodeId}`, {
-                error: error instanceof Error ? error.message : String(error)
-            });
-            throw new GovernanceError(`Proposal creation failed for ${this.nodeId}: ${error instanceof Error ? error.message : String(error)}`, 'PROPOSAL_CREATION_ERROR');
-        }
+        logger.info(`GovernanceNode ${this.nodeId} does not create proposals - only votes on them`, {
+            component: 'governance',
+            note: 'As per d-loop whitepaper: AI Governance Nodes vote, Investment Nodes create proposals'
+        });
+        // No-op: Governance nodes only vote, they don't create proposals
+        return;
     }
     /**
      * Check and vote on active AssetDAO proposals

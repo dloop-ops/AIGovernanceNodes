@@ -287,17 +287,26 @@ export class GovernanceNode {
     try {
       // Basic validation checks
       if (!proposal.id || !proposal.proposer) {
+        console.log(`❌ Proposal ${proposal.id} missing required fields`);
         return false;
       }
 
-      // Check if proposal is still active
-      if (proposal.state !== ProposalState.ACTIVE) {
+      // Check if proposal state is defined and active
+      if (typeof proposal.state === 'undefined' || proposal.state === null) {
+        console.log(`❌ Proposal ${proposal.id} has undefined state`);
+        return false;
+      }
+
+      // Check if proposal is still active (state = 1 for ACTIVE)
+      if (proposal.state !== 1) {
+        console.log(`❌ Proposal ${proposal.id} is not active (state: ${proposal.state})`);
         return false;
       }
 
       // Check if proposal hasn't expired
       const now = Math.floor(Date.now() / 1000);
       if (proposal.endTime && proposal.endTime < now) {
+        console.log(`❌ Proposal ${proposal.id} has expired`);
         return false;
       }
 

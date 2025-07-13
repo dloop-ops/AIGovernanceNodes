@@ -184,31 +184,31 @@ export class RpcManager {
   ): Promise<T> {
     let lastError: Error | null = null;
     
-    // Add longer delay before any RPC operation to prevent rate limiting
-    await this.delay(Math.random() * 1000 + 500); // 500-1500ms delay
+    // Add much longer delay before any RPC operation to prevent rate limiting
+    await this.delay(Math.random() * 2000 + 1000); // 1000-3000ms delay
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        // Get current provider and enforce rate limiting
+        // Get current provider and enforce strict rate limiting
         const provider = await this.getCurrentProvider();
         
-        // Ensure minimum time between requests (more aggressive)
+        // Ensure minimum time between requests (much more conservative)
         const now = Date.now();
         const endpoint = this.endpoints.find(e => e.name === this.metrics.activeProvider);
         if (endpoint) {
           const timeSinceLastUse = now - endpoint.lastUsed;
-          const minInterval = 1000 / (endpoint.maxRequestsPerSecond || 1); // Minimum time between requests
+          const minInterval = Math.max(2000, 1000 / (endpoint.maxRequestsPerSecond || 0.5)); // At least 2 seconds between requests
           if (timeSinceLastUse < minInterval) {
-            await this.delay(minInterval - timeSinceLastUse + 100); // Extra 100ms buffer
+            await this.delay(minInterval - timeSinceLastUse + 500); // Extra 500ms buffer
           }
           endpoint.lastUsed = now;
         }
 
-        // Execute the operation with timeout
+        // Execute the operation with longer timeout
         const result = await Promise.race([
           operation(provider),
           new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('Operation timeout')), 10000) // 10s timeout
+            setTimeout(() => reject(new Error('Operation timeout')), 15000) // 15s timeout
           )
         ]);
 
@@ -216,6 +216,13 @@ export class RpcManager {
         if (endpoint) {
           endpoint.errorCount = 0;
         }
+
+        this.metrics.successfulRequests++;
+        logger.debug(`${description} succeeded`, {
+          component: 'contract',
+          provider: this.metrics.activeProvider,
+          attempt
+        });
 
         return result;
 
@@ -228,45 +235,59 @@ export class RpcManager {
                            errorMessage.includes('rate limit') ||
                            errorMessage.includes('batch of more than 3') ||
                            errorMessage.includes('missing response for request') ||
-                           errorMessage.includes('bad_data');
+                           errorMessage.includes('bad_data') ||
+                           errorMessage.includes('-32005') ||
+                           errorMessage.includes('429');
 
-        // Check if this is drpc.org (which we want to avoid completely)
-        const isDrpcError = errorMessage.includes('drpc.org');
+        // Check for network detection issues
+        const isNetworkError = errorMessage.includes('failed to detect network') ||
+                              errorMessage.includes('cannot start up') ||
+                              errorMessage.includes('network error') ||
+                              errorMessage.includes('enotfound') ||
+                              errorMessage.includes('timeout');
 
-        if (isDrpcError) {
-          logger.error('🚫 Detected drpc.org usage - rotating provider immediately', {
+        if (isRateLimit) {
+          this.metrics.rateLimitHits++;
+          logger.warn(`Rate limit detected, rotating provider`, {
             component: 'contract',
-            error: lastError.message,
+            error: lastError.message.substring(0, 100),
             currentProvider: this.metrics.activeProvider
           });
-        }
-
-        if (isRateLimit || isDrpcError) {
-          this.rotateProvider('Rate limit or drpc.org detected');
-          await this.delay(2000 + (attempt * 1000)); // Exponential backoff: 3s, 4s, 5s
+          this.rotateProvider('Rate limit detected');
+          await this.delay(3000 + (attempt * 2000)); // Longer backoff: 5s, 7s, 9s
+        } else if (isNetworkError) {
+          logger.warn(`Network error detected, rotating provider`, {
+            component: 'contract',
+            error: lastError.message.substring(0, 100),
+            currentProvider: this.metrics.activeProvider
+          });
+          this.rotateProvider('Network error detected');
+          await this.delay(2000 + (attempt * 1500)); // Backoff: 3.5s, 5s, 6.5s
         } else {
-          await this.delay(1000 * attempt); // Regular backoff: 1s, 2s, 3s
+          await this.delay(1500 * attempt); // Regular backoff: 1.5s, 3s, 4.5s
         }
 
+        this.metrics.failedRequests++;
         logger.warn(`${description} attempt ${attempt}/${maxRetries} failed`, {
           component: 'contract',
           provider: this.metrics.activeProvider,
-          error: lastError.message,
+          error: lastError.message.substring(0, 100),
           isRateLimit,
-          isDrpcError
+          isNetworkError
         });
 
         // Mark endpoint as unhealthy if too many errors
         const endpoint = this.endpoints.find(e => e.name === this.metrics.activeProvider);
         if (endpoint) {
           endpoint.errorCount++;
-          if (endpoint.errorCount >= 3) {
+          if (endpoint.errorCount >= 2) { // More aggressive threshold
             endpoint.isHealthy = false;
             logger.warn(`Marking provider as unhealthy`, {
               component: 'contract',
               provider: this.metrics.activeProvider,
               errorCount: endpoint.errorCount
             });
+            this.rotateProvider('Provider marked unhealthy');
           }
         }
       }
@@ -621,13 +642,13 @@ export class RpcManager {
 
     const networkName = process.env.NETWORK_NAME || 'sepolia';
     
-    // Enhanced endpoint configuration - removed problematic endpoints
+    // Enhanced endpoint configuration with conservative rate limits
     const endpointConfigs = [
       {
-        url: process.env.INFURA_SEPOLIA_URL || 'https://sepolia.infura.io/v3/ca485bd6567e4c5fb5693ee66a5885d8',
-        name: 'Primary Infura',
+        url: process.env.ETHEREUM_RPC_URL || process.env.INFURA_SEPOLIA_URL || 'https://sepolia.infura.io/v3/ca485bd6567e4c5fb5693ee66a5885d8',
+        name: 'Primary RPC',
         priority: 1,
-        maxRequestsPerSecond: parseInt(process.env.API_RATE_LIMIT_PER_MINUTE || '60') / 60,
+        maxRequestsPerSecond: 0.5, // Very conservative: 1 request per 2 seconds
         lastUsed: 0,
         errorCount: 0,
         isHealthy: true
@@ -636,25 +657,34 @@ export class RpcManager {
         url: 'https://sepolia.infura.io/v3/60755064a92543a1ac7aaf4e20b71cdf',
         name: 'Secondary Infura',
         priority: 2,
-        maxRequestsPerSecond: parseInt(process.env.API_RATE_LIMIT_PER_MINUTE || '60') / 60,
+        maxRequestsPerSecond: 0.4, // Even more conservative
         lastUsed: 0,
         errorCount: 0,
         isHealthy: true
       },
       {
         url: 'https://sepolia.gateway.tenderly.co/public',
-        name: 'Tenderly',
+        name: 'Tenderly Public',
         priority: 3,
-        maxRequestsPerSecond: 15,
+        maxRequestsPerSecond: 0.3, // Very conservative for public endpoint
         lastUsed: 0,
         errorCount: 0,
         isHealthy: true
       },
       {
         url: 'https://ethereum-sepolia-rpc.publicnode.com',
-        name: 'Ethereum Public',
+        name: 'PublicNode',
         priority: 4,
-        maxRequestsPerSecond: 10,
+        maxRequestsPerSecond: 0.2, // Ultra conservative for public endpoint
+        lastUsed: 0,
+        errorCount: 0,
+        isHealthy: true
+      },
+      {
+        url: 'https://rpc.sepolia.org',
+        name: 'Sepolia.org',
+        priority: 5,
+        maxRequestsPerSecond: 0.2,
         lastUsed: 0,
         errorCount: 0,
         isHealthy: true

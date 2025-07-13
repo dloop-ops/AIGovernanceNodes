@@ -28,7 +28,8 @@ export declare class GovernanceNode {
      */
     stop(): void;
     /**
-     * Create daily investment proposal
+     * AI Governance Nodes do not create proposals - they only vote on existing proposals
+     * Proposals are created by Investment Nodes or human participants
      */
     createDailyProposal(): Promise<void>;
     /**

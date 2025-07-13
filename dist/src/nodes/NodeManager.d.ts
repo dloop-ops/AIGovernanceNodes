@@ -51,7 +51,8 @@ export declare class NodeManager {
      */
     private setupScheduledTasks;
     /**
-     * Execute daily proposal creation for all nodes
+     * AI Governance Nodes do not create proposals - they focus on voting
+     * Proposals are created by Investment Nodes or human participants
      */
     private executeProposalCreation;
     /**
@@ -116,5 +117,9 @@ export declare class NodeManager {
      * Public method to get active proposals (for API access)
      */
     getActiveProposals(): Promise<any[]>;
+    /**
+   * Check and Vote on Proposals
+   */
+    private checkAndVoteOnProposals;
 }
 //# sourceMappingURL=NodeManager.d.ts.map
