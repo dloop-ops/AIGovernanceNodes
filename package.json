@@ -36,8 +36,7 @@
     "test-connection": "node scripts/testing/connection-diagnostic.js",
     "deploy": "npm run build && netlify deploy --prod --dir=dist",
     "deploy-automation": "npm run build && netlify deploy --prod --dir=dist",
-    "preview": "netlify deploy --dir=dist",
-    "clean": "rm -rf dist && mkdir -p dist"
+    "preview": "netlify deploy --dir=dist"
   },
   "keywords": [
     "elizaOS",

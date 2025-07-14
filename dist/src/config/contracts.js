@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getAssetAddress = exports.getAssetAddresses = exports.assetAddresses = exports.getCurrentContractAddresses = exports.getContractAddresses = exports.contractAddresses = void 0;
 exports.contractAddresses = {
     sepolia: {
-        assetDao: process.env.ASSET_DAO_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8251bc4B3529',
+        assetDao: process.env.ASSET_DAO_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8C251bc4B352',
         aiNodeRegistry: process.env.AI_NODE_REGISTRY_ADDRESS || '0x0045c7D99489f1d8A5900243956B0206344417DD',
         dloopToken: process.env.DLOOP_TOKEN_ADDRESS || '0x05B366778566e93abfB8e4A9B794e4ad006446b4',
         soulboundNft: process.env.SOULBOUND_NFT_ADDRESS || '0x6391C14631b2Be5374297fA3110687b80233104c'

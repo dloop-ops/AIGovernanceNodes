@@ -95,12 +95,30 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
         const proposalData = await contract.getProposal(proposalId);
 
+        // Enhanced validation - check if proposal data is valid
         if (!proposalData || proposalData.length < 12) {
-          console.log(`${requestId} WARN   ⚠️ Invalid proposal data for ${proposalId}`);
+          console.log(`${requestId} WARN   ⚠️ Proposal ${proposalId} has invalid data structure - skipping`);
           continue;
         }
 
-        const proposalState = Number(proposalData[10]);
+        // Reset failure counter on success
+
+        const proposer = proposalData[2];
+
+        // Quick validation - check if proposer is zero address
+        if (!proposer || proposer === '0x0000000000000000000000000000000000000000') {
+          console.log(`${requestId} WARN   ⚠️ Proposal ${proposalId} has zero address proposer - skipping`);
+          continue;
+        }
+
+        // Fixed: Properly handle proposal state parsing with fallback
+        let proposalState;
+        try {
+          proposalState = proposalData[10] !== undefined ? Number(proposalData[10]) : 0;
+        } catch (error) {
+          console.log(`${requestId} WARN   ⚠️ Failed to parse proposal state for ${proposalId}, defaulting to 0`);
+          proposalState = 0;
+        }
 
         // Only process active proposals (state = 1)
         if (proposalState !== 1) {

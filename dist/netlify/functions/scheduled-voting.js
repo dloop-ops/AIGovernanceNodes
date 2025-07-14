@@ -31,7 +31,7 @@ async function getActiveProposals() {
     }
 
     // AssetDAO contract details
-    const assetDAOAddress = '0xa87e662061237a121ca2e83e77da8251bc4b3529';
+    const assetDAOAddress = '0xa87e662061237a121ca2e83e77da8251bc4b352';
     const assetDAOABI = [
       "function getProposalCount() external view returns (uint256)",
       "function getProposal(uint256) external view returns (uint256, uint8, address, uint256, string, address, uint256, uint256, uint256, uint256, uint8, bool)",
