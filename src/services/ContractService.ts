@@ -309,61 +309,20 @@ export class ContractService {
     }
   }
 
-  /**
-   * Get proposal details
-   */
-  async getProposal(proposalId: string): Promise<Proposal> {
-    try {
-      const proposalData = await this.assetDaoContract.getProposal(proposalId);
-
-      // Enhanced logging for debugging field mappings
-      logger.debug(`Raw proposal data for ${proposalId}:`, {
-        proposer: proposalData.proposer,
-        proposalType: proposalData.proposalType,
-        assetAddress: proposalData.assetAddress,
-        amount: proposalData.amount?.toString(),
-        description: proposalData.description?.substring(0, 100),
-        // Check all possible vote field names
-        yesVotes: proposalData.yesVotes?.toString(),
-        noVotes: proposalData.noVotes?.toString(),
-        votesFor: proposalData.votesFor?.toString(),
-        votesAgainst: proposalData.votesAgainst?.toString(),
-        // Check all possible time field names
-        createdAt: proposalData.createdAt?.toString(),
-        votingEnds: proposalData.votingEnds?.toString(),
-        startTime: proposalData.startTime?.toString(),
-        endTime: proposalData.endTime?.toString(),
-        // Check state fields
-        status: proposalData.status,
-        state: proposalData.state,
-        executed: proposalData.executed,
-        cancelled: proposalData.cancelled
-      });
-
-      // Map proposal data according to exact ABI structure from assetdao.abi.v1.json
-      // getProposal returns: [id, proposalType, proposer, amount, description, assetAddress, votesFor, votesAgainst, startTime, endTime, state, executed]
-      return {
-        id: proposalId,
-        proposer: proposalData[2] || '',                      // proposer at index 2
-        proposalType: this.mapProposalType(proposalData[1]).toString(),  // proposalType at index 1
-        assetAddress: proposalData[5] || '',                  // assetAddress at index 5
-        amount: ethers.formatEther(proposalData[3] || 0),     // amount at index 3
-        description: proposalData[4] || `Proposal ${proposalId}`, // description at index 4
-        votesFor: ethers.formatEther(proposalData[6] || 0),   // votesFor at index 6
-        votesAgainst: ethers.formatEther(proposalData[7] || 0), // votesAgainst at index 7
-        startTime: Number(proposalData[8] || 0),              // startTime at index 8
-        endTime: Number(proposalData[9] || 0),                // endTime at index 9
-        executed: proposalData[11] || false,                  // executed at index 11
-        cancelled: false,                                     // Not directly available in ABI
-        state: this.mapProposalState(proposalData[10] || 0),  // state at index 10
-        title: `Proposal ${proposalId}`,
-        asset: 'USDC',
-        status: 'ACTIVE',
-        totalSupply: 1000000,
-        quorumReached: false
-      };
-    } catch (error) {
-      throw new GovernanceError(
+    // Enhanced logging for debugging field mappings
+    logger.debug(`Raw proposal data for ${proposalId}:`, {
+      proposer: proposalData.proposer,
+      proposalType: proposalData.proposalType,
+      assetAddress: proposalData.assetAddress,
+      amount: proposalData.amount?.toString(),
+      description: proposalData.description?.substring(0, 100),
+      // Check all possible vote field names
+      forVotes: proposalData.forVotes?.toString() || proposalData[7]?.toString(),
+      againstVotes: proposalData.againstVotes?.toString() || proposalData[8]?.toString(),
+      startTime: proposalData.startTime?.toString(),
+      endTime: proposalData.endTime?.toString(),
+      state: proposalData[10] || 0, // Use raw state value for logging
+      rawData: JSON.stringify(proposalData, null, 2)
         `Failed to get proposal ${proposalId}: ${error instanceof Error ? error.message : String(error)}`,
         'PROPOSAL_FETCH_ERROR'
       );
@@ -1030,7 +989,7 @@ export class ContractService {
       try {
         // Add timeout for individual proposal queries
         const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error(`Proposal ${proposalId} query timeout`)), 3000);
+          setTimeout(() => reject(new Error(`Proposal ${proposalId} query timeout`)), 5000); // Increased timeout to 5s
         });
 
         const proposalPromise = this.assetDaoContract.getProposal(proposalId);
@@ -1041,41 +1000,113 @@ export class ContractService {
           return null;
         }
 
-        // Parse proposal data with error handling
+        // Enhanced logging for debugging
+        console.log(`🔍 Raw proposal data for ${proposalId}:`, {
+          id: result.id?.toString(),
+          state: result.state?.toString(),
+          description: result.description?.substring(0, 100) + '...',
+          startTime: result.startTime?.toString(),
+          endTime: result.endTime?.toString(),
+          executed: result.executed,
+          cancelled: result.cancelled
+        });
+
+        // Parse proposal data with enhanced error handling
         try {
+          // Default to PENDING state if state is undefined or null
+          let proposalState = ProposalState.PENDING;
+          if (result.state !== undefined && result.state !== null) {
+            const stateValue = parseInt(result.state.toString());
+            // Ensure the state value is within valid range
+            if (stateValue >= 0 && stateValue <= 5) { // Assuming 0-5 are valid state values
+              proposalState = stateValue;
+            } else {
+              console.warn(`⚠️  Invalid state value ${stateValue} for proposal ${proposalId}, defaulting to PENDING`);
+            }
+          }
+
+          const now = Math.floor(Date.now() / 1000); // Current timestamp in seconds
+          const startTime = result.startTime ? parseInt(result.startTime.toString()) : 0;
+          const endTime = result.endTime ? parseInt(result.endTime.toString()) : 0;
+          
+          // Determine status based on state and timestamps
+          let status = 'PENDING';
+          if (result.executed) {
+            status = 'EXECUTED';
+          } else if (result.cancelled) {
+            status = 'CANCELLED';
+          } else if (now < startTime) {
+            status = 'PENDING';
+          } else if (now >= startTime && now <= endTime) {
+            status = 'ACTIVE';
+          } else if (now > endTime) {
+            status = 'CLOSED';
+          }
+
           const proposal: Proposal = {
             id: result.id ? result.id.toString() : proposalId.toString(),
             proposer: result.proposer || '0x0000000000000000000000000000000000000000',
-            description: result.description || `Proposal ${proposalId}`,
-            proposalType: result.proposalType ? result.proposalType.toString() : "0",
+            description: result.description?.toString() || `Proposal ${proposalId}`,
+            proposalType: result.proposalType ? result.proposalType.toString() : '0',
             assetAddress: result.assetAddress || '0x0000000000000000000000000000000000000000',
             amount: result.amount ? result.amount.toString() : '0',
             votesFor: result.votesFor ? result.votesFor.toString() : '0',
             votesAgainst: result.votesAgainst ? result.votesAgainst.toString() : '0',
-            startTime: result.startTime ? parseInt(result.startTime.toString()) : 0,
-            endTime: result.endTime ? parseInt(result.endTime.toString()) : 0,
-            state: result.state !== undefined ? parseInt(result.state.toString()) : ProposalState.PENDING,
-            executed: result.executed || false,
-            cancelled: result.cancelled || false,
+            startTime,
+            endTime,
+            state: proposalState,
+            executed: !!result.executed,
+            cancelled: !!result.cancelled,
             title: `Proposal ${proposalId}`,
             asset: 'USDC',
-            status: 'ACTIVE',
+            status,
             totalSupply: 1000000,
             quorumReached: false
           };
 
+          console.log(`✅ Successfully parsed proposal ${proposalId} with state ${proposalState} (${ProposalState[proposalState]})`);
           return proposal;
-                 } catch (parseError) {
-           console.error(`❌ Error parsing proposal ${proposalId}:`, parseError instanceof Error ? parseError.message : 'Unknown parse error');
-           return null;
-         }
+        } catch (parseError) {
+          console.error(`❌ Error parsing proposal ${proposalId}:`, parseError instanceof Error ? parseError.message : 'Unknown parse error');
+          // Return a minimal valid proposal object instead of null
+          return {
+            id: proposalId.toString(),
+            proposer: '0x0000000000000000000000000000000000000000',
+            description: `Proposal ${proposalId} (Error: Failed to parse)`,
+            proposalType: '0',
+            assetAddress: '0x0000000000000000000000000000000000000000',
+            amount: '0',
+            votesFor: '0',
+            votesAgainst: '0',
+            startTime: 0,
+            endTime: 0,
+            state: ProposalState.PENDING,
+            executed: false,
+            cancelled: false,
+            title: `Proposal ${proposalId}`,
+            asset: 'USDC',
+            status: 'PENDING',
+            totalSupply: 1000000,
+            quorumReached: false
+          };
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`❌ Attempt ${attempt}/${maxRetries} failed for proposal ${proposalId}:`, errorMessage);
 
-             } catch (error) {
-         console.error(`❌ Attempt ${attempt}/${maxRetries} failed for proposal ${proposalId}:`, error instanceof Error ? error.message : 'Unknown error');
+        // Don't retry for certain errors
+        if (errorMessage.includes('execution reverted') || 
+            errorMessage.includes('invalid BigNumber string') ||
+            errorMessage.includes('invalid arrayify value')) {
+          console.log(`⚠️  Non-retryable error for proposal ${proposalId}, skipping...`);
+          break;
+        }
 
         if (attempt < maxRetries) {
-          // Exponential backoff delay
-          const backoffDelay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+          // Exponential backoff delay with jitter
+          const baseDelay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+          const jitter = Math.floor(Math.random() * 1000); // Add up to 1s jitter
+          const backoffDelay = baseDelay + jitter;
           console.log(`⏳ Retrying in ${backoffDelay}ms...`);
           await this.delay(backoffDelay);
         }
@@ -1083,7 +1114,27 @@ export class ContractService {
     }
 
     console.error(`❌ All ${maxRetries} attempts failed for proposal ${proposalId}`);
-    return null;
+    // Return a minimal valid proposal object instead of null to prevent crashes
+    return {
+      id: proposalId.toString(),
+      proposer: '0x0000000000000000000000000000000000000000',
+      description: `Proposal ${proposalId} (Error: Failed to fetch)`,
+      proposalType: '0',
+      assetAddress: '0x0000000000000000000000000000000000000000',
+      amount: '0',
+      votesFor: '0',
+      votesAgainst: '0',
+      startTime: 0,
+      endTime: 0,
+      state: ProposalState.PENDING,
+      executed: false,
+      cancelled: false,
+      title: `Proposal ${proposalId}`,
+      asset: 'USDC',
+      status: 'PENDING',
+      totalSupply: 1000000,
+      quorumReached: false
+    };
   }
 
 }
