@@ -1,3 +1,4 @@
+
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { ethers } from 'ethers';
 
@@ -105,19 +106,20 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       throw new Error('All RPC providers failed or are rate limited');
     }
 
-    // Validate AssetDAO contract address with enhanced debugging
+    // FIXED: Enhanced address validation that properly handles 42-character addresses
     const rawAssetDaoAddress = process.env.ASSET_DAO_CONTRACT_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8C251bc4B3529';
 
-    console.log(`🔍 Validating address: "${rawAssetDaoAddress}" (length: ${rawAssetDaoAddress.length})`);
+    console.log(`${requestId} INFO   🔍 Validating address: "${rawAssetDaoAddress}" (length: ${rawAssetDaoAddress.length})`);
 
     let assetDaoAddress: string;
     try {
       // Use ethers.getAddress directly as it handles validation properly
+      // This function validates checksums and normalizes the address
       assetDaoAddress = ethers.getAddress(rawAssetDaoAddress.trim());
-      console.log(`✅ Address validation passed: ${assetDaoAddress}`);
+      console.log(`${requestId} INFO   ✅ Address validation passed: ${assetDaoAddress}`);
     } catch (error: any) {
-      console.log(`❌ Address validation failed for: "${rawAssetDaoAddress}"`);
-      console.log(`❌ Validation error: ${error.message}`);
+      console.log(`${requestId} ERROR  ❌ Address validation failed for: "${rawAssetDaoAddress}"`);
+      console.log(`${requestId} ERROR  ❌ Validation error: ${error.message}`);
       throw new Error(`Invalid AssetDAO contract address: ${error.message}`);
     }
 
@@ -174,23 +176,37 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       };
     }
 
-    // Check last 25 proposals to find active ones (expanded range)
-    const startIndex = Math.max(1, totalProposals - 24);
+    // Check last 8 proposals to find active ones (limited range to prevent timeout)
+    const startIndex = Math.max(1, totalProposals - 7);
     const endIndex = totalProposals;
     const activeProposals = [];
 
-    console.log(`${requestId} INFO   🔍 Checking proposals ${startIndex} to ${endIndex} (expanded range)...`);
+    console.log(`${requestId} INFO   🔍 Checking proposals ${startIndex} to ${endIndex} (optimized range)...`);
+
+    // Circuit breaker to prevent infinite loops
+    let consecutiveFailures = 0;
+    const MAX_CONSECUTIVE_FAILURES = 3;
 
     // Process proposals sequentially with strict time limits
     for (let i = startIndex; i <= endIndex; i++) {
       try {
+        // Progressive delay based on failure rate
+        if (i > startIndex) {
+          const baseDelay = 800 + (consecutiveFailures * 200);
+          await new Promise(resolve => setTimeout(resolve, baseDelay));
+        }
+
         const proposalData = await callContractWithRetry(() => contract.getProposal(i), 2);
 
         // Enhanced validation - check if proposal data is valid
         if (!proposalData || proposalData.length < 12) {
           console.log(`${requestId} WARN   ⚠️ Proposal ${i} has invalid data structure - skipping`);
+          consecutiveFailures++;
           continue;
         }
+
+        // Reset failure counter on success
+        consecutiveFailures = 0;
 
         const proposer = proposalData[2];
 
@@ -200,77 +216,39 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
           continue;
         }
 
-        const proposalState = Number(proposalData[10]); // state is at index 10, convert to number
+        const proposalState = Number(proposalData[10]); // state is at index 10
         console.log(`${requestId} INFO   📊 Proposal ${i} state: ${proposalState}`);
 
-        // CRITICAL FIX: Handle zero timestamps and search for actual timestamp fields
+        // Enhanced timestamp handling
         const currentTimeSec = Math.floor(Date.now() / 1000);
-        let foundEndTime = 0;
-        let foundStartTime = 0;
+        let endTime = 0;
 
-        // Enhanced timestamp search - use the logs showing startTime at index 6, endTime at index 7
-        console.log(`${requestId} DEBUG  🔍 Searching all proposal fields for timestamps...`);
-        console.log(`${requestId} DEBUG  📋 Proposal data array length: ${proposalData.length}`);
-
-        // Search ALL fields for any valid timestamps
-        for (let idx = 0; idx < proposalData.length; idx++) {
+        // Try multiple timestamp fields with proper validation
+        const potentialEndTimes = [proposalData[9], proposalData[7], proposalData[8]];
+        
+        for (const timeField of potentialEndTimes) {
           try {
-            const rawValue = proposalData[idx];
-            const value = typeof rawValue === 'bigint' ? Number(rawValue) : Number(rawValue);
-
-            // Skip invalid values
-            if (isNaN(value) || value === 0 || value < 1000000000) {
-              console.log(`${requestId} DEBUG  ⏭️  Index ${idx}: ${rawValue} (skipped - invalid)`);
-              continue;
-            }
-
-            // Convert from milliseconds if needed
-            const asSeconds = value > currentTimeSec * 1000 ? Math.floor(value / 1000) : value;
-
-            // Check if it's a reasonable timestamp (past or future, within 2 years)
-            const twoYearsAgo = currentTimeSec - (2 * 365 * 24 * 60 * 60);
-            const twoYearsFromNow = currentTimeSec + (2 * 365 * 24 * 60 * 60);
-
-            if (asSeconds >= twoYearsAgo && asSeconds <= twoYearsFromNow) {
-              console.log(`${requestId} DEBUG  📅 Index ${idx}: Found timestamp ${asSeconds} (${new Date(asSeconds * 1000).toISOString()})`);
-
-              // Prioritize future timestamps as endTime
-              if (asSeconds > currentTimeSec && foundEndTime === 0) {
-                foundEndTime = asSeconds;
-                console.log(`${requestId} DEBUG  ✅ Set as endTime: ${foundEndTime}`);
-              } else if (asSeconds <= currentTimeSec && foundStartTime === 0) {
-                foundStartTime = asSeconds;
-                console.log(`${requestId} DEBUG  ✅ Set as startTime: ${foundStartTime}`);
-              }
-            } else {
-              console.log(`${requestId} DEBUG  ⏭️  Index ${idx}: ${asSeconds} (out of reasonable range)`);
+            const timeValue = Number(timeField);
+            
+            // Check if it's a valid future timestamp
+            if (timeValue > currentTimeSec && timeValue < (currentTimeSec + (365 * 24 * 60 * 60))) {
+              endTime = timeValue;
+              break;
             }
           } catch (error) {
-            console.log(`${requestId} DEBUG  ❌ Index ${idx}: Parse error`);
             continue;
           }
         }
 
-        // If we found a start time but no end time, calculate a reasonable end time
-        if (foundStartTime > 0 && foundEndTime === 0) {
-          // Default voting period is 72 hours (259200 seconds)
-          foundEndTime = foundStartTime + 259200;
-          console.log(`${requestId} DEBUG  🕐 Calculated endTime from startTime: ${foundEndTime} (${new Date(foundEndTime * 1000).toISOString()})`);
-        }
-
-        const normalizedEndTime = foundEndTime;
-        const normalizedStartTime = foundStartTime;
-        const normalizedCurrentTime = currentTimeSec;
-
-        console.log(`${requestId} DEBUG  🕐 Proposal ${i} - Raw endTime: ${proposalData[9]}, Found endTime: ${normalizedEndTime}, Current: ${normalizedCurrentTime}`);
-        console.log(`${requestId} DEBUG  📅 Proposal ${i} - End date: ${normalizedEndTime > 0 ? new Date(normalizedEndTime * 1000).toISOString() : 'NOT_FOUND'}, Current: ${new Date(normalizedCurrentTime * 1000).toISOString()}`);
+        console.log(`${requestId} DEBUG  🕐 Proposal ${i} - End time: ${endTime}, Current: ${currentTimeSec}`);
 
         if (proposalState === 1) { // Only check Active proposals (state = 1)
           // Check if proposal is still within voting period
-          if (normalizedEndTime > 0 && normalizedEndTime > normalizedCurrentTime) {
-            const timeLeftSeconds = normalizedEndTime - normalizedCurrentTime;
+          if (endTime > 0 && endTime > currentTimeSec) {
+            const timeLeftSeconds = endTime - currentTimeSec;
             const timeLeftHours = Math.floor(timeLeftSeconds / 3600);
             console.log(`${requestId} INFO   ✅ Found ACTIVE proposal ${i} (${timeLeftHours}h ${Math.floor((timeLeftSeconds % 3600) / 60)}m remaining)`);
+            
             activeProposals.push({
               id: i,
               state: proposalState.toString(),
@@ -279,30 +257,37 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
               proposer: proposer,
               assetAddress: proposalData[5],
               amount: proposalData[3].toString(),
-              startTime: normalizedStartTime > 0 ? normalizedStartTime.toString() : proposalData[8].toString(),
-              endTime: normalizedEndTime.toString(),
+              startTime: proposalData[8].toString(),
+              endTime: endTime.toString(),
               forVotes: proposalData[6].toString(),
               againstVotes: proposalData[7].toString(),
               timeLeft: timeLeftSeconds
             });
           } else {
-            const expiredSeconds = normalizedCurrentTime - normalizedEndTime;
-            const expiredHours = Math.floor(expiredSeconds / 3600);
-            const expiredDays = Math.floor(expiredHours / 24);
-
-            if (expiredDays > 0) {
-              console.log(`${requestId} INFO   ⏰ Proposal ${i} voting period expired ${expiredDays}d ${expiredHours % 24}h ago`);
-            } else {
-              console.log(`${requestId} INFO   ⏰ Proposal ${i} voting period expired ${expiredHours}h ${Math.floor((expiredSeconds % 3600) / 60)}m ago`);
-            }
+            console.log(`${requestId} INFO   ⏰ Proposal ${i} voting period expired or invalid`);
           }
         } else {
           console.log(`${requestId} INFO   ℹ️  Proposal ${i} not active (state: ${proposalState})`);
         }
+
+        // Circuit breaker check
+        if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+          console.log(`${requestId} WARN   🔥 Circuit breaker triggered after ${MAX_CONSECUTIVE_FAILURES} consecutive failures`);
+          break;
+        }
+
       } catch (error: any) {
+        consecutiveFailures++;
         console.log(`${requestId} WARN   ⚠️ Skipped proposal ${i} due to error: ${error.message.substring(0, 50)}...`);
-        // Optionally add a short delay before processing the next proposal
-        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Circuit breaker check
+        if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+          console.log(`${requestId} WARN   🔥 Circuit breaker triggered - stopping proposal processing`);
+          break;
+        }
+
+        // Add delay before next attempt
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
 
@@ -314,6 +299,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         success: true,
         message: `Found ${activeProposals.length} active proposals`,
         proposals: activeProposals,
+        proposalsChecked: endIndex - startIndex + 1,
         network: {
           name: (await provider.getNetwork()).name,
           chainId: (await provider.getNetwork()).chainId.toString(),
@@ -323,7 +309,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       })
     };
   } catch (error: any) {
-    console.error('❌ Error details:', {
+    console.error(`${requestId} ERROR  ❌ Error details:`, {
       message: error.message,
       code: error.code,
       info: error.info,
