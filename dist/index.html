@@ -9,16 +9,17 @@
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
-            background-color: var(--color-dark-bg);
-            color: var(--color-white);
+            background-color: var(--color-white);
+            color: var(--color-black);
         }
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: var(--color-dark-gray);
+            background: var(--color-white);
             padding: 30px;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            border: 1px solid var(--color-gray);
         }
         .header {
             text-align: center;
@@ -108,12 +109,12 @@
             gap: 20px;
         }
         .node-card {
-            background: var(--color-black);
-            color: var(--color-white);
-            border-radius: 8px;
+            background: var(--color-white);
+            color: var(--color-black);
+            border-radius: 12px;
             padding: 25px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            border: 1px solid var(--color-dark-gray);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border: 1px solid var(--color-gray);
             transition: all 0.3s ease;
         }
         .node-card:hover {
@@ -121,10 +122,45 @@
             box-shadow: 0 10px 20px rgba(0,0,0,0.4);
         }
         .node-card h3 {
-            margin-top: 0;
+            margin: 0 0 8px 0;
             font-size: 20px;
-            color: var(--color-accent);
+            color: var(--color-black);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .node-address {
+            font-family: monospace;
+            font-size: 14px;
+            color: var(--color-dark-gray);
             margin-bottom: 12px;
+            word-break: break-all;
+        }
+        .node-stats {
+            display: flex;
+            gap: 15px;
+            margin: 12px 0;
+            flex-wrap: wrap;
+        }
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+            color: var(--color-dark-gray);
+        }
+        .stat-item .icon {
+            width: 16px;
+            height: 16px;
+            color: var(--color-accent);
+        }
+        .node-thesis {
+            font-size: 14px;
+            color: var(--color-dark-gray);
+            line-height: 1.5;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--color-gray);
         }
         .node-badge {
             background: var(--color-orange);
@@ -207,14 +243,106 @@
         <!-- AI Nodes Section -->
         <section class="nodes-section">
             <h2>🧠 Deployed AI Nodes</h2>
-            <div class="nodes-grid" id="nodesGrid">
-                <!-- Cards will be injected here -->
-            </div>
+            <div id="nodes-container" class="nodes-grid">
+            <!-- Node cards will be inserted here by JavaScript -->
+        </div>
+        
+        <!-- Lucide Icons -->
+        <script src="https://unpkg.com/lucide@latest"></script>
+        <script>
+            // Initialize Lucide icons
+            lucide.createIcons();
+            
+            // Node data with Lucide icons
+            const nodes = [
+                {
+                    id: 1,
+                    name: "AI.Gov#01",
+                    address: "0x7f3a...49b8b9",
+                    votingPower: "0.45",
+                    responseTime: "<1s",
+                    accuracy: "92.5%",
+                    icon: "zap",
+                    thesis: "Focused on stable growth through diversified exposure to USDC, WBTC, PAXG, and EURT assets with dynamic rebalancing."
+                },
+                {
+                    id: 2,
+                    name: "AI.Gov#02",
+                    address: "0x8g4b...57c9d0",
+                    votingPower: "0.35",
+                    responseTime: "<1s",
+                    accuracy: "89.2%",
+                    icon: "shield",
+                    thesis: "Risk-averse strategy prioritizing capital preservation with heavy allocation to stable assets and gold-backed tokens."
+                },
+                {
+                    id: 3,
+                    name: "AI.Gov#03",
+                    address: "0x9h5c...68d0e1",
+                    votingPower: "0.55",
+                    responseTime: "<1s",
+                    accuracy: "88.7%",
+                    icon: "trending-up",
+                    thesis: "Growth-oriented approach with dynamic allocation between WBTC and PAXG based on market conditions."
+                },
+                {
+                    id: 4,
+                    name: "AI.Gov#04",
+                    address: "0x2i6d...79f1e2",
+                    votingPower: "0.40",
+                    responseTime: "<1s",
+                    accuracy: "90.3%",
+                    icon: "scaling",
+                    thesis: "Balanced portfolio with automated rebalancing to maintain optimal asset allocation across all supported tokens."
+                },
+                {
+                    id: 5,
+                    name: "AI.Gov#05",
+                    address: "0x1j7e...8a0f3d",
+                    votingPower: "0.50",
+                    responseTime: "<1s",
+                    accuracy: "91.1%",
+                    icon: "globe",
+                    thesis: "Global macro strategy with dynamic exposure to fiat-pegged and commodity-backed assets based on economic indicators."
+                }
+            ];
+            
+            // Render nodes
+            function renderNodes() {
+                const container = document.getElementById('nodes-container');
+                container.innerHTML = nodes.map(node => `
+                    <div class="node-card">
+                        <h3><i data-lucide="${node.icon}"></i> ${node.name}</h3>
+                        <div class="node-address">${node.address}</div>
+                        <div class="node-stats">
+                            <span class="stat-item">
+                                <i data-lucide="vote" class="icon"></i> ${node.votingPower} VP
+                            </span>
+                            <span class="stat-item">
+                                <i data-lucide="clock" class="icon"></i> ${node.responseTime}
+                            </span>
+                            <span class="stat-item">
+                                <i data-lucide="target" class="icon"></i> ${node.accuracy}
+                            </span>
+                        </div>
+                        <div class="node-thesis">
+                            <strong>Thesis:</strong> ${node.thesis}
+                        </div>
+                    </div>
+                `).join('');
+                
+                // Refresh icons after rendering
+                lucide.createIcons();
+            }
+            
+            // Initialize on load
+            document.addEventListener('DOMContentLoaded', renderNodes);
+        </script>
         </section>
     </div>
 
     <footer>
-        © <span id="year"></span> DLoop • <a href="https://d-loop.io" target="_blank" rel="noopener">d-loop.io</a>
+        &copy; <span id="year"></span> DLoop • <a href="https://d-loop.io" target="_blank" rel="noopener">d-loop.io</a>
     </footer>
 
     <script>
