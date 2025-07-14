@@ -105,50 +105,20 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       throw new Error('All RPC providers failed or are rate limited');
     }
 
-    // Contract setup with enhanced address validation and checksum correction
-    const rawAssetDAOAddress = process.env.ASSET_DAO_CONTRACT_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8C251bc4B3529';
-    
-    // Enhanced address validation with proper checksum handling
-    let assetDAOAddress: string;
+    // Validate AssetDAO contract address with enhanced debugging
+    const rawAssetDaoAddress = process.env.ASSET_DAO_CONTRACT_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8C251bc4B3529';
+
+    console.log(`🔍 Validating address: "${rawAssetDaoAddress}" (length: ${rawAssetDaoAddress.length})`);
+
+    let assetDaoAddress: string;
     try {
-      // First, clean the address
-      const trimmedAddress = rawAssetDAOAddress.trim();
-      
-      console.log(`${requestId} DEBUG  🔍 Validating address: "${trimmedAddress}" (length: ${trimmedAddress.length})`);
-      
-      // Validate basic format - check actual requirements
-      if (!trimmedAddress || !trimmedAddress.startsWith('0x')) {
-        throw new Error(`Address must start with 0x`);
-      }
-      
-      if (trimmedAddress.length !== 42) {
-        throw new Error(`Address must be exactly 42 characters long, got ${trimmedAddress.length}`);
-      }
-      
-      // Validate hex characters (case-insensitive) - only the part after 0x should be hex
-      const hexPart = trimmedAddress.slice(2); // Remove '0x' prefix
-      const hexPattern = /^[a-fA-F0-9]{40}$/;
-      if (!hexPattern.test(hexPart)) {
-        throw new Error(`Address contains invalid hex characters`);
-      }
-      
-      // Use ethers.getAddress for checksum validation and normalization
-      // This will automatically handle case conversion and checksumming
-      assetDAOAddress = ethers.getAddress(trimmedAddress);
-      console.log(`${requestId} INFO   ✅ Contract address validated and checksummed: ${assetDAOAddress}`);
-    } catch (addressError: any) {
-      console.log(`${requestId} ERROR  ❌ Address validation failed for: "${rawAssetDAOAddress}"`);
-      console.log(`${requestId} ERROR  ❌ Validation error: ${addressError.message}`);
-      
-      // If ethers.getAddress fails, try direct usage (it might be a checksum issue)
-      try {
-        console.log(`${requestId} INFO   🔄 Attempting direct ethers.getAddress on raw input...`);
-        assetDAOAddress = ethers.getAddress(rawAssetDAOAddress.trim());
-        console.log(`${requestId} INFO   ✅ Direct validation successful: ${assetDAOAddress}`);
-      } catch (fallbackError: any) {
-        console.log(`${requestId} ERROR  ❌ All validation attempts failed`);
-        throw new Error(`Invalid AssetDAO contract address: ${addressError.message}`);
-      }
+      // Use ethers.getAddress directly as it handles validation properly
+      assetDaoAddress = ethers.getAddress(rawAssetDaoAddress.trim());
+      console.log(`✅ Address validation passed: ${assetDaoAddress}`);
+    } catch (error: any) {
+      console.log(`❌ Address validation failed for: "${rawAssetDaoAddress}"`);
+      console.log(`❌ Validation error: ${error.message}`);
+      throw new Error(`Invalid AssetDAO contract address: ${error.message}`);
     }
 
     const assetDAOABI = [
@@ -156,7 +126,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       "function getProposal(uint256) external view returns (uint256, uint8, address, uint256, string, address, uint256, uint256, uint256, uint256, uint8, bool)"
     ];
 
-    const contract = new ethers.Contract(assetDAOAddress, assetDAOABI, provider);
+    const contract = new ethers.Contract(assetDaoAddress, assetDAOABI, provider);
 
     // Enhanced contract call with exponential backoff
     const callContractWithRetry = async (contractCall: () => Promise<any>, maxRetries: number = 3): Promise<any> => {

@@ -186,10 +186,10 @@ describe('ContractService', () => {
         beforeEach(() => {
             contractService = new ContractService_1.ContractService(mockWalletService);
             jest.spyOn(contractService, 'getContractAddresses').mockReturnValue({
-                assetDAO: process.env.ASSET_DAO_ADDRESS,
-                aiNodeRegistry: process.env.AI_NODE_REGISTRY_ADDRESS,
-                dloopToken: process.env.DLOOP_TOKEN_ADDRESS,
-                soulboundNFT: process.env.SOULBOUND_NFT_ADDRESS
+                assetDAO: '0x1234567890123456789012345678901234567890',
+                aiNodeRegistry: '0x2345678901234567890123456789012345678901',
+                dloopToken: '0x3456789012345678901234567890123456789012',
+                soulboundNFT: '0x4567890123456789012345678901234567890123'
             });
         });
         it('should validate contract addresses format', () => {
