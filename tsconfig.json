@@ -38,12 +38,12 @@
     }
   },
   "include": [
+    "**/*.ts",
+    "**/*.js",
     "src/**/*",
     "scripts/**/*",
     "plugins/**/*",
-    "tests/**/*",
-    "*.ts",
-    "*.js"
+    "tests/**/*"
   ],
   "exclude": [
     "node_modules",
