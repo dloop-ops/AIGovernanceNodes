@@ -1,0 +1,20 @@
+export const __esModule: boolean;
+export const governanceLogger: any;
+export const contractLogger: any;
+export const walletLogger: any;
+export const votingLogger: any;
+export const proposalLogger: any;
+export const networkLogger: any;
+export const registrationLogger: any;
+export const strategyLogger: any;
+export const marketLogger: any;
+export const systemLogger: any;
+export const emergencyLogger: any;
+export const diagnosticLogger: any;
+export const nodeLogger: any;
+export const schedulerLogger: any;
+export const webLogger: any;
+export const testLogger: any;
+export default logger;
+export const logger: any;
+//# sourceMappingURL=logger.d.ts.map

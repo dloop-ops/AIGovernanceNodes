@@ -50,7 +50,9 @@
     "dist",
     "build",
     "coverage",
-    "logs"
+    "logs",
+    "attached_assets",
+    "netlify/functions"
   ],
   "ts-node": {
     "esm": false,
