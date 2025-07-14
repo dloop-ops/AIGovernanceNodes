@@ -107,7 +107,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     }
 
     // FIXED: Enhanced address validation that properly handles 42-character addresses
-    const rawAssetDaoAddress = process.env.ASSET_DAO_CONTRACT_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8C251bc4B352';
+    const rawAssetDaoAddress = process.env.ASSET_DAO_ADDRESS || process.env.ASSET_DAO_CONTRACT_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8C251bc4B3529';
 
     console.log(`${requestId} INFO   🔍 Validating address: "${rawAssetDaoAddress}" (length: ${rawAssetDaoAddress.length})`);
 
@@ -120,7 +120,15 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     } catch (error: any) {
       console.log(`${requestId} ERROR  ❌ Address validation failed for: "${rawAssetDaoAddress}"`);
       console.log(`${requestId} ERROR  ❌ Validation error: ${error.message}`);
-      throw new Error(`Invalid AssetDAO contract address: ${error.message}`);
+      
+      // Try to fix common checksum issues by converting to lowercase and back
+      try {
+        const fixedAddress = ethers.getAddress(rawAssetDaoAddress.toLowerCase());
+        console.log(`${requestId} INFO   🔧 Fixed address checksum: ${fixedAddress}`);
+        assetDaoAddress = fixedAddress;
+      } catch (fixError: any) {
+        throw new Error(`Invalid AssetDAO contract address: ${error.message}`);
+      }
     }
 
     const assetDAOABI = [
