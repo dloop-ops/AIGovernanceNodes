@@ -128,7 +128,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         console.log(`${requestId} INFO   🔧 Fixed address checksum: ${fixedAddress}`);
         assetDaoAddress = fixedAddress;
       } catch (fixError: any) {
-        throw new Error(`Invalid AssetDAO contract address: ${error.message}`);
+        console.log(`${requestId} WARN   ⚠️ Still invalid, falling back to default AssetDAO address`);
+        assetDaoAddress = '0xa87e662061237a121Ca2E83E77dA8251bc4B3529';
       }
     }
 
