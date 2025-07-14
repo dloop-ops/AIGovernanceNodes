@@ -27,13 +27,13 @@ async function runDiagnostics() {
             console.log(`  🔐 Has SoulBound NFT: ${result.hasStakeApproval ? 'YES' : 'NO'}`);
             if (result.registrationErrors.length > 0) {
                 console.log(`  ⚠️  Issues:`);
-                result.registrationErrors.forEach(error => {
+                result.registrationErrors.forEach((error) => {
                     console.log(`    - ${error}`);
                 });
             }
             console.log('');
         });
-        const nodesWithIssues = results.filter(r => r.registrationErrors.length > 0 || !r.isRegistered);
+        const nodesWithIssues = results.filter((r) => r.registrationErrors.length > 0 || !r.isRegistered);
         if (nodesWithIssues.length > 0) {
             console.log('\n=== ATTEMPTING AUTO-FIX ===\n');
             for (const node of nodesWithIssues) {
@@ -44,11 +44,11 @@ async function runDiagnostics() {
                     console.log(`  Success: ${fixResult.success ? 'YES' : 'NO'}`);
                     if (fixResult.actions.length > 0) {
                         console.log(`  Actions Taken:`);
-                        fixResult.actions.forEach(action => console.log(`    ✅ ${action}`));
+                        fixResult.actions.forEach((action) => console.log(`    ✅ ${action}`));
                     }
                     if (fixResult.errors.length > 0) {
                         console.log(`  Errors:`);
-                        fixResult.errors.forEach(error => console.log(`    ❌ ${error}`));
+                        fixResult.errors.forEach((error) => console.log(`    ❌ ${error}`));
                     }
                     console.log('');
                 }
@@ -64,13 +64,13 @@ async function runDiagnostics() {
             console.log('\n=== POST-FIX VERIFICATION ===\n');
             logger_js_1.contractLogger.info('Running post-fix verification...');
             const postFixResults = await diagnosticService.runFullDiagnostics();
-            const stillBroken = postFixResults.filter(r => r.registrationErrors.length > 0 || !r.isRegistered);
+            const stillBroken = postFixResults.filter((r) => r.registrationErrors.length > 0 || !r.isRegistered);
             if (stillBroken.length === 0) {
                 console.log('🎉 All nodes are now working correctly!\n');
             }
             else {
                 console.log(`⚠️  ${stillBroken.length} nodes still have issues that require manual intervention:\n`);
-                stillBroken.forEach(node => {
+                stillBroken.forEach((node) => {
                     console.log(`Node ${node.nodeIndex + 1}: ${node.registrationErrors.join(', ')}`);
                 });
             }
@@ -138,7 +138,7 @@ process.on('SIGTERM', () => {
     process.exit(0);
 });
 if (require.main === module) {
-    main().catch(error => {
+    main().catch((error) => {
         logger_js_1.contractLogger.error('Main execution failed:', error);
         console.error('❌ Execution failed:', error instanceof Error ? error.message : String(error));
         process.exit(1);

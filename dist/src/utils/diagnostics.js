@@ -130,10 +130,10 @@ class DiagnosticService {
         return { success, actions, errors };
     }
     generateDiagnosticSummary(results) {
-        const registered = results.filter(r => r.isRegistered).length;
-        const withSufficientBalance = results.filter(r => parseFloat(r.dloopBalance) > 0).length;
-        const withApproval = results.filter(r => r.hasStakeApproval).length;
-        const withErrors = results.filter(r => r.registrationErrors.length > 0).length;
+        const registered = results.filter((r) => r.isRegistered).length;
+        const withSufficientBalance = results.filter((r) => parseFloat(r.dloopBalance) > 0).length;
+        const withApproval = results.filter((r) => r.hasStakeApproval).length;
+        const withErrors = results.filter((r) => r.registrationErrors.length > 0).length;
         logger_js_1.contractLogger.info('=== DIAGNOSTIC SUMMARY ===', {
             totalNodes: results.length,
             registeredNodes: registered,
@@ -156,10 +156,10 @@ class DiagnosticService {
         setInterval(async () => {
             try {
                 const results = await this.runFullDiagnostics();
-                const issues = results.filter(r => r.registrationErrors.length > 0);
+                const issues = results.filter((r) => r.registrationErrors.length > 0);
                 if (issues.length > 0) {
                     logger_js_1.contractLogger.warn(`Monitoring alert: ${issues.length} nodes have issues`, {
-                        affectedNodes: issues.map(r => r.nodeIndex + 1)
+                        affectedNodes: issues.map((r) => r.nodeIndex + 1)
                     });
                 }
             }

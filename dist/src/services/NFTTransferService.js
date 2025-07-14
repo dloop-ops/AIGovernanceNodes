@@ -26,7 +26,7 @@ class NFTTransferService {
             logger_js_1.default.info('SoulBound NFT analysis complete', {
                 component: 'nft-transfer',
                 availableNFTs: soulboundNFTs.length,
-                nfts: soulboundNFTs.map(nft => ({
+                nfts: soulboundNFTs.map((nft) => ({
                     tokenId: nft.tokenID,
                     contract: nft.contractAddress
                 }))
@@ -46,10 +46,26 @@ class NFTTransferService {
         const results = [];
         try {
             const governanceNodes = [
-                { nodeId: 'ai-gov-01', address: '0x561529036AB886c1FD3D112360383D79fBA9E71c', nodeIndex: 0 },
-                { nodeId: 'ai-gov-02', address: '0x48B2353954496679CF7C73d239bc12098cB0C5B4', nodeIndex: 1 },
-                { nodeId: 'ai-gov-03', address: '0x43f76157E9696302E287181828cB3B0C6B89d31e', nodeIndex: 2 },
-                { nodeId: 'ai-gov-04', address: '0xC02764913ce2F23B094F0338a711EFD984024A46', nodeIndex: 3 },
+                {
+                    nodeId: 'ai-gov-01',
+                    address: '0x561529036AB886c1FD3D112360383D79fBA9E71c',
+                    nodeIndex: 0
+                },
+                {
+                    nodeId: 'ai-gov-02',
+                    address: '0x48B2353954496679CF7C73d239bc12098cB0C5B4',
+                    nodeIndex: 1
+                },
+                {
+                    nodeId: 'ai-gov-03',
+                    address: '0x43f76157E9696302E287181828cB3B0C6B89d31e',
+                    nodeIndex: 2
+                },
+                {
+                    nodeId: 'ai-gov-04',
+                    address: '0xC02764913ce2F23B094F0338a711EFD984024A46',
+                    nodeIndex: 3
+                },
                 { nodeId: 'ai-gov-05', address: '0x00FfF703fa6837A1a46b3DF9B6a047404046379E', nodeIndex: 4 }
             ];
             logger_js_1.default.info('Starting SoulBound NFT distribution to governance nodes', {
@@ -59,7 +75,7 @@ class NFTTransferService {
             const authStatuses = await this.getCurrentAuthenticationStatus();
             for (const node of governanceNodes) {
                 try {
-                    const nodeAuth = authStatuses.find(auth => auth.nodeIndex === node.nodeIndex);
+                    const nodeAuth = authStatuses.find((auth) => auth.nodeIndex === node.nodeIndex);
                     if (nodeAuth?.isAuthenticated) {
                         logger_js_1.default.info(`Node ${node.nodeId} already has valid SoulBound NFT`, {
                             component: 'nft-transfer',
@@ -99,14 +115,14 @@ class NFTTransferService {
                     });
                 }
             }
-            const successful = results.filter(r => r.success).length;
-            const failed = results.filter(r => !r.success).length;
+            const successful = results.filter((r) => r.success).length;
+            const failed = results.filter((r) => !r.success).length;
             logger_js_1.default.info('SoulBound NFT distribution completed', {
                 component: 'nft-transfer',
                 totalNodes: governanceNodes.length,
                 successful,
                 failed,
-                results: results.map(r => ({
+                results: results.map((r) => ({
                     success: r.success,
                     tokenId: r.tokenId,
                     toAddress: r.toAddress,
@@ -208,8 +224,8 @@ class NFTTransferService {
                 component: 'nft-transfer'
             });
             const authStatuses = await this.getCurrentAuthenticationStatus();
-            const authenticatedNodes = authStatuses.filter(status => status.isAuthenticated).length;
-            const verificationResults = authStatuses.map(status => ({
+            const authenticatedNodes = authStatuses.filter((status) => status.isAuthenticated).length;
+            const verificationResults = authStatuses.map((status) => ({
                 nodeIndex: status.nodeIndex,
                 nodeAddress: status.address,
                 hasValidNFT: status.isAuthenticated,

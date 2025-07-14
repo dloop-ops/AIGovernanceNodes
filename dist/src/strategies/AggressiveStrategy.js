@@ -160,8 +160,8 @@ class AggressiveStrategy extends BaseStrategy_js_1.BaseStrategy {
     }
     detectStrongTrend(marketAnalysis) {
         const recommendations = Object.values(marketAnalysis.recommendations);
-        const strongBuys = recommendations.filter(r => r.action === 'buy' && r.confidence > 0.7).length;
-        const strongSells = recommendations.filter(r => r.action === 'sell' && r.confidence > 0.7).length;
+        const strongBuys = recommendations.filter((r) => r.action === 'buy' && r.confidence > 0.7).length;
+        const strongSells = recommendations.filter((r) => r.action === 'sell' && r.confidence > 0.7).length;
         return (strongBuys >= 3 || strongSells >= 3) && Math.abs(strongBuys - strongSells) >= 2;
     }
     detectDowntrend(proposal, marketAnalysis) {
@@ -179,8 +179,7 @@ class AggressiveStrategy extends BaseStrategy_js_1.BaseStrategy {
             const recommendation = marketAnalysis.recommendations[relevantAsset];
             return recommendation.action === 'sell' && recommendation.confidence > 0.6;
         }
-        const sellSignals = Object.values(marketAnalysis.recommendations)
-            .filter(r => r.action === 'sell').length;
+        const sellSignals = Object.values(marketAnalysis.recommendations).filter((r) => r.action === 'sell').length;
         return sellSignals >= 2;
     }
     hasVolatilityOpportunity(marketAnalysis) {
@@ -188,8 +187,8 @@ class AggressiveStrategy extends BaseStrategy_js_1.BaseStrategy {
             return false;
         if (marketAnalysis.riskScore >= 0.4 && marketAnalysis.riskScore <= 0.7) {
             const recommendations = Object.values(marketAnalysis.recommendations);
-            const buyCount = recommendations.filter(r => r.action === 'buy').length;
-            const sellCount = recommendations.filter(r => r.action === 'sell').length;
+            const buyCount = recommendations.filter((r) => r.action === 'buy').length;
+            const sellCount = recommendations.filter((r) => r.action === 'sell').length;
             return buyCount > 0 && sellCount > 0;
         }
         return false;
@@ -207,9 +206,7 @@ class AggressiveStrategy extends BaseStrategy_js_1.BaseStrategy {
             growthScore -= 0.1;
         }
         if (marketAnalysis) {
-            const avgConfidence = Object.values(marketAnalysis.recommendations)
-                .reduce((sum, rec) => sum + rec.confidence, 0) /
-                Object.values(marketAnalysis.recommendations).length;
+            const avgConfidence = Object.values(marketAnalysis.recommendations).reduce((sum, rec) => sum + rec.confidence, 0) / Object.values(marketAnalysis.recommendations).length;
             if (avgConfidence > 0.7) {
                 growthScore += 0.2;
             }

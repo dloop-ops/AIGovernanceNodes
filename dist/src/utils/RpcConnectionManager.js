@@ -70,11 +70,13 @@ class RpcConnectionManager {
     }
     async getProvider() {
         const now = Date.now();
-        if (this.currentProvider && this.currentConfig && this.isProviderUsable(this.currentConfig, now)) {
+        if (this.currentProvider &&
+            this.currentConfig &&
+            this.isProviderUsable(this.currentConfig, now)) {
             return this.currentProvider;
         }
         const sortedProviders = this.providers
-            .filter(p => p.isHealthy && this.isProviderUsable(p, now))
+            .filter((p) => p.isHealthy && this.isProviderUsable(p, now))
             .sort((a, b) => {
             if (a.priority !== b.priority)
                 return a.priority - b.priority;
@@ -111,7 +113,7 @@ class RpcConnectionManager {
             }
         }
         const recoveryProvider = this.providers
-            .filter(p => !p.isHealthy)
+            .filter((p) => !p.isHealthy)
             .sort((a, b) => a.lastUsed - b.lastUsed)[0];
         if (recoveryProvider) {
             logger_js_1.default.info(`🔄 Attempting recovery with ${recoveryProvider.name}`);
@@ -170,7 +172,7 @@ class RpcConnectionManager {
                     throw error;
                 }
                 const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-                await new Promise(resolve => setTimeout(resolve, delay));
+                await new Promise((resolve) => setTimeout(resolve, delay));
             }
         }
         throw new Error('All retry attempts failed');
@@ -204,7 +206,7 @@ class RpcConnectionManager {
     getProviderStatus() {
         return {
             currentProvider: this.currentConfig?.name || 'none',
-            providers: this.providers.map(p => ({
+            providers: this.providers.map((p) => ({
                 name: p.name,
                 isHealthy: p.isHealthy,
                 failureCount: p.failureCount,

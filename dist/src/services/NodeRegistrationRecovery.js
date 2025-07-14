@@ -341,7 +341,7 @@ class NodeRegistrationRecovery {
         return this.registrationStatuses.get(nodeId) || null;
     }
     delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
 }
 exports.NodeRegistrationRecovery = NodeRegistrationRecovery;

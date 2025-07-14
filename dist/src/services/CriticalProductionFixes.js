@@ -56,10 +56,10 @@ class CriticalProductionFixes {
         });
     }
     prioritizeProposals(proposals) {
-        const usdcProposals = proposals.filter(p => p.assetAddress.toLowerCase().includes('1c7d4b196cb0c7b01d743fbc6116a902379c7238'));
-        const highValueProposals = proposals.filter(p => !p.assetAddress.toLowerCase().includes('1c7d4b196cb0c7b01d743fbc6116a902379c7238') &&
+        const usdcProposals = proposals.filter((p) => p.assetAddress.toLowerCase().includes('1c7d4b196cb0c7b01d743fbc6116a902379c7238'));
+        const highValueProposals = proposals.filter((p) => !p.assetAddress.toLowerCase().includes('1c7d4b196cb0c7b01d743fbc6116a902379c7238') &&
             parseFloat(p.amount) > 1000);
-        const otherProposals = proposals.filter(p => !p.assetAddress.toLowerCase().includes('1c7d4b196cb0c7b01d743fbc6116a902379c7238') &&
+        const otherProposals = proposals.filter((p) => !p.assetAddress.toLowerCase().includes('1c7d4b196cb0c7b01d743fbc6116a902379c7238') &&
             parseFloat(p.amount) <= 1000);
         console.log(`📊 Proposal prioritization: USDC(${usdcProposals.length}) + High-value(${highValueProposals.length}) + Other(${otherProposals.length})`);
         return [...usdcProposals, ...highValueProposals, ...otherProposals];
@@ -128,7 +128,9 @@ class CriticalProductionFixes {
         });
     }
     makeQuickVotingDecision(proposal) {
-        const isUSDC = proposal.assetAddress.toLowerCase().includes('1c7d4b196cb0c7b01d743fbc6116a902379c7238');
+        const isUSDC = proposal.assetAddress
+            .toLowerCase()
+            .includes('1c7d4b196cb0c7b01d743fbc6116a902379c7238');
         const amount = parseFloat(proposal.amount);
         if (isUSDC && amount <= 10000) {
             return { vote: true, support: true };
@@ -172,7 +174,7 @@ class CriticalProductionFixes {
         });
     }
     delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
     async performEmergencyHealthCheck() {
         try {

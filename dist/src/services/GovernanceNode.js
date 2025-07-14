@@ -95,7 +95,7 @@ class GovernanceNode {
                     console.log(`⏱️  Batch time limit reached (${batchElapsed}ms), stopping`);
                     break;
                 }
-                const dynamicDelay = baseDelay + (processed * 200);
+                const dynamicDelay = baseDelay + processed * 200;
                 if (processed > 0) {
                     console.log(`⏳ Waiting ${dynamicDelay}ms before next proposal...`);
                     await this.delay(dynamicDelay);
@@ -233,15 +233,15 @@ class GovernanceNode {
         }
     }
     delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
     async getActiveProposalsDirectly() {
         try {
             const provider = this.contractService.getProvider();
             const assetDaoAddress = '0xa87e662061237a121Ca2E83E77dA8251bc4B3529';
             const assetDaoABI = [
-                "function getProposalCount() external view returns (uint256)",
-                "function getProposal(uint256) external view returns (uint256, uint8, address, uint256, string, address, uint256, uint256, uint256, uint256, uint8, bool)"
+                'function getProposalCount() external view returns (uint256)',
+                'function getProposal(uint256) external view returns (uint256, uint8, address, uint256, string, address, uint256, uint256, uint256, uint256, uint8, bool)'
             ];
             const contract = new ethers_1.ethers.Contract(assetDaoAddress, assetDaoABI, provider);
             const totalCount = await contract.getProposalCount();

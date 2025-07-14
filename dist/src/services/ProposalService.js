@@ -37,7 +37,7 @@ class ProposalService {
             }
             logger_1.governanceLogger.info(`Generated ${proposals.length} proposals`, {
                 nodeId,
-                proposalTypes: proposals.map(p => index_1.ProposalType[p.proposalType])
+                proposalTypes: proposals.map((p) => index_1.ProposalType[p.proposalType])
             });
             return proposals;
         }
@@ -56,7 +56,7 @@ class ProposalService {
     }
     async getActiveProposals() {
         const allProposals = await this.getAllProposals();
-        return allProposals.filter(proposal => proposal.state === index_1.ProposalState.ACTIVE &&
+        return allProposals.filter((proposal) => proposal.state === index_1.ProposalState.ACTIVE &&
             proposal.votingEnds > Math.floor(Date.now() / 1000));
     }
     async getProposalById(id) {
@@ -83,19 +83,19 @@ class ProposalService {
     }
     async getProposalsByState(state) {
         const allProposals = await this.getAllProposals();
-        return allProposals.filter(proposal => proposal.state === state);
+        return allProposals.filter((proposal) => proposal.state === state);
     }
     async getUrgentProposals(secondsRemaining) {
         const activeProposals = await this.getActiveProposals();
         const currentTime = Math.floor(Date.now() / 1000);
-        return activeProposals.filter(proposal => {
+        return activeProposals.filter((proposal) => {
             const timeLeft = proposal.votingEnds - currentTime;
             return timeLeft <= secondsRemaining && timeLeft > 0;
         });
     }
     async getProposalsByProposer(proposerAddress) {
         const allProposals = await this.getAllProposals();
-        return allProposals.filter(proposal => proposal.proposer.toLowerCase() === proposerAddress.toLowerCase());
+        return allProposals.filter((proposal) => proposal.proposer.toLowerCase() === proposerAddress.toLowerCase());
     }
     async analyzeProposal(proposalId) {
         const proposal = await this.getProposalById(proposalId);
@@ -113,14 +113,14 @@ class ProposalService {
         return {
             averageParticipation: totalParticipation / totalProposals,
             totalProposals,
-            activeProposals: allProposals.filter(p => p.state === index_1.ProposalState.ACTIVE).length
+            activeProposals: allProposals.filter((p) => p.state === index_1.ProposalState.ACTIVE).length
         };
     }
     isProposalActiveForVoting(proposal) {
         const currentTime = Math.floor(Date.now() / 1000);
-        return proposal.state === index_1.ProposalState.ACTIVE &&
+        return (proposal.state === index_1.ProposalState.ACTIVE &&
             proposal.votingEnds > currentTime &&
-            proposal.votingStarts <= currentTime;
+            proposal.votingStarts <= currentTime);
     }
     invalidateCache() {
         this.proposalCache.clear();
@@ -134,7 +134,7 @@ class ProposalService {
                     reasoning: 'Proposal is not active for voting'
                 };
             }
-            let vote = 'FOR';
+            const vote = 'FOR';
             let confidence = 0.7;
             let reasoning = 'Standard approval for active proposal';
             if (this.marketDataService) {
@@ -175,17 +175,19 @@ class ProposalService {
             let description;
             if (recommendation.action === 'buy') {
                 proposalType = index_1.ProposalType.INVEST;
-                description = `Investment proposal for ${asset}: ${recommendation.reasoning}. ` +
-                    `Confidence: ${(recommendation.confidence * 100).toFixed(1)}%. ` +
-                    `Risk Score: ${analysis.riskScore.toFixed(2)}. ` +
-                    `Recommended allocation: ${recommendation.allocatedPercentage?.toFixed(1)}%.`;
+                description =
+                    `Investment proposal for ${asset}: ${recommendation.reasoning}. ` +
+                        `Confidence: ${(recommendation.confidence * 100).toFixed(1)}%. ` +
+                        `Risk Score: ${analysis.riskScore.toFixed(2)}. ` +
+                        `Recommended allocation: ${recommendation.allocatedPercentage?.toFixed(1)}%.`;
             }
             else if (recommendation.action === 'sell') {
                 proposalType = index_1.ProposalType.DIVEST;
-                description = `Divestment proposal for ${asset}: ${recommendation.reasoning}. ` +
-                    `Confidence: ${(recommendation.confidence * 100).toFixed(1)}%. ` +
-                    `Risk Score: ${analysis.riskScore.toFixed(2)}. ` +
-                    `Recommended reduction: ${recommendation.allocatedPercentage?.toFixed(1)}%.`;
+                description =
+                    `Divestment proposal for ${asset}: ${recommendation.reasoning}. ` +
+                        `Confidence: ${(recommendation.confidence * 100).toFixed(1)}%. ` +
+                        `Risk Score: ${analysis.riskScore.toFixed(2)}. ` +
+                        `Recommended reduction: ${recommendation.allocatedPercentage?.toFixed(1)}%.`;
             }
             else {
                 return null;
@@ -254,16 +256,17 @@ class ProposalService {
     }
     calculateInvestmentAmount(asset, recommendation, analysis) {
         const baseAmounts = {
-            'USDC': 1000,
-            'WBTC': 0.02,
-            'PAXG': 0.5,
-            'EURT': 800
+            USDC: 1000,
+            WBTC: 0.02,
+            PAXG: 0.5,
+            EURT: 800
         };
         const baseAmount = baseAmounts[asset] || 500;
         const confidenceMultiplier = Math.max(0.6, recommendation.confidence);
-        const riskMultiplier = Math.max(0.5, 1 - (analysis.riskScore * 0.5));
-        const allocationMultiplier = recommendation.allocatedPercentage ?
-            (recommendation.allocatedPercentage / 25) : 1;
+        const riskMultiplier = Math.max(0.5, 1 - analysis.riskScore * 0.5);
+        const allocationMultiplier = recommendation.allocatedPercentage
+            ? recommendation.allocatedPercentage / 25
+            : 1;
         const finalAmount = baseAmount * confidenceMultiplier * riskMultiplier * allocationMultiplier;
         return Math.max(0.01, finalAmount);
     }
@@ -275,10 +278,8 @@ class ProposalService {
         else if (analysis.riskScore < 0.3) {
             conditions.push('low volatility');
         }
-        const buySignals = Object.values(analysis.recommendations)
-            .filter(r => r.action === 'buy').length;
-        const sellSignals = Object.values(analysis.recommendations)
-            .filter(r => r.action === 'sell').length;
+        const buySignals = Object.values(analysis.recommendations).filter((r) => r.action === 'buy').length;
+        const sellSignals = Object.values(analysis.recommendations).filter((r) => r.action === 'sell').length;
         if (buySignals > sellSignals) {
             conditions.push('bullish sentiment');
         }
@@ -322,10 +323,12 @@ class ProposalService {
                 if (aConfidence !== bConfidence) {
                     return bConfidence - aConfidence;
                 }
-                if (a.proposalType === index_1.ProposalType.REBALANCE && b.proposalType !== index_1.ProposalType.REBALANCE) {
+                if (a.proposalType === index_1.ProposalType.REBALANCE &&
+                    b.proposalType !== index_1.ProposalType.REBALANCE) {
                     return 1;
                 }
-                if (b.proposalType === index_1.ProposalType.REBALANCE && a.proposalType !== index_1.ProposalType.REBALANCE) {
+                if (b.proposalType === index_1.ProposalType.REBALANCE &&
+                    a.proposalType !== index_1.ProposalType.REBALANCE) {
                     return -1;
                 }
                 return 0;

@@ -5,7 +5,8 @@ exports.networks = {
     sepolia: {
         name: 'Sepolia',
         chainId: 11155111,
-        rpcUrl: process.env.INFURA_SEPOLIA_URL || 'https://sepolia.infura.io/v3/ca485bd6567e4c5fb5693ee66a5885d8',
+        rpcUrl: process.env.INFURA_SEPOLIA_URL ||
+            'https://sepolia.infura.io/v3/ca485bd6567e4c5fb5693ee66a5885d8',
         blockExplorer: 'https://sepolia.etherscan.io'
     },
     mainnet: {

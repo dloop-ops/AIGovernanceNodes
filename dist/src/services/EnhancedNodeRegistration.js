@@ -279,7 +279,7 @@ class EnhancedNodeRegistration {
             endpoint: config.endpoint,
             nodeType: config.nodeType,
             strategy: config.nodeType.toLowerCase(),
-            version: "1.0.0",
+            version: '1.0.0',
             registeredAt: Date.now()
         });
         return await this.transactionManager.executeTransaction(wallet, this.contractAddresses.aiNodeRegistry, abi, 'registerNodeWithStaking', [config.nodeAddress, metadata, 0], {
@@ -365,7 +365,7 @@ class EnhancedNodeRegistration {
         };
     }
     delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
 }
 exports.EnhancedNodeRegistration = EnhancedNodeRegistration;

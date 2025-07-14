@@ -79,8 +79,12 @@ function displayIdentitySummary() {
         console.log(`  Last Updated: ${identity.metadata.operationalStatus.lastUpdated}`);
         console.log('\n🔒 Token Allocation:');
         console.log(`  Active Governance: [${identity.SoulboundNFT.deployment.mintedTokens.activeGovernanceTokens.join(', ')}]`);
-        console.log(`  Reserved: [${identity.SoulboundNFT.deployment.mintedTokens.reservedTokens.slice(0, 10).join(', ')}...]`);
-        console.log(`  Future Expansion: [${identity.SoulboundNFT.deployment.mintedTokens.reservedTokens.slice(-5).join(', ')}]`);
+        console.log(`  Reserved: [${identity.SoulboundNFT.deployment.mintedTokens.reservedTokens
+            .slice(0, 10)
+            .join(', ')}...]`);
+        console.log(`  Future Expansion: [${identity.SoulboundNFT.deployment.mintedTokens.reservedTokens
+            .slice(-5)
+            .join(', ')}]`);
         console.log('\n🔗 Verification & Links:');
         console.log(`  Contract Verification: https://sepolia.etherscan.io/address/${identity.SoulboundNFT.address}`);
         console.log(`  Transaction: https://sepolia.etherscan.io/tx/${identity.SoulboundNFT.deployment.deploymentTx}`);

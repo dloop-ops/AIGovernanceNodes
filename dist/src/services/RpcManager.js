@@ -41,7 +41,8 @@ class RpcManager {
         const networkName = process.env.NETWORK_NAME || 'sepolia';
         this.endpoints = [
             {
-                url: process.env.INFURA_SEPOLIA_URL || 'https://sepolia.infura.io/v3/ca485bd6567e4c5fb5693ee66a5885d8',
+                url: process.env.INFURA_SEPOLIA_URL ||
+                    'https://sepolia.infura.io/v3/ca485bd6567e4c5fb5693ee66a5885d8',
                 name: 'Primary Infura',
                 priority: 1,
                 maxRequestsPerSecond: parseInt(process.env.API_RATE_LIMIT_PER_MINUTE || '60') / 60,
@@ -77,7 +78,7 @@ class RpcManager {
                 isHealthy: true
             }
         ];
-        this.endpoints = this.endpoints.filter(endpoint => endpoint.url &&
+        this.endpoints = this.endpoints.filter((endpoint) => endpoint.url &&
             endpoint.url !== '' &&
             !endpoint.url.includes('demo') &&
             !endpoint.url.includes('undefined'));
@@ -124,7 +125,7 @@ class RpcManager {
         logger_js_1.contractLogger.info('RPC Manager initialized', {
             component: 'contract',
             totalEndpoints: this.endpoints.length,
-            healthyEndpoints: this.endpoints.filter(e => e.isHealthy).length,
+            healthyEndpoints: this.endpoints.filter((e) => e.isHealthy).length,
             activeProvider: this.metrics.activeProvider
         });
     }
@@ -135,7 +136,7 @@ class RpcManager {
             try {
                 const provider = await this.getCurrentProvider();
                 const now = Date.now();
-                const endpoint = this.endpoints.find(e => e.name === this.metrics.activeProvider);
+                const endpoint = this.endpoints.find((e) => e.name === this.metrics.activeProvider);
                 if (endpoint) {
                     const timeSinceLastUse = now - endpoint.lastUsed;
                     const minInterval = Math.max(2000, 1000 / (endpoint.maxRequestsPerSecond || 0.5));
@@ -182,7 +183,7 @@ class RpcManager {
                         currentProvider: this.metrics.activeProvider
                     });
                     this.rotateProvider('Rate limit detected');
-                    await this.delay(3000 + (attempt * 2000));
+                    await this.delay(3000 + attempt * 2000);
                 }
                 else if (isNetworkError) {
                     logger_js_1.contractLogger.warn(`Network error detected, rotating provider`, {
@@ -191,7 +192,7 @@ class RpcManager {
                         currentProvider: this.metrics.activeProvider
                     });
                     this.rotateProvider('Network error detected');
-                    await this.delay(2000 + (attempt * 1500));
+                    await this.delay(2000 + attempt * 1500);
                 }
                 else {
                     await this.delay(1500 * attempt);
@@ -204,7 +205,7 @@ class RpcManager {
                     isRateLimit,
                     isNetworkError
                 });
-                const endpoint = this.endpoints.find(e => e.name === this.metrics.activeProvider);
+                const endpoint = this.endpoints.find((e) => e.name === this.metrics.activeProvider);
                 if (endpoint) {
                     endpoint.errorCount++;
                     if (endpoint.errorCount >= 2) {
@@ -227,7 +228,7 @@ class RpcManager {
         for (let i = 0; i < operations.length; i++) {
             try {
                 if (i > 0) {
-                    const delay = delayBetweenOps + (i * 50);
+                    const delay = delayBetweenOps + i * 50;
                     await this.delay(Math.min(delay, 1000));
                 }
                 const result = await this.executeWithRetry(operations[i], 2, `${operationName} ${i + 1}/${operations.length}`);
@@ -255,19 +256,19 @@ class RpcManager {
     }
     isRateLimitError(error) {
         const errorStr = String(error.message || error).toLowerCase();
-        return errorStr.includes('too many requests') ||
+        return (errorStr.includes('too many requests') ||
             errorStr.includes('rate limit') ||
             errorStr.includes('-32005') ||
-            errorStr.includes('429');
+            errorStr.includes('429'));
     }
     isBatchError(error) {
         const errorStr = String(error.message || error).toLowerCase();
-        return errorStr.includes('batch of more than') ||
+        return (errorStr.includes('batch of more than') ||
             errorStr.includes('batch request') ||
-            errorStr.includes('free tier');
+            errorStr.includes('free tier'));
     }
     markProviderRateLimited(providerName) {
-        const endpoint = this.endpoints.find(e => e.name === providerName);
+        const endpoint = this.endpoints.find((e) => e.name === providerName);
         if (endpoint) {
             endpoint.lastRateLimit = Date.now();
             logger_js_1.contractLogger.info(`Marked ${providerName} as rate limited temporarily`);
@@ -278,8 +279,7 @@ class RpcManager {
         const now = Date.now();
         const rateLimitCooldown = 60000;
         for (const endpoint of this.endpoints) {
-            const isRateLimited = endpoint.lastRateLimit &&
-                (now - endpoint.lastRateLimit) < rateLimitCooldown;
+            const isRateLimited = endpoint.lastRateLimit && now - endpoint.lastRateLimit < rateLimitCooldown;
             if (endpoint.isHealthy && !isRateLimited) {
                 const provider = this.providers.get(endpoint.name);
                 if (provider) {
@@ -291,7 +291,7 @@ class RpcManager {
             }
         }
         const leastRecentlyLimited = this.endpoints
-            .filter(e => e.isHealthy)
+            .filter((e) => e.isHealthy)
             .sort((a, b) => (a.lastRateLimit || 0) - (b.lastRateLimit || 0))[0];
         if (leastRecentlyLimited) {
             logger_js_1.contractLogger.warn(`All providers rate limited, using least recently limited: ${leastRecentlyLimited.name}`);
@@ -312,7 +312,7 @@ class RpcManager {
         ]);
     }
     updateProviderMetrics(providerName, success) {
-        const endpoint = this.endpoints.find(e => e.name === providerName);
+        const endpoint = this.endpoints.find((e) => e.name === providerName);
         if (endpoint) {
             if (success) {
                 endpoint.errorCount = Math.max(0, endpoint.errorCount - 1);
@@ -327,13 +327,13 @@ class RpcManager {
         }
     }
     delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
     getCurrentEndpoint() {
         const healthyEndpoints = this.getHealthyEndpoints();
         if (healthyEndpoints.length === 0) {
             logger_js_1.contractLogger.warn('No healthy endpoints available, resetting all endpoints');
-            this.endpoints.forEach(endpoint => {
+            this.endpoints.forEach((endpoint) => {
                 endpoint.isHealthy = true;
                 endpoint.errorCount = 0;
             });
@@ -342,7 +342,7 @@ class RpcManager {
         return healthyEndpoints[this.currentProviderIndex % healthyEndpoints.length];
     }
     getHealthyEndpoints() {
-        return this.endpoints.filter(endpoint => endpoint.isHealthy);
+        return this.endpoints.filter((endpoint) => endpoint.isHealthy);
     }
     rotateProvider(reason) {
         const previousProvider = this.getCurrentEndpoint().name;
@@ -366,7 +366,7 @@ class RpcManager {
             await this.performHealthCheck();
         }, 5 * 60 * 1000);
         setInterval(() => {
-            this.endpoints.forEach(endpoint => {
+            this.endpoints.forEach((endpoint) => {
                 endpoint.errorCount = Math.max(0, endpoint.errorCount - 1);
                 if (endpoint.errorCount === 0 && !endpoint.isHealthy) {
                     endpoint.isHealthy = true;
@@ -422,7 +422,7 @@ class RpcManager {
         };
     }
     getEndpointStatus() {
-        return this.endpoints.map(endpoint => ({
+        return this.endpoints.map((endpoint) => ({
             name: endpoint.name,
             isHealthy: endpoint.isHealthy,
             errorCount: endpoint.errorCount,
@@ -452,7 +452,7 @@ class RpcManager {
             poolStatus: this.connectionPool.getPoolStatus(),
             healthySummary: {
                 totalEndpoints: this.endpoints.length,
-                healthyEndpoints: this.endpoints.filter(e => e.isHealthy).length,
+                healthyEndpoints: this.endpoints.filter((e) => e.isHealthy).length,
                 networkHealthy: this.networkMonitor.isNetworkHealthy(),
                 bestProvider: this.networkMonitor.getBestProvider()
             }
@@ -470,7 +470,9 @@ class RpcManager {
         const networkName = process.env.NETWORK_NAME || 'sepolia';
         const endpointConfigs = [
             {
-                url: process.env.ETHEREUM_RPC_URL || process.env.INFURA_SEPOLIA_URL || 'https://sepolia.infura.io/v3/ca485bd6567e4c5fb5693ee66a5885d8',
+                url: process.env.ETHEREUM_RPC_URL ||
+                    process.env.INFURA_SEPOLIA_URL ||
+                    'https://sepolia.infura.io/v3/ca485bd6567e4c5fb5693ee66a5885d8',
                 name: 'Primary RPC',
                 priority: 1,
                 maxRequestsPerSecond: 0.5,
@@ -515,14 +517,12 @@ class RpcManager {
                 isHealthy: true
             }
         ];
-        const validConfigs = endpointConfigs.filter(config => config.url &&
-            config.url !== '' &&
-            !config.url.includes('undefined'));
+        const validConfigs = endpointConfigs.filter((config) => config.url && config.url !== '' && !config.url.includes('undefined'));
         for (const config of validConfigs) {
             try {
                 const initDelay = (config.priority - 1) * 2000;
                 if (initDelay > 0) {
-                    await new Promise(resolve => setTimeout(resolve, initDelay));
+                    await new Promise((resolve) => setTimeout(resolve, initDelay));
                 }
                 logger_js_1.contractLogger.info('Initializing RPC endpoint', {
                     component: 'contract',
@@ -537,10 +537,10 @@ class RpcManager {
                 let lastError = null;
                 for (let attempt = 1; attempt <= 3; attempt++) {
                     try {
-                        const blockNumber = await Promise.race([
+                        const blockNumber = (await Promise.race([
                             provider.getBlockNumber(),
                             new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 12000))
-                        ]);
+                        ]));
                         if (blockNumber > 0) {
                             connected = true;
                             logger_js_1.contractLogger.info('Provider connectivity confirmed', {
@@ -553,9 +553,10 @@ class RpcManager {
                     }
                     catch (error) {
                         lastError = error;
-                        if (error.message && (error.message.includes('Unauthorized') ||
-                            error.message.includes('API key') ||
-                            error.message.includes('invalid URL'))) {
+                        if (error.message &&
+                            (error.message.includes('Unauthorized') ||
+                                error.message.includes('API key') ||
+                                error.message.includes('invalid URL'))) {
                             logger_js_1.contractLogger.warn(`Provider has permanent issue, skipping`, {
                                 component: 'contract',
                                 provider: config.name,
@@ -569,7 +570,7 @@ class RpcManager {
                             error: error.message?.substring(0, 100)
                         });
                         if (attempt < 3) {
-                            await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+                            await new Promise((resolve) => setTimeout(resolve, attempt * 2000));
                         }
                     }
                 }
@@ -609,7 +610,7 @@ class RpcManager {
         logger_js_1.contractLogger.info('RPC Manager initialization completed', {
             component: 'contract',
             totalEndpoints: this.endpoints.length,
-            healthyEndpoints: this.endpoints.filter(e => e.isHealthy).length,
+            healthyEndpoints: this.endpoints.filter((e) => e.isHealthy).length,
             activeProvider: this.metrics.activeProvider
         });
     }

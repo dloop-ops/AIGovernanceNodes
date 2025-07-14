@@ -71,7 +71,7 @@ class ContractService {
             });
             const gasEstimate = await contract.createProposal.estimateGas(params.proposalType, params.assetAddress, ethers_1.ethers.parseEther(params.amount), params.description, params.additionalData || '0x');
             const MAX_GAS_LIMIT = 500000n;
-            let gasLimit = gasEstimate * 120n / 100n;
+            let gasLimit = (gasEstimate * 120n) / 100n;
             if (gasLimit > MAX_GAS_LIMIT) {
                 gasLimit = MAX_GAS_LIMIT;
                 logger_js_1.default.warn('Gas limit capped at maximum safe value', {
@@ -181,7 +181,7 @@ class ContractService {
                 const assetDaoWithProvider = this.assetDaoContract.connect(wallet.connect(provider));
                 const gasPrice = await this.getOptimizedGasPrice();
                 const gasEstimate = await assetDaoWithProvider.vote.estimateGas(proposalId, support);
-                const gasLimit = gasEstimate * 120n / 100n;
+                const gasLimit = (gasEstimate * 120n) / 100n;
                 const tx = await assetDaoWithProvider.vote(proposalId, support, {
                     gasPrice,
                     gasLimit
@@ -273,12 +273,12 @@ class ContractService {
             for (let i = 0; i < Math.min(count, 50); i++) {
                 try {
                     if (i > 0) {
-                        const delayTime = DELAY_BETWEEN_PROPOSALS + (Math.floor(i / CHUNK_SIZE) * 200);
-                        await new Promise(resolve => setTimeout(resolve, delayTime));
+                        const delayTime = DELAY_BETWEEN_PROPOSALS + Math.floor(i / CHUNK_SIZE) * 200;
+                        await new Promise((resolve) => setTimeout(resolve, delayTime));
                     }
                     if (i > 0 && i % CHUNK_SIZE === 0) {
                         logger_js_1.default.info(`Processed ${i} proposals, taking ${DELAY_BETWEEN_CHUNKS}ms break to respect rate limits`);
-                        await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_CHUNKS));
+                        await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_CHUNKS));
                     }
                     const proposalData = await this.rpcManager.executeWithRetry(async (provider) => {
                         const assetDaoWithProvider = this.assetDaoContract.connect(provider);
@@ -340,14 +340,22 @@ class ContractService {
     mapProposalState(stateValue) {
         const state = Number(stateValue);
         switch (state) {
-            case 0: return index_1.ProposalState.PENDING;
-            case 1: return index_1.ProposalState.ACTIVE;
-            case 2: return index_1.ProposalState.CANCELLED;
-            case 3: return index_1.ProposalState.DEFEATED;
-            case 4: return index_1.ProposalState.SUCCEEDED;
-            case 5: return index_1.ProposalState.QUEUED;
-            case 6: return index_1.ProposalState.EXECUTED;
-            case 7: return index_1.ProposalState.CANCELLED;
+            case 0:
+                return index_1.ProposalState.PENDING;
+            case 1:
+                return index_1.ProposalState.ACTIVE;
+            case 2:
+                return index_1.ProposalState.CANCELLED;
+            case 3:
+                return index_1.ProposalState.DEFEATED;
+            case 4:
+                return index_1.ProposalState.SUCCEEDED;
+            case 5:
+                return index_1.ProposalState.QUEUED;
+            case 6:
+                return index_1.ProposalState.EXECUTED;
+            case 7:
+                return index_1.ProposalState.CANCELLED;
             default:
                 logger_js_1.default.warn(`Unknown proposal state: ${state}, defaulting to PENDING`);
                 return index_1.ProposalState.PENDING;
@@ -356,9 +364,12 @@ class ContractService {
     mapProposalType(typeValue) {
         const type = Number(typeValue);
         switch (type) {
-            case 0: return index_1.ProposalType.INVEST;
-            case 1: return index_1.ProposalType.DIVEST;
-            case 2: return index_1.ProposalType.REBALANCE;
+            case 0:
+                return index_1.ProposalType.INVEST;
+            case 1:
+                return index_1.ProposalType.DIVEST;
+            case 2:
+                return index_1.ProposalType.REBALANCE;
             default:
                 logger_js_1.default.warn(`Unknown proposal type: ${type}, defaulting to INVEST`);
                 return index_1.ProposalType.INVEST;
@@ -417,7 +428,7 @@ class ContractService {
                         quorumReached: false
                     };
                 }
-                await new Promise(r => setTimeout(r, 500 * attempt));
+                await new Promise((r) => setTimeout(r, 500 * attempt));
             }
         }
         throw new index_1.GovernanceError('Unexpected flow in getProposalSafeWithRetry', 'PROPOSAL_FETCH_ERROR');
@@ -490,7 +501,7 @@ class ContractService {
         }
     }
     delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
     async getVotingPower(nodeIndex) {
         try {
@@ -585,7 +596,7 @@ class ContractService {
                 nodeAddress: wallet.address
             });
             const gasEstimate = await contract.mint.estimateGas(wallet.address, metadata);
-            const gasLimit = gasEstimate * 120n / 100n;
+            const gasLimit = (gasEstimate * 120n) / 100n;
             const gasPrice = await this.walletService.getGasPrice();
             const tx = await contract.mint(wallet.address, metadata, {
                 gasLimit,
@@ -691,7 +702,10 @@ class ContractService {
         }
         catch (error) {
             if (!error.message.includes('NodeNotRegistered')) {
-                logger_js_1.default.warn('Failed to check node registration status', { nodeAddress, error: error.message });
+                logger_js_1.default.warn('Failed to check node registration status', {
+                    nodeAddress,
+                    error: error.message
+                });
             }
         }
         try {
@@ -799,14 +813,16 @@ class ContractService {
                         id: result.id ? result.id.toString() : proposalId.toString(),
                         proposer: result.proposer || '0x0000000000000000000000000000000000000000',
                         description: result.description || `Proposal ${proposalId}`,
-                        proposalType: result.proposalType ? result.proposalType.toString() : "0",
+                        proposalType: result.proposalType ? result.proposalType.toString() : '0',
                         assetAddress: result.assetAddress || '0x0000000000000000000000000000000000000000',
                         amount: result.amount ? result.amount.toString() : '0',
                         votesFor: result.votesFor ? result.votesFor.toString() : '0',
                         votesAgainst: result.votesAgainst ? result.votesAgainst.toString() : '0',
                         startTime: result.startTime ? parseInt(result.startTime.toString()) : 0,
                         endTime: result.endTime ? parseInt(result.endTime.toString()) : 0,
-                        state: result.state !== undefined ? parseInt(result.state.toString()) : index_1.ProposalState.PENDING,
+                        state: result.state !== undefined
+                            ? parseInt(result.state.toString())
+                            : index_1.ProposalState.PENDING,
                         executed: result.executed || false,
                         cancelled: result.cancelled || false,
                         title: `Proposal ${proposalId}`,

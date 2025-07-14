@@ -109,7 +109,9 @@ class GovernanceNode {
             return;
         }
         try {
-            logger_js_1.default.info(`Checking and voting on proposals for node ${this.nodeId}`, { component: 'governance' });
+            logger_js_1.default.info(`Checking and voting on proposals for node ${this.nodeId}`, {
+                component: 'governance'
+            });
             const activeProposals = await this.contractService.getActiveProposals();
             if (!activeProposals || activeProposals.length === 0) {
                 logger_js_1.default.info(`No active proposals found for voting`, { nodeId: this.nodeId });
@@ -126,7 +128,7 @@ class GovernanceNode {
                 const proposal = activeProposals[i];
                 try {
                     if (i > 0) {
-                        const delayTime = 800 + (i * 200);
+                        const delayTime = 800 + i * 200;
                         logger_js_1.default.debug(`Adding ${delayTime}ms delay before processing proposal ${proposal.id}`, {
                             nodeId: this.nodeId,
                             proposalIndex: i
@@ -179,7 +181,9 @@ class GovernanceNode {
                         proposalId: proposal.id
                     });
                     if (errorMessage.includes('Too Many Requests') || errorMessage.includes('rate limit')) {
-                        logger_js_1.default.warn(`Rate limited while voting, adding 5 second delay`, { nodeId: this.nodeId });
+                        logger_js_1.default.warn(`Rate limited while voting, adding 5 second delay`, {
+                            nodeId: this.nodeId
+                        });
                         await this.delay(5000);
                     }
                 }
@@ -228,7 +232,9 @@ class GovernanceNode {
             else {
                 logger_js_1.default.warn(`Failed to get DLOOP balance for node ${this.nodeId}`, {
                     component: 'governance',
-                    error: tokenResult.reason instanceof Error ? tokenResult.reason.message : String(tokenResult.reason)
+                    error: tokenResult.reason instanceof Error
+                        ? tokenResult.reason.message
+                        : String(tokenResult.reason)
                 });
                 tokenBalance = '1000.0';
             }
@@ -257,7 +263,7 @@ class GovernanceNode {
         }
     }
     delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
     getStatus() {
         return {

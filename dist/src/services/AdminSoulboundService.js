@@ -26,15 +26,15 @@ class AdminSoulboundService {
     initializeContract() {
         const addresses = (0, contracts_js_1.getCurrentContractAddresses)();
         const soulboundAbi = [
-            "function mint(address to, string memory tokenURI) external returns (uint256)",
-            "function hasRole(bytes32 role, address account) external view returns (bool)",
-            "function MINTER_ROLE() external view returns (bytes32)",
-            "function balanceOf(address owner) external view returns (uint256)",
-            "function tokenOfOwnerByIndex(address owner, uint256 index) external view returns (uint256)",
-            "function ownerOf(uint256 tokenId) external view returns (address)",
-            "function getTokensByOwner(address owner) external view returns (uint256[])",
-            "function totalSupply() external view returns (uint256)",
-            "event TokenMinted(uint256 indexed tokenId, address indexed to, string tokenURI)"
+            'function mint(address to, string memory tokenURI) external returns (uint256)',
+            'function hasRole(bytes32 role, address account) external view returns (bool)',
+            'function MINTER_ROLE() external view returns (bytes32)',
+            'function balanceOf(address owner) external view returns (uint256)',
+            'function tokenOfOwnerByIndex(address owner, uint256 index) external view returns (uint256)',
+            'function ownerOf(uint256 tokenId) external view returns (address)',
+            'function getTokensByOwner(address owner) external view returns (uint256[])',
+            'function totalSupply() external view returns (uint256)',
+            'event TokenMinted(uint256 indexed tokenId, address indexed to, string tokenURI)'
         ];
         this.soulboundContract = new ethers_1.ethers.Contract(addresses.soulboundNft, soulboundAbi, this.adminWallet);
     }
@@ -154,11 +154,11 @@ class AdminSoulboundService {
                 ...result
             });
             if (results.length < nodes.length) {
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                await new Promise((resolve) => setTimeout(resolve, 3000));
             }
         }
-        const successful = results.filter(r => r.success).length;
-        const failed = results.filter(r => !r.success).length;
+        const successful = results.filter((r) => r.success).length;
+        const failed = results.filter((r) => !r.success).length;
         logger_js_1.default.info('Batch mint completed', {
             component: 'admin-soulbound',
             totalNodes: nodes.length,
@@ -260,8 +260,8 @@ class AdminSoulboundService {
                 });
             }
         }
-        const successful = results.filter(r => r.success).length;
-        const failed = results.filter(r => !r.success).length;
+        const successful = results.filter((r) => r.success).length;
+        const failed = results.filter((r) => !r.success).length;
         return {
             distributed: successful,
             failed: failed,
@@ -291,8 +291,8 @@ class AdminSoulboundService {
                 });
             }
         }
-        const successful = results.filter(r => r.success).length;
-        const failed = results.filter(r => !r.success).length;
+        const successful = results.filter((r) => r.success).length;
+        const failed = results.filter((r) => !r.success).length;
         logger_js_1.default.info(`✅ SoulBound NFT distribution complete: ${successful} successful, ${failed} failed`);
         return {
             distributed: successful,

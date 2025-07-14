@@ -48,7 +48,7 @@ class GasManager {
             logger_js_1.contractLogger.error('Failed to get optimized gas config:', error);
             return {
                 gasPrice: ethers_1.ethers.parseUnits('20', 'gwei'),
-                gasLimit: estimatedGas * 150n / 100n,
+                gasLimit: (estimatedGas * 150n) / 100n,
                 retryMultiplier: 1.3,
                 maxRetries: 2
             };
@@ -141,11 +141,11 @@ class GasManager {
     }
     escalateGasLimit(baseGasLimit, attempt) {
         const increasePercent = Math.min(20 * (attempt - 1), 100);
-        return baseGasLimit * BigInt(100 + increasePercent) / 100n;
+        return (baseGasLimit * BigInt(100 + increasePercent)) / 100n;
     }
     escalateGasPrice(baseGasPrice, attempt) {
         const increasePercent = Math.min(25 * (attempt - 1), 150);
-        return baseGasPrice * BigInt(100 + increasePercent) / 100n;
+        return (baseGasPrice * BigInt(100 + increasePercent)) / 100n;
     }
     shouldRetry(error, attempt) {
         if (attempt >= 5)
@@ -168,10 +168,10 @@ class GasManager {
             'invalid signature',
             'insufficient allowance'
         ];
-        if (nonRetryableErrors.some(err => errorMessage.includes(err))) {
+        if (nonRetryableErrors.some((err) => errorMessage.includes(err))) {
             return false;
         }
-        if (retryableErrors.some(err => errorMessage.includes(err))) {
+        if (retryableErrors.some((err) => errorMessage.includes(err))) {
             return true;
         }
         return attempt <= 3;
@@ -182,11 +182,12 @@ class GasManager {
         const jitter = Math.random() * 1000;
         const totalDelay = Math.min(delay + jitter, 30000);
         logger_js_1.contractLogger.info(`Waiting ${totalDelay}ms before retry...`, { attempt });
-        await new Promise(resolve => setTimeout(resolve, totalDelay));
+        await new Promise((resolve) => setTimeout(resolve, totalDelay));
     }
     getGasMetrics() {
         const averageGasPrice = this.gasHistory.length > 0
-            ? ethers_1.ethers.formatUnits(this.gasHistory.reduce((sum, price) => sum + price, 0n) / BigInt(this.gasHistory.length), 'gwei')
+            ? ethers_1.ethers.formatUnits(this.gasHistory.reduce((sum, price) => sum + price, 0n) /
+                BigInt(this.gasHistory.length), 'gwei')
             : '0';
         return {
             historySize: this.gasHistory.length,

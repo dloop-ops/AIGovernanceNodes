@@ -67,7 +67,7 @@ ETHEREUM_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
 
 # AI Node Private Keys (KEEP THESE SECURE!)
 `;
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
         envContent += `AI_NODE_${node.index}_PRIVATE_KEY=${node.privateKey}\n`;
     });
     envContent += `
@@ -115,7 +115,7 @@ Each node needs:
 ## Node Addresses
 
 `;
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
         content += `### Node ${node.index}
 - **Address**: \`${node.address}\`
 - **Required ETH**: 0.1 ETH

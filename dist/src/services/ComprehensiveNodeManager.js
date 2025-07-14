@@ -15,7 +15,7 @@ class ComprehensiveNodeManager {
     async initializeAndRegisterAllNodes() {
         logger_js_1.contractLogger.info('SKIPPING ALL NODE REGISTRATION - All nodes already registered');
         const nodeConfigs = this.loadNodeConfigurations();
-        nodeConfigs.forEach(config => {
+        nodeConfigs.forEach((config) => {
             this.nodeStatuses.set(config.nodeId, {
                 nodeId: config.nodeId,
                 address: config.nodeAddress,
@@ -33,10 +33,8 @@ class ComprehensiveNodeManager {
         });
         this.logRegistrationSummary();
         try {
-            const registrationResults = await Promise.allSettled(this.allNodeIds.map(nodeId => this.registerSingleNode(nodeId)));
-            const successfulRegistrations = registrationResults
-                .filter(result => result.status === 'fulfilled')
-                .length;
+            const registrationResults = await Promise.allSettled(this.allNodeIds.map((nodeId) => this.registerSingleNode(nodeId)));
+            const successfulRegistrations = registrationResults.filter((result) => result.status === 'fulfilled').length;
             logger_js_1.contractLogger.info(`Node registration complete: ${successfulRegistrations}/${this.allNodeIds.length} successful`);
             await this.performDetailedStatusCheck();
             return true;
@@ -155,9 +153,9 @@ class ComprehensiveNodeManager {
         const statuses = Array.from(this.nodeStatuses.values());
         return {
             total: statuses.length,
-            registered: statuses.filter(s => s.status === 'registered').length,
-            pending: statuses.filter(s => s.status === 'pending').length,
-            failed: statuses.filter(s => s.status === 'failed').length,
+            registered: statuses.filter((s) => s.status === 'registered').length,
+            pending: statuses.filter((s) => s.status === 'pending').length,
+            failed: statuses.filter((s) => s.status === 'failed').length,
             inProgress: this.isProcessing
         };
     }
@@ -194,7 +192,7 @@ class ComprehensiveNodeManager {
         const nodeConfigs = this.loadNodeConfigurations();
         const wallets = this.walletService.getAllWallets();
         for (const nodeId of failedNodes) {
-            const config = nodeConfigs.find(c => c.nodeId === nodeId);
+            const config = nodeConfigs.find((c) => c.nodeId === nodeId);
             const wallet = wallets.find((_, index) => nodeConfigs[index].nodeId === nodeId);
             if (config && wallet) {
                 await this.processNodeRegistration(wallet, config);
@@ -203,7 +201,7 @@ class ComprehensiveNodeManager {
         }
     }
     delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
     async registerSingleNode(nodeId) {
     }

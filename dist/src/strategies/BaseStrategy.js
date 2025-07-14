@@ -48,7 +48,8 @@ class BaseStrategy {
                 logger_js_1.strategyLogger.debug(`Proposal ${proposal.id} has insufficient description`);
                 return false;
             }
-            if (!proposal.assetAddress || proposal.assetAddress === '0x0000000000000000000000000000000000000000') {
+            if (!proposal.assetAddress ||
+                proposal.assetAddress === '0x0000000000000000000000000000000000000000') {
                 logger_js_1.strategyLogger.debug(`Proposal ${proposal.id} has invalid asset address`);
                 return false;
             }
@@ -213,7 +214,7 @@ class BaseStrategy {
     isLastMinute(proposal) {
         const timeLeft = this.getTimeToDeadline(proposal);
         const votingPeriod = proposal.endTime - (proposal.startTime || 0);
-        return timeLeft < (votingPeriod * 0.1);
+        return timeLeft < votingPeriod * 0.1;
     }
     getConfig() {
         return { ...this.config };

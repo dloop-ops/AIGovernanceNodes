@@ -11,9 +11,9 @@ dotenv_1.default.config();
 const SOULBOUND_NFT_CONTRACT = '0x6391C14631b2Be5374297fA3110687b80233104c';
 const DEPLOYER_ADDRESS = '0x3639D1F746A977775522221f53D0B1eA5749b8b9';
 const SOULBOUND_ABI = [
-    "function ownerOf(uint256 tokenId) view returns (address)",
-    "function tokenURI(uint256 tokenId) view returns (string)",
-    "function balanceOf(address owner) view returns (uint256)"
+    'function ownerOf(uint256 tokenId) view returns (address)',
+    'function tokenURI(uint256 tokenId) view returns (string)',
+    'function balanceOf(address owner) view returns (uint256)'
 ];
 class TokenAnalyzer {
     constructor() {

@@ -194,11 +194,7 @@ class DLoopGovernanceRegistration {
                 nodeAddress,
                 metadata: nodeMetadata
             });
-            const registrationApproaches = [
-                'registerAINode',
-                'registerNode',
-                'registerNodeWithStaking'
-            ];
+            const registrationApproaches = ['registerAINode', 'registerNode', 'registerNodeWithStaking'];
             for (const approach of registrationApproaches) {
                 try {
                     let tx;
@@ -245,11 +241,7 @@ class DLoopGovernanceRegistration {
     }
     async verifyRegistrationStatus(nodeAddress) {
         try {
-            const verificationMethods = [
-                'isNodeRegistered',
-                'getNodeInfo',
-                'nodes'
-            ];
+            const verificationMethods = ['isNodeRegistered', 'getNodeInfo', 'nodes'];
             for (const method of verificationMethods) {
                 try {
                     let result;
@@ -324,13 +316,13 @@ class DLoopGovernanceRegistration {
                 });
             }
         }
-        const registeredCount = results.filter(r => r.success).length;
-        const failedCount = results.filter(r => !r.success).length;
+        const registeredCount = results.filter((r) => r.success).length;
+        const failedCount = results.filter((r) => !r.success).length;
         logger_js_1.contractLogger.info('🏁 D-Loop governance registration completed', {
             registered: registeredCount,
             failed: failedCount,
             totalAttempted: nodeCount,
-            results: results.map(r => ({ nodeId: r.nodeIndex, success: r.success, error: r.error }))
+            results: results.map((r) => ({ nodeId: r.nodeIndex, success: r.success, error: r.error }))
         });
         return { registered: registeredCount, failed: failedCount, results };
     }

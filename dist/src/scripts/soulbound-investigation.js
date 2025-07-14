@@ -22,22 +22,22 @@ const NODE_ADDRESSES = [
     '0xA6fBf2dD68dB92dA309D6b82DAe2180d903a36FA'
 ];
 const SOULBOUND_ABI = [
-    "function balanceOf(address owner) view returns (uint256)",
-    "function ownerOf(uint256 tokenId) view returns (address)",
-    "function tokenURI(uint256 tokenId) view returns (string)",
-    "function hasValidToken(address owner) view returns (bool)",
-    "function getTokensByOwner(address owner) view returns (uint256[])",
-    "function mint(address to, string memory uri) returns (uint256)",
-    "function batchMint(address[] memory recipients, string[] memory uris)",
-    "function revoke(uint256 tokenId)",
-    "function hasRole(bytes32 role, address account) view returns (bool)",
-    "function ADMIN_ROLE() view returns (bytes32)",
-    "function MINTER_ROLE() view returns (bytes32)",
-    "function DEFAULT_ADMIN_ROLE() view returns (bytes32)",
-    "function nextTokenId() view returns (uint256)",
-    "event TokenMinted(uint256 indexed tokenId, address indexed to, string tokenURI)",
-    "event TokenRevoked(uint256 indexed tokenId, address indexed owner)",
-    "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)"
+    'function balanceOf(address owner) view returns (uint256)',
+    'function ownerOf(uint256 tokenId) view returns (address)',
+    'function tokenURI(uint256 tokenId) view returns (string)',
+    'function hasValidToken(address owner) view returns (bool)',
+    'function getTokensByOwner(address owner) view returns (uint256[])',
+    'function mint(address to, string memory uri) returns (uint256)',
+    'function batchMint(address[] memory recipients, string[] memory uris)',
+    'function revoke(uint256 tokenId)',
+    'function hasRole(bytes32 role, address account) view returns (bool)',
+    'function ADMIN_ROLE() view returns (bytes32)',
+    'function MINTER_ROLE() view returns (bytes32)',
+    'function DEFAULT_ADMIN_ROLE() view returns (bytes32)',
+    'function nextTokenId() view returns (uint256)',
+    'event TokenMinted(uint256 indexed tokenId, address indexed to, string tokenURI)',
+    'event TokenRevoked(uint256 indexed tokenId, address indexed owner)',
+    'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)'
 ];
 class SoulboundInvestigator {
     constructor() {
@@ -203,7 +203,7 @@ class SoulboundInvestigator {
         }
         try {
             const gasEstimate = await contractWithSigner.batchMint.estimateGas(recipients, uris);
-            const gasLimit = gasEstimate * 120n / 100n;
+            const gasLimit = (gasEstimate * 120n) / 100n;
             logger_js_1.contractLogger.info('Executing batch mint...', {
                 recipients: recipients.length,
                 gasEstimate: gasEstimate.toString(),
@@ -359,8 +359,8 @@ async function runInvestigation(investigator) {
         console.log(`  📅 Last Updated: ${identityData.lastUpdated || 'Unknown'}\n`);
     }
     console.log('Node NFT Assignments:');
-    const nodesWithNFTs = results.filter(r => r.hasNFT);
-    const nodesWithoutNFTs = results.filter(r => !r.hasNFT);
+    const nodesWithNFTs = results.filter((r) => r.hasNFT);
+    const nodesWithoutNFTs = results.filter((r) => !r.hasNFT);
     results.forEach((result, index) => {
         console.log(`  Node ${index + 1} (${result.address}):`);
         console.log(`    ✅ Has NFT: ${result.hasNFT ? 'YES' : 'NO'}`);
@@ -377,7 +377,7 @@ async function runInvestigation(investigator) {
     console.log(`📈 Summary: ${nodesWithNFTs.length}/${results.length} nodes have SoulBound NFTs assigned`);
     if (nodesWithoutNFTs.length > 0) {
         console.log(`\n⚠️  ${nodesWithoutNFTs.length} nodes need SoulBound NFTs:`);
-        nodesWithoutNFTs.forEach(node => {
+        nodesWithoutNFTs.forEach((node) => {
             console.log(`  - Node ${node.nodeIndex + 1}: ${node.address}`);
         });
         console.log('\nTo mint missing NFTs, run:');
@@ -391,14 +391,14 @@ async function runMinting(investigator) {
     console.log('🖨️  Minting SoulBound NFTs for AI Governance Nodes...\n');
     const contractInfo = await investigator.getContractInfo();
     const results = await investigator.investigateNodeNFTs();
-    const missingNodes = results.filter(r => !r.hasNFT);
+    const missingNodes = results.filter((r) => !r.hasNFT);
     if (missingNodes.length === 0) {
         console.log('✅ All nodes already have SoulBound NFTs. No minting needed.\n');
         return;
     }
     console.log(`🎯 Found ${missingNodes.length} nodes without SoulBound NFTs. Proceeding with minting...\n`);
     await investigator.mintMissingNFTs(missingNodes, contractInfo);
-    const missingAddresses = missingNodes.map(n => n.address);
+    const missingAddresses = missingNodes.map((n) => n.address);
     await investigator.verifyMinting(missingAddresses);
     console.log('🎉 Minting process completed! Run investigation again to verify results.\n');
 }
@@ -410,11 +410,11 @@ async function runVerification(investigator) {
         const status = result.hasNFT ? '✅ ASSIGNED' : '❌ MISSING';
         console.log(`  Node ${index + 1}: ${status} (${result.nftCount} NFTs)`);
     });
-    const assignedCount = results.filter(r => r.hasNFT).length;
+    const assignedCount = results.filter((r) => r.hasNFT).length;
     console.log(`\n📊 Overall Status: ${assignedCount}/${results.length} nodes have SoulBound NFTs\n`);
 }
 if (require.main === module) {
-    main().catch(error => {
+    main().catch((error) => {
         logger_js_1.contractLogger.error('Main execution failed:', error);
         console.error('❌ Execution failed:', error instanceof Error ? error.message : String(error));
         process.exit(1);

@@ -100,7 +100,7 @@ class ConservativeStrategy extends BaseStrategy_js_1.BaseStrategy {
                 }
             }
             if (votingMomentum.votingActivity === 'high') {
-                if (voteSupport === (votingMomentum.supportRatio > 0.5)) {
+                if (voteSupport === votingMomentum.supportRatio > 0.5) {
                     confidence += 0.1;
                 }
                 else {

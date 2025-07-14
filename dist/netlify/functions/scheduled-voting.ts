@@ -52,10 +52,21 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     }
 
     // Contract setup with proper address validation
-    const assetDaoAddress = ethers.getAddress(
-      // Corrected AssetDAO contract address (42 characters)
-      process.env.ASSET_DAO_CONTRACT_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8251bc4B3529'
-    );
+    // Resolve AssetDAO address with validation and safe fallback
+    let assetDaoAddress: string;
+    const envAddr = process.env.ASSET_DAO_CONTRACT_ADDRESS;
+    try {
+      if (envAddr) {
+        assetDaoAddress = ethers.getAddress(envAddr);
+      } else {
+        throw new Error('ENV address missing');
+      }
+    } catch (e) {
+      console.log(
+        `${requestId} WARN   ⚠️ Invalid ASSET_DAO_CONTRACT_ADDRESS env value, falling back to default`
+      );
+      assetDaoAddress = '0xa87e662061237a121Ca2E83E77dA8251bc4B3529';
+    }
 
     const assetDaoAbi = [
       "function getProposalCount() external view returns (uint256)",

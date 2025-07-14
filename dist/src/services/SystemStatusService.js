@@ -53,7 +53,7 @@ class SystemStatusService {
         const comprehensiveStatus = this.rpcManager.getComprehensiveStatus();
         const metrics = comprehensiveStatus.rpcManager;
         const endpointStatuses = comprehensiveStatus.endpoints;
-        const healthyEndpoints = endpointStatuses.filter(e => e.isHealthy).length;
+        const healthyEndpoints = endpointStatuses.filter((e) => e.isHealthy).length;
         const totalEndpoints = endpointStatuses.length;
         let status = 'healthy';
         if (healthyEndpoints === 0) {
@@ -74,9 +74,10 @@ class SystemStatusService {
                 averageResponseTime: Math.round(metrics.averageResponseTime)
             },
             networkMonitoring: {
-                healthyProviders: comprehensiveStatus.healthySummary.networkHealthy ?
-                    endpointStatuses.filter(e => e.isHealthy).map(e => e.name) : [],
-                unhealthyProviders: endpointStatuses.filter(e => !e.isHealthy).map(e => e.name),
+                healthyProviders: comprehensiveStatus.healthySummary.networkHealthy
+                    ? endpointStatuses.filter((e) => e.isHealthy).map((e) => e.name)
+                    : [],
+                unhealthyProviders: endpointStatuses.filter((e) => !e.isHealthy).map((e) => e.name),
                 bestProvider: comprehensiveStatus.healthySummary.bestProvider,
                 networkHealthy: comprehensiveStatus.healthySummary.networkHealthy
             },
@@ -115,17 +116,17 @@ class SystemStatusService {
             {
                 name: 'Daily Proposal Creation',
                 status: 'running',
-                lastExecution: Date.now() - (12 * 60 * 60 * 1000)
+                lastExecution: Date.now() - 12 * 60 * 60 * 1000
             },
             {
                 name: 'Voting Check',
                 status: 'running',
-                lastExecution: Date.now() - (4 * 60 * 60 * 1000)
+                lastExecution: Date.now() - 4 * 60 * 60 * 1000
             },
             {
                 name: 'Market Data Fetch',
                 status: 'running',
-                lastExecution: Date.now() - (30 * 60 * 1000)
+                lastExecution: Date.now() - 30 * 60 * 1000
             }
         ];
     }
@@ -136,8 +137,10 @@ class SystemStatusService {
             rpcStatus: rpc.status,
             rpcConnections: `${rpc.activeConnections}/${rpc.totalEndpoints}`,
             rateLimitHandling: {
-                successRate: rpc.rateLimitHandling.totalRequests > 0 ?
-                    Math.round((rpc.rateLimitHandling.successfulRequests / rpc.rateLimitHandling.totalRequests) * 100) : 0,
+                successRate: rpc.rateLimitHandling.totalRequests > 0
+                    ? Math.round((rpc.rateLimitHandling.successfulRequests / rpc.rateLimitHandling.totalRequests) *
+                        100)
+                    : 0,
                 avgResponseTime: rpc.rateLimitHandling.averageResponseTime,
                 rateLimitHits: rpc.rateLimitHandling.rateLimitHits
             },
@@ -153,13 +156,16 @@ class SystemStatusService {
     getMetricsSummary() {
         const status = this.getComprehensiveStatus();
         const rpc = status.rpcInfrastructure;
-        const rpcReliability = rpc.totalEndpoints > 0 ?
-            (rpc.activeConnections / rpc.totalEndpoints) * 100 : 0;
-        const networkHealth = rpc.networkMonitoring.networkHealthy ? 100 :
-            (rpc.networkMonitoring.healthyProviders.length /
-                (rpc.networkMonitoring.healthyProviders.length + rpc.networkMonitoring.unhealthyProviders.length)) * 100;
-        const systemUptime = status.governanceNodes.totalNodes > 0 ?
-            (status.governanceNodes.activeNodes / status.governanceNodes.totalNodes) * 100 : 0;
+        const rpcReliability = rpc.totalEndpoints > 0 ? (rpc.activeConnections / rpc.totalEndpoints) * 100 : 0;
+        const networkHealth = rpc.networkMonitoring.networkHealthy
+            ? 100
+            : (rpc.networkMonitoring.healthyProviders.length /
+                (rpc.networkMonitoring.healthyProviders.length +
+                    rpc.networkMonitoring.unhealthyProviders.length)) *
+                100;
+        const systemUptime = status.governanceNodes.totalNodes > 0
+            ? (status.governanceNodes.activeNodes / status.governanceNodes.totalNodes) * 100
+            : 0;
         const automatedRecovery = rpc.rateLimitHandling.rateLimitHits > 0 &&
             rpc.rateLimitHandling.successfulRequests > rpc.rateLimitHandling.failedRequests;
         return {

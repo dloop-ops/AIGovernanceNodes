@@ -80,7 +80,7 @@ class EmergencyGovernanceService {
         try {
             console.log('📋 Checking recent voting activity...');
             const proposals = await this.contractService.getProposals();
-            const activeProposals = proposals.filter(p => p.state?.toString() === 'ACTIVE' || p.state === 1);
+            const activeProposals = proposals.filter((p) => p.state?.toString() === 'ACTIVE' || p.state === 1);
             console.log(`📊 Found ${activeProposals.length} active proposals after voting round`);
             return {
                 totalProposals: proposals.length,
@@ -99,8 +99,8 @@ class EmergencyGovernanceService {
     async getGovernanceStatus() {
         try {
             const proposals = await this.contractService.getProposals();
-            const activeProposals = proposals.filter(p => p.state?.toString() === 'ACTIVE' || p.state === 1);
-            const usdcProposals = activeProposals.filter(p => p.assetAddress.toLowerCase().includes('1c7d4b196cb0c7b01d743fbc6116a902379c7238'));
+            const activeProposals = proposals.filter((p) => p.state?.toString() === 'ACTIVE' || p.state === 1);
+            const usdcProposals = activeProposals.filter((p) => p.assetAddress.toLowerCase().includes('1c7d4b196cb0c7b01d743fbc6116a902379c7238'));
             return {
                 status: 'operational',
                 totalProposals: proposals.length,

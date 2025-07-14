@@ -14,12 +14,19 @@ class ConnectionPool {
     }
     initializeConnections() {
         const endpoints = [
-            { name: 'Primary_Infura', url: process.env.INFURA_SEPOLIA_URL || 'https://sepolia.infura.io/v3/ca485bd6567e4c5fb5693ee66a5885d8' },
-            { name: 'Secondary_Infura', url: 'https://sepolia.infura.io/v3/60755064a92543a1ac7aaf4e20b71cdf' },
+            {
+                name: 'Primary_Infura',
+                url: process.env.INFURA_SEPOLIA_URL ||
+                    'https://sepolia.infura.io/v3/ca485bd6567e4c5fb5693ee66a5885d8'
+            },
+            {
+                name: 'Secondary_Infura',
+                url: 'https://sepolia.infura.io/v3/60755064a92543a1ac7aaf4e20b71cdf'
+            },
             { name: 'Tenderly', url: 'https://sepolia.gateway.tenderly.co/public' },
             { name: 'Ethereum_Public', url: 'https://ethereum-sepolia-rpc.publicnode.com' }
         ];
-        endpoints.forEach(endpoint => {
+        endpoints.forEach((endpoint) => {
             if (endpoint.url && !endpoint.url.includes('undefined')) {
                 const connections = [];
                 for (let i = 0; i < this.maxConnectionsPerEndpoint; i++) {
@@ -60,7 +67,7 @@ class ConnectionPool {
         });
     }
     getHealthyConnection() {
-        const allConnections = Array.from(this.connections.entries()).flatMap(([name, conns]) => conns.filter(conn => conn.isHealthy).map(conn => ({ ...conn, endpointName: name })));
+        const allConnections = Array.from(this.connections.entries()).flatMap(([name, conns]) => conns.filter((conn) => conn.isHealthy).map((conn) => ({ ...conn, endpointName: name })));
         if (allConnections.length === 0) {
             logger_js_1.contractLogger.error('No healthy connections available in pool');
             return null;
@@ -125,7 +132,7 @@ class ConnectionPool {
     }
     markConnectionUnhealthy(provider) {
         for (const [endpointName, connections] of this.connections.entries()) {
-            const connection = connections.find(conn => conn.provider === provider);
+            const connection = connections.find((conn) => conn.provider === provider);
             if (connection) {
                 connection.isHealthy = false;
                 connection.errorCount++;
@@ -141,7 +148,7 @@ class ConnectionPool {
     async attemptConnectionRecovery() {
         logger_js_1.contractLogger.info('Attempting connection pool recovery');
         for (const [endpointName, connections] of this.connections.entries()) {
-            connections.forEach(conn => {
+            connections.forEach((conn) => {
                 if (conn.errorCount > 5) {
                     conn.errorCount = 0;
                     conn.isHealthy = true;
@@ -164,7 +171,7 @@ class ConnectionPool {
             for (const connection of connections) {
                 try {
                     await this.checkConnectionHealth(endpointName, connection);
-                    await new Promise(resolve => setTimeout(resolve, 50));
+                    await new Promise((resolve) => setTimeout(resolve, 50));
                 }
                 catch (error) {
                     logger_js_1.contractLogger.debug('Connection health check failed', {
@@ -202,12 +209,12 @@ class ConnectionPool {
         }
     }
     delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
     getPoolStatus() {
         const status = {};
         for (const [endpointName, connections] of this.connections.entries()) {
-            const healthy = connections.filter(conn => conn.isHealthy).length;
+            const healthy = connections.filter((conn) => conn.isHealthy).length;
             status[endpointName] = {
                 healthy,
                 total: connections.length

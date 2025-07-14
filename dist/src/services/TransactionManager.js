@@ -31,7 +31,7 @@ class TransactionManager {
                     let maxPriorityFeePerGas;
                     try {
                         const estimatedGas = await contract[methodName].estimateGas(...args);
-                        gasLimit = (estimatedGas * BigInt(120) / BigInt(100)).toString();
+                        gasLimit = ((estimatedGas * BigInt(120)) / BigInt(100)).toString();
                         logger_js_1.contractLogger.debug('Gas estimation successful', {
                             method: methodName,
                             estimatedGas: estimatedGas.toString(),
@@ -49,11 +49,16 @@ class TransactionManager {
                     try {
                         const feeData = await provider.getFeeData();
                         if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
-                            maxFeePerGas = mergedConfig.maxFeePerGas || (feeData.maxFeePerGas * BigInt(110) / BigInt(100)).toString();
-                            maxPriorityFeePerGas = mergedConfig.maxPriorityFeePerGas || feeData.maxPriorityFeePerGas.toString();
+                            maxFeePerGas =
+                                mergedConfig.maxFeePerGas ||
+                                    ((feeData.maxFeePerGas * BigInt(110)) / BigInt(100)).toString();
+                            maxPriorityFeePerGas =
+                                mergedConfig.maxPriorityFeePerGas || feeData.maxPriorityFeePerGas.toString();
                         }
                         else {
-                            gasPrice = feeData.gasPrice ? (feeData.gasPrice * BigInt(110) / BigInt(100)).toString() : '20000000000';
+                            gasPrice = feeData.gasPrice
+                                ? ((feeData.gasPrice * BigInt(110)) / BigInt(100)).toString()
+                                : '20000000000';
                         }
                     }
                     catch (feeError) {
@@ -144,12 +149,12 @@ class TransactionManager {
     }
     getMethodSpecificGasLimit(methodName) {
         const gasLimits = {
-            'registerNodeWithStaking': '1000000',
-            'approve': '100000',
-            'transfer': '100000',
-            'mint': '200000',
-            'registerNode': '800000',
-            'deregisterNode': '300000'
+            registerNodeWithStaking: '1000000',
+            approve: '100000',
+            transfer: '100000',
+            mint: '200000',
+            registerNode: '800000',
+            deregisterNode: '300000'
         };
         return gasLimits[methodName] || '500000';
     }
@@ -243,7 +248,7 @@ class TransactionManager {
         }
     }
     delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
 }
 exports.TransactionManager = TransactionManager;

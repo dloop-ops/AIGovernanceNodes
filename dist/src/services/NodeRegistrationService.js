@@ -73,7 +73,7 @@ class NodeRegistrationService {
                 endpoint: config.endpoint,
                 nodeType: config.nodeType,
                 strategy: config.nodeType.toLowerCase(),
-                version: "1.0.0",
+                version: '1.0.0',
                 registeredAt: Date.now()
             });
             const registrationArgs = [
@@ -243,7 +243,7 @@ class NodeRegistrationService {
                 await this.delay(2000);
             }
         }
-        const successCount = results.filter(r => r.success).length;
+        const successCount = results.filter((r) => r.success).length;
         logger_js_1.contractLogger.info('Batch node registration completed', {
             totalNodes: configs.length,
             successfulRegistrations: successCount,
@@ -252,7 +252,7 @@ class NodeRegistrationService {
         return results;
     }
     delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
 }
 exports.NodeRegistrationService = NodeRegistrationService;

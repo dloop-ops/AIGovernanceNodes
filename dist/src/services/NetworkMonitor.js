@@ -18,7 +18,8 @@ class NetworkMonitor {
         const providerConfigs = [
             {
                 name: 'Primary Infura',
-                url: process.env.INFURA_SEPOLIA_URL || 'https://sepolia.infura.io/v3/ca485bd6567e4c5fb5693ee66a5885d8',
+                url: process.env.INFURA_SEPOLIA_URL ||
+                    'https://sepolia.infura.io/v3/ca485bd6567e4c5fb5693ee66a5885d8',
                 priority: 1
             },
             {
@@ -91,7 +92,7 @@ class NetworkMonitor {
         for (const [name, provider] of providers) {
             try {
                 await this.checkProviderHealth(name, provider);
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise((resolve) => setTimeout(resolve, 100));
             }
             catch (error) {
                 logger_js_1.walletLogger.debug('Health check failed for provider', { provider: name, error });
@@ -106,7 +107,7 @@ class NetworkMonitor {
             metrics.totalChecks++;
             const [blockNumber, chainId] = await Promise.all([
                 provider.getBlockNumber(),
-                provider.getNetwork().then(network => Number(network.chainId))
+                provider.getNetwork().then((network) => Number(network.chainId))
             ]);
             const latency = Date.now() - startTime;
             const now = Date.now();
@@ -120,7 +121,8 @@ class NetworkMonitor {
             });
             metrics.lastSuccessfulCheck = now;
             metrics.averageLatency = (metrics.averageLatency + latency) / 2;
-            metrics.successRate = ((metrics.totalChecks - metrics.failedChecks) / metrics.totalChecks) * 100;
+            metrics.successRate =
+                ((metrics.totalChecks - metrics.failedChecks) / metrics.totalChecks) * 100;
             logger_js_1.walletLogger.debug('Provider health check passed', {
                 provider: name,
                 latency,
@@ -130,7 +132,8 @@ class NetworkMonitor {
         }
         catch (error) {
             metrics.failedChecks++;
-            metrics.successRate = ((metrics.totalChecks - metrics.failedChecks) / metrics.totalChecks) * 100;
+            metrics.successRate =
+                ((metrics.totalChecks - metrics.failedChecks) / metrics.totalChecks) * 100;
             this.networkStatus.set(name, {
                 isConnected: false,
                 latency: -1,
@@ -148,8 +151,8 @@ class NetworkMonitor {
     }
     logNetworkStatus() {
         const statuses = Array.from(this.networkStatus.values());
-        const connected = statuses.filter(s => s.isConnected);
-        const disconnected = statuses.filter(s => !s.isConnected);
+        const connected = statuses.filter((s) => s.isConnected);
+        const disconnected = statuses.filter((s) => !s.isConnected);
         if (connected.length === 0) {
             logger_js_1.walletLogger.error('All RPC providers are disconnected', {
                 totalProviders: statuses.length,
@@ -161,12 +164,12 @@ class NetworkMonitor {
                 totalProviders: statuses.length,
                 connectedProviders: connected.length,
                 disconnectedProviders: disconnected.length,
-                healthyProviders: connected.map(s => s.provider)
+                healthyProviders: connected.map((s) => s.provider)
             });
         }
         const now = Date.now();
         const fiveMinutes = 5 * 60 * 1000;
-        if (!this.lastMetricsLog || (now - this.lastMetricsLog) > fiveMinutes) {
+        if (!this.lastMetricsLog || now - this.lastMetricsLog > fiveMinutes) {
             this.logDetailedMetrics();
             this.lastMetricsLog = now;
         }
@@ -206,7 +209,7 @@ class NetworkMonitor {
     isNetworkHealthy() {
         const healthyCount = this.getHealthyProviders().length;
         const totalCount = this.providers.size;
-        return healthyCount > 0 && (healthyCount / totalCount) >= 0.25;
+        return healthyCount > 0 && healthyCount / totalCount >= 0.25;
     }
     stop() {
         if (this.monitoringInterval) {

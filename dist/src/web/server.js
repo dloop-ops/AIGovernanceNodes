@@ -44,7 +44,9 @@ class WebServer {
                 if (error.code === 'EADDRINUSE') {
                     logger_js_1.default.warn(`Port ${targetPort} is in use, retrying with next port...`);
                     if (portOverride) {
-                        this.start(portOverride + 1).then(resolve).catch(reject);
+                        this.start(portOverride + 1)
+                            .then(resolve)
+                            .catch(reject);
                     }
                     else {
                         this.port += 1;
@@ -84,7 +86,7 @@ class WebServer {
         }));
     }
     handleNodes(res) {
-        const nodes = Array.from(this.nodeManager.getAllNodes().values()).map(node => {
+        const nodes = Array.from(this.nodeManager.getAllNodes().values()).map((node) => {
             const status = node.getStatus();
             return {
                 id: node.getNodeId(),

@@ -136,7 +136,7 @@ class NodeManager {
                 enabled: true
             }
         ];
-        const enabledConfigs = configs.filter(config => config.enabled);
+        const enabledConfigs = configs.filter((config) => config.enabled);
         logger_js_1.default.info(`Loaded ${enabledConfigs.length} enabled node configurations out of ${configs.length} total`);
         return enabledConfigs;
     }
@@ -280,7 +280,7 @@ class NodeManager {
     }
     async executeVotingRound() {
         logger_js_1.default.info('Executing voting round for all nodes');
-        const activeNodes = Array.from(this.nodes.values()).filter(node => node.isNodeActive());
+        const activeNodes = Array.from(this.nodes.values()).filter((node) => node.isNodeActive());
         let successful = 0;
         let failed = 0;
         const errors = [];
@@ -289,7 +289,7 @@ class NodeManager {
                 await node.checkAndVoteOnProposals();
                 successful++;
                 if (successful < activeNodes.length) {
-                    await new Promise(resolve => setTimeout(resolve, 400));
+                    await new Promise((resolve) => setTimeout(resolve, 400));
                 }
             }
             catch (error) {
@@ -324,9 +324,10 @@ class NodeManager {
             logger_js_1.default.info('Performing system health check');
             const walletConnectivity = await this.walletService.validateConnectivity();
             const marketDataFresh = this.marketDataService.isCacheValid();
-            const activeNodes = Array.from(this.nodes.values()).filter(node => node.isNodeActive()).length;
-            const nodeStatuses = Array.from(this.nodes.values()).map(node => node.getStatus());
-            const recentlyActive = nodeStatuses.filter(status => Date.now() - Math.max(status.stats.lastProposalTime, status.stats.lastVoteTime) < 24 * 60 * 60 * 1000).length;
+            const activeNodes = Array.from(this.nodes.values()).filter((node) => node.isNodeActive()).length;
+            const nodeStatuses = Array.from(this.nodes.values()).map((node) => node.getStatus());
+            const recentlyActive = nodeStatuses.filter((status) => Date.now() - Math.max(status.stats.lastProposalTime, status.stats.lastVoteTime) <
+                24 * 60 * 60 * 1000).length;
             logger_js_1.default.info('System health check completed', {
                 walletConnectivity,
                 marketDataFresh,
@@ -354,13 +355,13 @@ class NodeManager {
             logger_js_1.default.info('Performing token balance checks for all nodes');
             const tokenStatuses = await this.tokenService.getTokenStatusForAllNodes();
             const totalNodes = tokenStatuses.length;
-            const nodesWithSufficientTokens = tokenStatuses.filter(status => status.hasMinimum).length;
+            const nodesWithSufficientTokens = tokenStatuses.filter((status) => status.hasMinimum).length;
             logger_js_1.default.info('Token balance check completed', {
                 totalNodes,
                 nodesWithSufficientTokens,
                 nodesNeedingTokens: totalNodes - nodesWithSufficientTokens
             });
-            tokenStatuses.forEach(status => {
+            tokenStatuses.forEach((status) => {
                 if (!status.hasMinimum) {
                     logger_js_1.default.warn(`Node ${status.nodeIndex} has insufficient DLOOP tokens`, {
                         nodeIndex: status.nodeIndex,
@@ -400,11 +401,11 @@ class NodeManager {
         try {
             logger_js_1.default.info('Logging system status');
             const balances = await this.walletService.getAllBalances();
-            const nodeStatuses = Array.from(this.nodes.values()).map(node => node.getStatus());
+            const nodeStatuses = Array.from(this.nodes.values()).map((node) => node.getStatus());
             const taskStatuses = this.scheduler.getAllTaskStatuses();
             const totalProposals = nodeStatuses.reduce((sum, status) => sum + status.stats.proposalsCreated, 0);
             const totalVotes = nodeStatuses.reduce((sum, status) => sum + status.stats.votesAcast, 0);
-            const activeNodes = nodeStatuses.filter(status => status.isActive).length;
+            const activeNodes = nodeStatuses.filter((status) => status.isActive).length;
             logger_js_1.default.info('System Status Report', {
                 timestamp: new Date().toISOString(),
                 nodeManager: {
@@ -414,7 +415,7 @@ class NodeManager {
                     totalProposalsCreated: totalProposals,
                     totalVotesCast: totalVotes
                 },
-                nodes: nodeStatuses.map(status => ({
+                nodes: nodeStatuses.map((status) => ({
                     nodeId: status.nodeId,
                     address: status.address,
                     strategy: status.strategy,
@@ -423,7 +424,7 @@ class NodeManager {
                     votesAcast: status.stats.votesAcast,
                     lastActivity: Math.max(status.stats.lastProposalTime, status.stats.lastVoteTime)
                 })),
-                wallets: balances.map(balance => ({
+                wallets: balances.map((balance) => ({
                     nodeIndex: balance.nodeIndex,
                     address: balance.address,
                     ethBalance: balance.balance
@@ -446,8 +447,8 @@ class NodeManager {
         return new Map(this.nodes);
     }
     getSystemStatus() {
-        const nodeStatuses = Array.from(this.nodes.values()).map(node => node.getStatus());
-        const activeNodes = nodeStatuses.filter(status => status.isActive).length;
+        const nodeStatuses = Array.from(this.nodes.values()).map((node) => node.getStatus());
+        const activeNodes = nodeStatuses.filter((status) => status.isActive).length;
         return {
             isRunning: this.isRunning,
             totalNodes: this.nodes.size,
@@ -481,7 +482,7 @@ class NodeManager {
         await this.executeVotingRound();
     }
     async getActiveProposals() {
-        const activeNodes = Array.from(this.nodes.values()).filter(node => node.isNodeActive());
+        const activeNodes = Array.from(this.nodes.values()).filter((node) => node.isNodeActive());
         if (activeNodes.length === 0) {
             throw new Error('No active nodes available to fetch proposals');
         }
@@ -494,7 +495,7 @@ class NodeManager {
     }
     async checkAndVoteOnProposals() {
         logger_js_1.default.info('Checking and Voting on Proposals for all nodes');
-        const activeNodes = Array.from(this.nodes.values()).filter(node => node.isNodeActive());
+        const activeNodes = Array.from(this.nodes.values()).filter((node) => node.isNodeActive());
         let successful = 0;
         let failed = 0;
         const errors = [];
@@ -503,7 +504,7 @@ class NodeManager {
                 await node.checkAndVoteOnProposals();
                 successful++;
                 if (successful < activeNodes.length) {
-                    await new Promise(resolve => setTimeout(resolve, 400));
+                    await new Promise((resolve) => setTimeout(resolve, 400));
                 }
             }
             catch (error) {

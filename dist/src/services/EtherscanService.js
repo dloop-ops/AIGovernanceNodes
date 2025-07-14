@@ -76,7 +76,7 @@ class EtherscanService {
     async getSoulboundNFTs(address, soulboundContractAddress) {
         try {
             const allNFTs = await this.getNFTTokens(address);
-            const soulboundNFTs = allNFTs.filter(nft => nft.contractAddress.toLowerCase() === soulboundContractAddress.toLowerCase());
+            const soulboundNFTs = allNFTs.filter((nft) => nft.contractAddress.toLowerCase() === soulboundContractAddress.toLowerCase());
             logger_js_1.default.info('SoulBound NFTs identified', {
                 component: 'etherscan',
                 address,

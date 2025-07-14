@@ -46,7 +46,7 @@ class MarketDataService {
             const mockData = [
                 {
                     symbol: 'USDC',
-                    price: 1.00,
+                    price: 1.0,
                     change24h: 0.01,
                     volume: 1000000,
                     timestamp: Date.now()
@@ -59,7 +59,7 @@ class MarketDataService {
                     timestamp: Date.now()
                 }
             ];
-            mockData.forEach(data => {
+            mockData.forEach((data) => {
                 this.cache.set(data.symbol, data);
             });
             this.lastUpdate = Date.now();

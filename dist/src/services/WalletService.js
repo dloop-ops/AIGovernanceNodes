@@ -82,7 +82,7 @@ class WalletService {
             /^0+$/,
             /^1+$/,
             /^(0123456789abcdef)+$/i,
-            /^(.)\1{10,}/,
+            /^(.)\1{10,}/
         ];
         for (const pattern of weakPatterns) {
             if (pattern.test(normalized)) {
@@ -102,10 +102,10 @@ class WalletService {
         return this.wallets[nodeIndex];
     }
     getWalletByAddress(address) {
-        return this.wallets.find(wallet => wallet.address.toLowerCase() === address.toLowerCase());
+        return this.wallets.find((wallet) => wallet.address.toLowerCase() === address.toLowerCase());
     }
     getAllAddresses() {
-        return this.wallets.map(wallet => wallet.address);
+        return this.wallets.map((wallet) => wallet.address);
     }
     async getBalance(nodeIndex) {
         try {
@@ -160,7 +160,8 @@ class WalletService {
                 }
                 catch (walletError) {
                     let errorMessage = walletError instanceof Error ? walletError.message : String(walletError);
-                    if (errorMessage.includes('BigInt') || typeof walletError === 'object' && walletError !== null) {
+                    if (errorMessage.includes('BigInt') ||
+                        (typeof walletError === 'object' && walletError !== null)) {
                         errorMessage = 'Wallet nonce check failed (network or serialization error)';
                     }
                     logger_1.default.warn(`Wallet ${i} connectivity test failed`, {
@@ -219,7 +220,7 @@ class WalletService {
         }
     }
     isManaged(address) {
-        return this.wallets.some(wallet => wallet.address.toLowerCase() === address.toLowerCase());
+        return this.wallets.some((wallet) => wallet.address.toLowerCase() === address.toLowerCase());
     }
     getWalletCount() {
         return this.wallets.length;
