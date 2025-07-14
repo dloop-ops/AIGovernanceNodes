@@ -250,9 +250,6 @@
         <!-- Lucide Icons -->
         <script src="https://unpkg.com/lucide@latest"></script>
         <script>
-            // Initialize Lucide icons
-            lucide.createIcons();
-            
             // Node data with Lucide icons
             const nodes = [
                 {
@@ -310,6 +307,8 @@
             // Render nodes
             function renderNodes() {
                 const container = document.getElementById('nodes-container');
+                if (!container) return;
+                
                 container.innerHTML = nodes.map(node => `
                     <div class="node-card">
                         <h3><i data-lucide="${node.icon}"></i> ${node.name}</h3>
@@ -331,12 +330,18 @@
                     </div>
                 `).join('');
                 
-                // Refresh icons after rendering
-                lucide.createIcons();
+                // Initialize Lucide icons after rendering
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
             }
             
-            // Initialize on load
-            document.addEventListener('DOMContentLoaded', renderNodes);
+            // Initialize when DOM is fully loaded
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', renderNodes);
+            } else {
+                renderNodes();
+            }
         </script>
         </section>
     </div>
