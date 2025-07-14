@@ -1,0 +1,51 @@
+import { GovernanceNode } from './GovernanceNode.js';
+import { scheduler } from '../utils/scheduler.js';
+export declare class NodeManager {
+    private nodes;
+    private walletService;
+    private contractService;
+    private marketDataService;
+    private proposalService;
+    private tokenService;
+    private soulboundNftService;
+    private nftTransferService;
+    private dloopRegistrationService;
+    private scheduler;
+    private isRunning;
+    constructor();
+    private initializeServices;
+    start(): Promise<void>;
+    stop(): Promise<void>;
+    private loadNodeConfigurations;
+    private initializeNodes;
+    private registerGovernanceNodes;
+    private startAllNodes;
+    private stopAllNodes;
+    private setupScheduledTasks;
+    private executeProposalCreation;
+    private executeVotingRound;
+    private refreshMarketData;
+    private performHealthCheck;
+    private performTokenChecks;
+    private performAuthenticationChecks;
+    private logSystemStatus;
+    getNode(nodeId: string): GovernanceNode | undefined;
+    getAllNodes(): Map<string, GovernanceNode>;
+    getSystemStatus(): {
+        isRunning: boolean;
+        totalNodes: number;
+        activeNodes: number;
+        nodeStatuses: any[];
+    };
+    restartNode(nodeId: string): Promise<void>;
+    isManagerRunning(): boolean;
+    getScheduler(): typeof scheduler;
+    triggerVotingRound(): Promise<void>;
+    getActiveProposals(): Promise<any[]>;
+    checkAndVoteOnProposals(): Promise<void>;
+    private performBalanceCheck;
+    private performRegistrationCheck;
+    private performNodeHealthCheck;
+    private performSystemCheck;
+}
+//# sourceMappingURL=NodeManager.d.ts.map
