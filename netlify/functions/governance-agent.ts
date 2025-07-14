@@ -107,7 +107,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     }
 
     // FIXED: Enhanced address validation that properly handles 42-character addresses
-    const rawAssetDaoAddress = process.env.ASSET_DAO_ADDRESS || process.env.ASSET_DAO_CONTRACT_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8C251bc4B3529';
+    // Corrected AssetDAO contract address (42 characters)
+    const rawAssetDaoAddress = process.env.ASSET_DAO_ADDRESS || process.env.ASSET_DAO_CONTRACT_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8251bc4B3529';
 
     console.log(`${requestId} INFO   🔍 Validating address: "${rawAssetDaoAddress}" (length: ${rawAssetDaoAddress.length})`);
 

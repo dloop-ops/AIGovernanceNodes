@@ -4,7 +4,8 @@ import { ContractAddresses } from '../types/index.js';
 
 export const contractAddresses: Record<string, ContractAddresses> = {
   sepolia: {
-    assetDao: process.env.ASSET_DAO_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8C251bc4B3529',
+    // Corrected AssetDAO contract address (42 characters)
+    assetDao: process.env.ASSET_DAO_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8251bc4B3529',
     aiNodeRegistry: process.env.AI_NODE_REGISTRY_ADDRESS || '0x0045c7D99489f1d8A5900243956B0206344417DD',
     dloopToken: process.env.DLOOP_TOKEN_ADDRESS || '0x05B366778566e93abfB8e4A9B794e4ad006446b4',
     soulboundNft: process.env.SOULBOUND_NFT_ADDRESS || '0x6391C14631b2Be5374297fA3110687b80233104c'
