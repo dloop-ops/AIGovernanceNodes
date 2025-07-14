@@ -1,15 +1,20 @@
-import { ContractService } from './ContractService.js';
-import { MarketDataService } from './MarketDataService.js';
-import { ProposalParams, ProposalType, MarketAnalysis, GovernanceError } from '../types/index.js';
-import { governanceLogger as logger } from '../utils/logger.js';
+import { ContractService } from './ContractService';
+import { MarketDataService } from './MarketDataService';
+import { ProposalParams, ProposalType, ProposalState, MarketAnalysis, GovernanceError } from '../types/index';
+import { governanceLogger as logger } from '../utils/logger';
 
 export class ProposalService {
   private contractService: ContractService;
   private marketDataService: MarketDataService;
+  private proposalCache: Map<number, any> = new Map();
+  private cacheExpiry: number = 5 * 60 * 1000; // 5 minutes
 
-  constructor(contractService: ContractService, marketDataService: MarketDataService) {
+  constructor(contractService: ContractService, marketDataService?: MarketDataService) {
+    if (!contractService) {
+      throw new GovernanceError('ContractService is required', 'INVALID_CONSTRUCTOR_PARAMS');
+    }
     this.contractService = contractService;
-    this.marketDataService = marketDataService;
+    this.marketDataService = marketDataService || new MarketDataService();
   }
 
   /**
@@ -21,7 +26,7 @@ export class ProposalService {
 
       // Get market analysis
       const analysis = await this.marketDataService.analyzeMarketData();
-      
+
       if (!analysis || Object.keys(analysis.recommendations).length === 0) {
         logger.warn('No market analysis available for proposal generation', { nodeId });
         return [];
@@ -59,6 +64,154 @@ export class ProposalService {
     }
   }
 
+  async getAllProposals(): Promise<any[]> {
+    try {
+      const proposals = await this.contractService.getProposals();
+      return proposals || [];
+    } catch (error) {
+      throw new GovernanceError(
+        'Failed to get all proposals',
+        'PROPOSAL_FETCH_ERROR'
+      );
+    }
+  }
+
+  async getActiveProposals(): Promise<any[]> {
+    const allProposals = await this.getAllProposals();
+    return allProposals.filter(proposal => 
+      proposal.state === ProposalState.ACTIVE && 
+      proposal.votingEnds > Math.floor(Date.now() / 1000)
+    );
+  }
+
+  async getProposalById(id: number): Promise<any> {
+    try {
+      if (this.proposalCache.has(id)) {
+        const cached = this.proposalCache.get(id);
+        if (Date.now() - cached.timestamp < this.cacheExpiry) {
+          return cached.data;
+        }
+      }
+
+      const proposal = await this.contractService.getProposal(id.toString());
+      if (!proposal) {
+        throw new GovernanceError('Proposal not found', 'PROPOSAL_NOT_FOUND');
+      }
+
+      this.proposalCache.set(id, {
+        data: proposal,
+        timestamp: Date.now()
+      });
+
+      return proposal;
+    } catch (error) {
+      throw new GovernanceError(
+        `Failed to get proposal ${id}`,
+        'PROPOSAL_FETCH_ERROR'
+      );
+    }
+  }
+
+  async getProposalsByState(state: ProposalState): Promise<any[]> {
+    const allProposals = await this.getAllProposals();
+    return allProposals.filter(proposal => proposal.state === state);
+  }
+
+  async getUrgentProposals(secondsRemaining: number): Promise<any[]> {
+    const activeProposals = await this.getActiveProposals();
+    const currentTime = Math.floor(Date.now() / 1000);
+
+    return activeProposals.filter(proposal => {
+      const timeLeft = proposal.votingEnds - currentTime;
+      return timeLeft <= secondsRemaining && timeLeft > 0;
+    });
+  }
+
+  async getProposalsByProposer(proposerAddress: string): Promise<any[]> {
+    const allProposals = await this.getAllProposals();
+    return allProposals.filter(proposal => 
+      proposal.proposer.toLowerCase() === proposerAddress.toLowerCase()
+    );
+  }
+
+  async analyzeProposal(proposalId: number): Promise<any> {
+    const proposal = await this.getProposalById(proposalId);
+
+    return {
+      proposalId,
+      totalVotes: proposal.forVotes + proposal.againstVotes,
+      participation: (proposal.forVotes + proposal.againstVotes) / proposal.totalSupply,
+      trend: proposal.forVotes > proposal.againstVotes ? 'positive' : 'negative'
+    };
+  }
+
+  async getVotingTrends(): Promise<any> {
+    const allProposals = await this.getAllProposals();
+    const totalProposals = allProposals.length;
+    const totalParticipation = allProposals.reduce((sum, proposal) => 
+      sum + (proposal.forVotes + proposal.againstVotes), 0
+    );
+
+    return {
+      averageParticipation: totalParticipation / totalProposals,
+      totalProposals,
+      activeProposals: allProposals.filter(p => p.state === ProposalState.ACTIVE).length
+    };
+  }
+
+  isProposalActiveForVoting(proposal: any): boolean {
+    const currentTime = Math.floor(Date.now() / 1000);
+    return proposal.state === ProposalState.ACTIVE && 
+           proposal.votingEnds > currentTime &&
+           proposal.votingStarts <= currentTime;
+  }
+
+  invalidateCache(): void {
+    this.proposalCache.clear();
+  }
+
+  async makeVotingDecision(proposal: any): Promise<{ vote: string; confidence: number; reasoning: string }> {
+    try {
+      // Check if proposal is active
+      if (!this.isProposalActiveForVoting(proposal)) {
+        return {
+          vote: 'ABSTAIN',
+          confidence: 0,
+          reasoning: 'Proposal is not active for voting'
+        };
+      }
+
+      // Simple voting logic based on proposal type
+      let vote = 'FOR';
+      let confidence = 0.7;
+      let reasoning = 'Standard approval for active proposal';
+
+      // Try to get market data if available
+      if (this.marketDataService) {
+        try {
+          await this.marketDataService.getCurrentPrice('ETH');
+          confidence = 0.8;
+          reasoning = 'Decision enhanced with market data';
+        } catch (error) {
+          // Market data failed, use basic logic
+          reasoning = 'Market data unavailable, using basic voting logic';
+        }
+      }
+
+      return {
+        vote,
+        confidence,
+        reasoning
+      };
+    } catch (error) {
+      return {
+        vote: 'ABSTAIN',
+        confidence: 0,
+        reasoning: `Error making voting decision: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
+  }
+
   /**
    * Create a proposal from market recommendation
    */
@@ -78,10 +231,10 @@ export class ProposalService {
 
       // Get asset address
       const assetAddress = this.contractService.getAssetAddress(asset);
-      
+
       // Calculate investment amount based on confidence and allocation
       const baseAmount = this.calculateInvestmentAmount(asset, recommendation, analysis);
-      
+
       let proposalType: ProposalType;
       let description: string;
 
@@ -192,19 +345,19 @@ export class ProposalService {
     };
 
     const baseAmount = baseAmounts[asset as keyof typeof baseAmounts] || 500;
-    
+
     // Adjust based on confidence (0.6 to 1.0 confidence -> 0.6x to 1.0x base amount)
     const confidenceMultiplier = Math.max(0.6, recommendation.confidence);
-    
+
     // Adjust based on risk (lower risk allows higher investment)
     const riskMultiplier = Math.max(0.5, 1 - (analysis.riskScore * 0.5));
-    
+
     // Adjust based on allocated percentage
     const allocationMultiplier = recommendation.allocatedPercentage ? 
       (recommendation.allocatedPercentage / 25) : 1; // Normalize to base 25% allocation
 
     const finalAmount = baseAmount * confidenceMultiplier * riskMultiplier * allocationMultiplier;
-    
+
     return Math.max(0.01, finalAmount); // Minimum investment
   }
 
@@ -212,8 +365,8 @@ export class ProposalService {
    * Summarize market conditions for proposal metadata
    */
   private summarizeMarketConditions(analysis: MarketAnalysis): string {
-    const conditions = [];
-    
+    const conditions: string[] = [];
+
     if (analysis.riskScore > 0.7) {
       conditions.push('high volatility');
     } else if (analysis.riskScore < 0.3) {
@@ -278,7 +431,7 @@ export class ProposalService {
         // Parse additional data to get confidence scores
         const aData = a.additionalData ? JSON.parse(a.additionalData) : {};
         const bData = b.additionalData ? JSON.parse(b.additionalData) : {};
-        
+
         const aConfidence = aData.analysis?.confidence || 0;
         const bConfidence = bData.analysis?.confidence || 0;
 

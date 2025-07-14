@@ -1,28 +1,16 @@
-/**
- * Admin service for minting SoulBound NFTs using admin privileges
- */
 export declare class AdminSoulboundService {
     private adminWallet;
     private soulboundContract;
     private provider;
     constructor();
     private initializeContract;
-    /**
-     * Check if admin wallet has minter role
-     */
     checkMinterRole(): Promise<boolean>;
-    /**
-     * Mint SoulBound NFT for a governance node
-     */
     mintForGovernanceNode(nodeAddress: string, nodeId: string): Promise<{
         success: boolean;
         txHash?: string;
         tokenId?: string;
         error?: string;
     }>;
-    /**
-     * Batch mint SoulBound NFTs for all governance nodes
-     */
     batchMintForGovernanceNodes(nodes: Array<{
         address: string;
         nodeId: string;
@@ -34,17 +22,28 @@ export declare class AdminSoulboundService {
         tokenId?: string;
         error?: string;
     }>>;
-    /**
-     * Verify SoulBound NFT ownership using direct balance check
-     */
     verifyOwnership(nodeAddress: string): Promise<{
         hasNFT: boolean;
         tokenCount: number;
         tokenIds: string[];
     }>;
-    /**
-     * Get admin wallet address
-     */
     getAdminAddress(): string;
+    batchDistribute(nodes: Array<{
+        nodeId: string;
+        address: string;
+    }>): Promise<any>;
+    distributeAllSoulboundNFTs(): Promise<{
+        distributed: number;
+        failed: number;
+        results: Array<{
+            nodeId: string;
+            address: string;
+            success: boolean;
+            txHash?: string;
+            tokenId?: string;
+            error?: string;
+        }>;
+    }>;
+    private getRegisteredNodes;
 }
 //# sourceMappingURL=AdminSoulboundService.d.ts.map

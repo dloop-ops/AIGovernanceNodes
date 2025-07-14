@@ -46,7 +46,7 @@ export abstract class BaseStrategy {
       // Check if proposal is in active state
       if (proposal.state !== ProposalState.ACTIVE) {
         logger.debug(`Proposal ${proposal.id} not in active state`, {
-          currentState: ProposalState[proposal.state]
+          currentState: proposal.state !== undefined ? ProposalState[proposal.state] || 'UNKNOWN' : 'UNKNOWN'
         });
         return false;
       }
@@ -111,7 +111,7 @@ export abstract class BaseStrategy {
       // Additional validation: ensure voting data exists and is valid
       const votesFor = parseFloat(proposal.votesFor || '0');
       const votesAgainst = parseFloat(proposal.votesAgainst || '0');
-      
+
       if (isNaN(votesFor) || isNaN(votesAgainst) || votesFor < 0 || votesAgainst < 0) {
         logger.debug(`Proposal ${proposal.id} has invalid voting data`, {
           votesFor: proposal.votesFor,
@@ -156,13 +156,16 @@ export abstract class BaseStrategy {
 
       // Proposal type risk
       switch (proposal.proposalType) {
-        case ProposalType.INVEST:
+        case ProposalType.INVEST.toString():
+        case '0':
           riskScore += 0.1; // Investing has inherent risk
           break;
-        case ProposalType.DIVEST:
+        case ProposalType.DIVEST.toString():
+        case '1':
           riskScore -= 0.1; // Divesting reduces risk
           break;
-        case ProposalType.REBALANCE:
+        case ProposalType.REBALANCE.toString():
+        case '2':
           riskScore += 0.05; // Rebalancing has moderate risk
           break;
       }
@@ -200,9 +203,9 @@ export abstract class BaseStrategy {
       const votesFor = parseFloat(proposal.votesFor);
       const votesAgainst = parseFloat(proposal.votesAgainst);
       const totalVotes = votesFor + votesAgainst;
-      
+
       const supportRatio = totalVotes > 0 ? votesFor / totalVotes : 0.5;
-      
+
       // Classify voting activity based on total votes
       let votingActivity: 'low' | 'medium' | 'high' = 'low';
       if (totalVotes > 1000) {
@@ -240,13 +243,16 @@ export abstract class BaseStrategy {
     try {
       // Try to extract asset symbol from proposal (this is a simplified approach)
       const assetSymbols = ['USDC', 'WBTC', 'PAXG', 'EURT'];
-      let relevantAsset = null;
+      // Initialize relevantAsset as null, will be updated if asset is found
+      let relevantAsset: string | null = null;
 
-      // Look for asset mention in description
-      for (const symbol of assetSymbols) {
-        if (proposal.description.toUpperCase().includes(symbol)) {
-          relevantAsset = symbol;
-          break;
+      if (proposal.description) {
+        // Look for asset mention in description
+        for (const symbol of assetSymbols) {
+          if (proposal.description.toUpperCase().includes(symbol)) {
+            relevantAsset = symbol || null;
+            break;
+          }
         }
       }
 
@@ -261,11 +267,14 @@ export abstract class BaseStrategy {
 
       // Check alignment
       switch (proposal.proposalType) {
-        case ProposalType.INVEST:
+        case ProposalType.INVEST.toString():
+        case '0':
           return recommendation.action === 'buy';
-        case ProposalType.DIVEST:
+        case ProposalType.DIVEST.toString():
+        case '1':
           return recommendation.action === 'sell';
-        case ProposalType.REBALANCE:
+        case ProposalType.REBALANCE.toString():
+        case '2':
           return recommendation.action !== 'hold';
         default:
           return true;
@@ -289,8 +298,8 @@ export abstract class BaseStrategy {
    */
   protected isLastMinute(proposal: Proposal): boolean {
     const timeLeft = this.getTimeToDeadline(proposal);
-    const votingPeriod = proposal.endTime - proposal.startTime;
-    
+    const votingPeriod = proposal.endTime - (proposal.startTime || 0);
+
     // Consider last 10% of voting period as "last minute"
     return timeLeft < (votingPeriod * 0.1);
   }

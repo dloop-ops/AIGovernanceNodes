@@ -1,11 +1,14 @@
-import { ethers } from 'ethers';
-import { contractLogger as logger } from '../utils/logger.js';
-export class ConnectionPool {
-    connections = new Map();
-    maxConnectionsPerEndpoint = 3;
-    connectionTimeout = 10000;
-    healthCheckInterval = null;
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ConnectionPool = void 0;
+const ethers_1 = require("ethers");
+const logger_js_1 = require("../utils/logger.js");
+class ConnectionPool {
     constructor() {
+        this.connections = new Map();
+        this.maxConnectionsPerEndpoint = 3;
+        this.connectionTimeout = 10000;
+        this.healthCheckInterval = null;
         this.initializeConnections();
         this.startHealthChecking();
     }
@@ -21,12 +24,12 @@ export class ConnectionPool {
                 const connections = [];
                 for (let i = 0; i < this.maxConnectionsPerEndpoint; i++) {
                     try {
-                        const provider = new ethers.JsonRpcProvider(endpoint.url, {
+                        const provider = new ethers_1.ethers.JsonRpcProvider(endpoint.url, {
                             name: 'sepolia',
                             chainId: 11155111
                         }, {
                             polling: false,
-                            staticNetwork: ethers.Network.from('sepolia')
+                            staticNetwork: ethers_1.ethers.Network.from('sepolia')
                         });
                         connections.push({
                             provider,
@@ -37,7 +40,7 @@ export class ConnectionPool {
                         });
                     }
                     catch (error) {
-                        logger.warn('Failed to create connection', {
+                        logger_js_1.contractLogger.warn('Failed to create connection', {
                             component: 'contract',
                             endpoint: endpoint.name,
                             connectionIndex: i,
@@ -47,7 +50,7 @@ export class ConnectionPool {
                 }
                 if (connections.length > 0) {
                     this.connections.set(endpoint.name, connections);
-                    logger.info('Connection pool initialized', {
+                    logger_js_1.contractLogger.info('Connection pool initialized', {
                         component: 'contract',
                         endpoint: endpoint.name,
                         connections: connections.length
@@ -59,10 +62,9 @@ export class ConnectionPool {
     getHealthyConnection() {
         const allConnections = Array.from(this.connections.entries()).flatMap(([name, conns]) => conns.filter(conn => conn.isHealthy).map(conn => ({ ...conn, endpointName: name })));
         if (allConnections.length === 0) {
-            logger.error('No healthy connections available in pool');
+            logger_js_1.contractLogger.error('No healthy connections available in pool');
             return null;
         }
-        // Sort by last used (least recently used first) and error count
         allConnections.sort((a, b) => {
             if (a.errorCount !== b.errorCount) {
                 return a.errorCount - b.errorCount;
@@ -71,7 +73,7 @@ export class ConnectionPool {
         });
         const selected = allConnections[0];
         selected.lastUsed = Date.now();
-        logger.debug('Selected connection from pool', {
+        logger_js_1.contractLogger.debug('Selected connection from pool', {
             endpoint: selected.endpointName,
             connectionId: selected.connectionId,
             errorCount: selected.errorCount
@@ -95,11 +97,10 @@ export class ConnectionPool {
             }
             catch (error) {
                 lastError = error;
-                // Mark connection as unhealthy if it's a connection-related error
                 if (this.isConnectionError(error)) {
                     this.markConnectionUnhealthy(connection);
                 }
-                logger.warn('Pool operation failed', {
+                logger_js_1.contractLogger.warn('Pool operation failed', {
                     attempt,
                     maxRetries,
                     error: error.message
@@ -128,7 +129,7 @@ export class ConnectionPool {
             if (connection) {
                 connection.isHealthy = false;
                 connection.errorCount++;
-                logger.warn('Marked connection as unhealthy', {
+                logger_js_1.contractLogger.warn('Marked connection as unhealthy', {
                     endpoint: endpointName,
                     connectionId: connection.connectionId,
                     errorCount: connection.errorCount
@@ -138,38 +139,35 @@ export class ConnectionPool {
         }
     }
     async attemptConnectionRecovery() {
-        logger.info('Attempting connection pool recovery');
-        // Reset all connections with high error counts
+        logger_js_1.contractLogger.info('Attempting connection pool recovery');
         for (const [endpointName, connections] of this.connections.entries()) {
             connections.forEach(conn => {
                 if (conn.errorCount > 5) {
                     conn.errorCount = 0;
                     conn.isHealthy = true;
-                    logger.info('Reset connection for recovery', {
+                    logger_js_1.contractLogger.info('Reset connection for recovery', {
                         endpoint: endpointName,
                         connectionId: conn.connectionId
                     });
                 }
             });
         }
-        await this.delay(5000); // Wait 5 seconds before retry
+        await this.delay(5000);
     }
     startHealthChecking() {
         this.healthCheckInterval = setInterval(async () => {
             await this.performHealthChecks();
-        }, 60000); // Check every minute
+        }, 60000);
     }
     async performHealthChecks() {
-        // Use sequential health checks to avoid batch request limits
         for (const [endpointName, connections] of this.connections.entries()) {
             for (const connection of connections) {
                 try {
                     await this.checkConnectionHealth(endpointName, connection);
-                    // Small delay between connection checks
                     await new Promise(resolve => setTimeout(resolve, 50));
                 }
                 catch (error) {
-                    logger.debug('Connection health check failed', {
+                    logger_js_1.contractLogger.debug('Connection health check failed', {
                         endpoint: endpointName,
                         connectionId: connection.connectionId,
                         error
@@ -187,7 +185,7 @@ export class ConnectionPool {
             if (!connection.isHealthy) {
                 connection.isHealthy = true;
                 connection.errorCount = Math.max(0, connection.errorCount - 1);
-                logger.info('Connection recovered', {
+                logger_js_1.contractLogger.info('Connection recovered', {
                     endpoint: endpointName,
                     connectionId: connection.connectionId
                 });
@@ -196,7 +194,7 @@ export class ConnectionPool {
         catch (error) {
             connection.isHealthy = false;
             connection.errorCount++;
-            logger.debug('Health check failed', {
+            logger_js_1.contractLogger.debug('Health check failed', {
                 endpoint: endpointName,
                 connectionId: connection.connectionId,
                 errorCount: connection.errorCount
@@ -222,7 +220,8 @@ export class ConnectionPool {
             clearInterval(this.healthCheckInterval);
             this.healthCheckInterval = null;
         }
-        logger.info('Connection pool stopped');
+        logger_js_1.contractLogger.info('Connection pool stopped');
     }
 }
+exports.ConnectionPool = ConnectionPool;
 //# sourceMappingURL=ConnectionPool.js.map

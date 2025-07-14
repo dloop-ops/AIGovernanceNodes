@@ -1,17 +1,19 @@
-import { ethers } from 'ethers';
-import fs from 'fs';
-import logger from '../utils/logger.js';
-import { TransactionManager } from './TransactionManager.js';
-export class NodeRegistrationRecovery {
-    rpcManager;
-    transactionManager;
-    walletService;
-    registrationStatuses = new Map();
-    contractAddresses;
-    contractABIs = new Map();
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.NodeRegistrationRecovery = void 0;
+const ethers_1 = require("ethers");
+const fs_1 = __importDefault(require("fs"));
+const logger_js_1 = __importDefault(require("../utils/logger.js"));
+const TransactionManager_js_1 = require("./TransactionManager.js");
+class NodeRegistrationRecovery {
     constructor(rpcManager, walletService) {
+        this.registrationStatuses = new Map();
+        this.contractABIs = new Map();
         this.rpcManager = rpcManager;
-        this.transactionManager = new TransactionManager(rpcManager);
+        this.transactionManager = new TransactionManager_js_1.TransactionManager(rpcManager);
         this.walletService = walletService;
         this.contractAddresses = {
             aiNodeRegistry: '0x0045c7D99489f1d8A5900243956B0206344417DD',
@@ -24,17 +26,16 @@ export class NodeRegistrationRecovery {
         try {
             await this.loadContractABIs();
             await this.scanUnregisteredNodes();
-            logger.info('Node registration recovery system initialized', {
+            logger_js_1.default.info('Node registration recovery system initialized', {
                 unregisteredNodes: this.registrationStatuses.size
             });
         }
         catch (error) {
-            logger.error('Failed to initialize recovery system', { error: error.message });
+            logger_js_1.default.error('Failed to initialize recovery system', { error: error.message });
         }
     }
     async loadContractABIs() {
         try {
-            // Load ABI files using ES module imports
             const abiFiles = [
                 { name: 'aiNodeRegistry', file: 'attached_assets/ainoderegistry.abi.v1.json' },
                 { name: 'dloopToken', file: 'attached_assets/dlooptoken.abi.v1.json' },
@@ -42,17 +43,17 @@ export class NodeRegistrationRecovery {
             ];
             for (const { name, file } of abiFiles) {
                 try {
-                    const abiData = JSON.parse(fs.readFileSync(file, 'utf8'));
+                    const abiData = JSON.parse(fs_1.default.readFileSync(file, 'utf8'));
                     this.contractABIs.set(name, abiData.abi || abiData);
-                    logger.debug(`Contract ABI loaded: ${name}`);
+                    logger_js_1.default.debug(`Contract ABI loaded: ${name}`);
                 }
                 catch (error) {
-                    logger.warn(`Failed to load ABI: ${name}`, { file, error: error.message });
+                    logger_js_1.default.warn(`Failed to load ABI: ${name}`, { file, error: error.message });
                 }
             }
         }
         catch (error) {
-            logger.error('ABI loading failed', { error: error.message });
+            logger_js_1.default.error('ABI loading failed', { error: error.message });
         }
     }
     async scanUnregisteredNodes() {
@@ -68,7 +69,7 @@ export class NodeRegistrationRecovery {
                 const status = await this.checkNodeRegistrationStatus(config.nodeId, config.address);
                 if (!status.isRegistered) {
                     this.registrationStatuses.set(config.nodeId, status);
-                    logger.info('Unregistered node detected', {
+                    logger_js_1.default.info('Unregistered node detected', {
                         nodeId: config.nodeId,
                         address: config.address,
                         hasTokens: status.hasTokens
@@ -76,7 +77,7 @@ export class NodeRegistrationRecovery {
                 }
             }
             catch (error) {
-                logger.warn('Failed to check node status', {
+                logger_js_1.default.warn('Failed to check node status', {
                     nodeId: config.nodeId,
                     error: error.message
                 });
@@ -96,7 +97,6 @@ export class NodeRegistrationRecovery {
             status: 'pending'
         };
         try {
-            // Check registration status
             const abi = this.contractABIs.get('aiNodeRegistry');
             if (abi) {
                 try {
@@ -109,34 +109,32 @@ export class NodeRegistrationRecovery {
                     }
                 }
             }
-            // Check token balance
             const dloopAbi = this.contractABIs.get('dloopToken');
             if (dloopAbi) {
                 try {
                     const balance = await this.transactionManager.executeContractRead(this.contractAddresses.dloopToken, dloopAbi, 'balanceOf', [address]);
-                    const requiredAmount = ethers.parseEther('1.0');
+                    const requiredAmount = ethers_1.ethers.parseEther('1.0');
                     status.hasTokens = BigInt(balance.toString()) >= requiredAmount;
                 }
                 catch (error) {
-                    logger.warn('Token balance check failed', { nodeId, error: error.message });
+                    logger_js_1.default.warn('Token balance check failed', { nodeId, error: error.message });
                 }
             }
-            // Check approval status
             if (dloopAbi && status.hasTokens) {
                 try {
                     const allowance = await this.transactionManager.executeContractRead(this.contractAddresses.dloopToken, dloopAbi, 'allowance', [address, this.contractAddresses.aiNodeRegistry]);
-                    const requiredAmount = ethers.parseEther('1.0');
+                    const requiredAmount = ethers_1.ethers.parseEther('1.0');
                     status.isApproved = BigInt(allowance.toString()) >= requiredAmount;
                 }
                 catch (error) {
-                    logger.warn('Allowance check failed', { nodeId, error: error.message });
+                    logger_js_1.default.warn('Allowance check failed', { nodeId, error: error.message });
                 }
             }
             status.canStake = status.hasTokens && (status.isApproved || !status.isRegistered);
         }
         catch (error) {
             status.error = error.message;
-            logger.error('Status check failed', { nodeId, error: error.message });
+            logger_js_1.default.error('Status check failed', { nodeId, error: error.message });
         }
         return status;
     }
@@ -145,7 +143,7 @@ export class NodeRegistrationRecovery {
         let attempted = 0;
         let successful = 0;
         let failed = 0;
-        logger.info('Starting comprehensive node registration recovery', {
+        logger_js_1.default.info('Starting comprehensive node registration recovery', {
             totalUnregistered: this.registrationStatuses.size
         });
         for (const [nodeId, status] of this.registrationStatuses) {
@@ -157,7 +155,7 @@ export class NodeRegistrationRecovery {
             status.attemptCount++;
             status.lastAttempt = Date.now();
             try {
-                logger.info('Processing node registration recovery', {
+                logger_js_1.default.info('Processing node registration recovery', {
                     nodeId,
                     attempt: status.attemptCount,
                     hasTokens: status.hasTokens,
@@ -173,7 +171,7 @@ export class NodeRegistrationRecovery {
                         success: true,
                         txHash: result.transactionHash
                     });
-                    logger.info('Node registration recovery successful', {
+                    logger_js_1.default.info('Node registration recovery successful', {
                         nodeId,
                         txHash: result.transactionHash
                     });
@@ -187,12 +185,11 @@ export class NodeRegistrationRecovery {
                         success: false,
                         error: result.error
                     });
-                    logger.error('Node registration recovery failed', {
+                    logger_js_1.default.error('Node registration recovery failed', {
                         nodeId,
                         error: result.error
                     });
                 }
-                // Wait between attempts to avoid rate limiting
                 await this.delay(2000);
             }
             catch (error) {
@@ -204,13 +201,13 @@ export class NodeRegistrationRecovery {
                     success: false,
                     error: error.message
                 });
-                logger.error('Node registration recovery exception', {
+                logger_js_1.default.error('Node registration recovery exception', {
                     nodeId,
                     error: error.message
                 });
             }
         }
-        logger.info('Node registration recovery completed', {
+        logger_js_1.default.info('Node registration recovery completed', {
             attempted,
             successful,
             failed,
@@ -223,9 +220,8 @@ export class NodeRegistrationRecovery {
         if (!wallet) {
             throw new Error(`Wallet not found for address: ${status.address}`);
         }
-        // Strategy 1: If tokens need approval, approve first
         if (status.hasTokens && !status.isApproved) {
-            logger.info('Approving DLOOP tokens', { nodeId });
+            logger_js_1.default.info('Approving DLOOP tokens', { nodeId });
             const approvalResult = await this.approveTokensWithEnhancedGas(wallet);
             if (!approvalResult.success) {
                 return {
@@ -233,14 +229,12 @@ export class NodeRegistrationRecovery {
                     error: `Token approval failed: ${approvalResult.error}`
                 };
             }
-            logger.info('Token approval successful', {
+            logger_js_1.default.info('Token approval successful', {
                 nodeId,
                 txHash: approvalResult.transactionHash
             });
-            // Wait for approval confirmation
             await this.delay(3000);
         }
-        // Strategy 2: Attempt registration with multiple methods
         const registrationMethods = [
             () => this.attemptRegistrationWithStaking(wallet, nodeId),
             () => this.attemptSimpleRegistration(wallet, nodeId),
@@ -250,29 +244,28 @@ export class NodeRegistrationRecovery {
         for (let i = 0; i < registrationMethods.length; i++) {
             const methodName = ['Staking', 'Simple', 'DirectApproval'][i];
             try {
-                logger.info(`Attempting ${methodName} registration`, { nodeId });
+                logger_js_1.default.info(`Attempting ${methodName} registration`, { nodeId });
                 const result = await registrationMethods[i]();
                 if (result.success) {
-                    logger.info(`${methodName} registration successful`, {
+                    logger_js_1.default.info(`${methodName} registration successful`, {
                         nodeId,
                         txHash: result.transactionHash
                     });
                     return result;
                 }
                 lastError = result.error || `${methodName} method failed`;
-                logger.warn(`${methodName} registration failed`, {
+                logger_js_1.default.warn(`${methodName} registration failed`, {
                     nodeId,
                     error: lastError
                 });
             }
             catch (error) {
                 lastError = error.message;
-                logger.warn(`${methodName} registration exception`, {
+                logger_js_1.default.warn(`${methodName} registration exception`, {
                     nodeId,
                     error: error.message
                 });
             }
-            // Wait between method attempts
             if (i < registrationMethods.length - 1) {
                 await this.delay(1000);
             }
@@ -287,7 +280,7 @@ export class NodeRegistrationRecovery {
         if (!dloopAbi) {
             return { success: false, error: 'DLOOP Token ABI not available' };
         }
-        const approveAmount = ethers.parseEther('1.0');
+        const approveAmount = ethers_1.ethers.parseEther('1.0');
         return await this.transactionManager.executeTransaction(wallet, this.contractAddresses.dloopToken, dloopAbi, 'approve', [this.contractAddresses.aiNodeRegistry, approveAmount], {
             gasLimit: '100000',
             retries: 3,
@@ -351,4 +344,5 @@ export class NodeRegistrationRecovery {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
+exports.NodeRegistrationRecovery = NodeRegistrationRecovery;
 //# sourceMappingURL=NodeRegistrationRecovery.js.map

@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { contractLogger as logger } from '../utils/logger.js';
+import { walletLogger as logger } from '../utils/logger.js';
 
 export interface ProviderConfig {
   name: string;

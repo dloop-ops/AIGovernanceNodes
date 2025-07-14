@@ -1,77 +1,60 @@
-import { ethers } from 'ethers';
-import { contractLogger as logger } from '../utils/logger.js';
-/**
- * Service for managing DLOOP token operations
- */
-export class TokenService {
-    walletService;
-    contractService;
-    minTokenBalance = ethers.parseEther('100'); // Minimum 100 DLOOP tokens for voting
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.TokenService = void 0;
+const ethers_1 = require("ethers");
+const logger_js_1 = require("../utils/logger.js");
+class TokenService {
     constructor(walletService, contractService) {
+        this.minTokenBalance = ethers_1.ethers.parseEther('100');
         this.walletService = walletService;
         this.contractService = contractService;
     }
-    /**
-     * Check if node has sufficient tokens for governance participation
-     */
     async hasMinimumTokens(nodeIndex) {
         try {
             const balanceStr = await this.contractService.getTokenBalance(nodeIndex);
-            const balance = ethers.parseEther(balanceStr);
+            const balance = ethers_1.ethers.parseEther(balanceStr);
             return balance >= this.minTokenBalance;
         }
         catch (error) {
-            logger.error(`Failed to check token balance for node ${nodeIndex}`, { error });
+            logger_js_1.contractLogger.error(`Failed to check token balance for node ${nodeIndex}`, { error });
             return false;
         }
     }
-    /**
-     * Request DLOOP tokens from faucet if available
-     */
     async requestTokensFromFaucet(nodeIndex) {
         try {
             const wallet = this.walletService.getWallet(nodeIndex);
-            logger.info(`Requesting DLOOP tokens from faucet for node ${nodeIndex}`, {
+            logger_js_1.contractLogger.info(`Requesting DLOOP tokens from faucet for node ${nodeIndex}`, {
                 address: wallet.address
             });
-            // This would typically call a faucet contract or API
-            // For now, we'll log the request and return false to indicate manual action needed
-            logger.warn(`No faucet available - manual token acquisition required for node ${nodeIndex}`, {
+            logger_js_1.contractLogger.warn(`No faucet available - manual token acquisition required for node ${nodeIndex}`, {
                 address: wallet.address,
-                requiredAmount: ethers.formatEther(this.minTokenBalance)
+                requiredAmount: ethers_1.ethers.formatEther(this.minTokenBalance)
             });
             return false;
         }
         catch (error) {
-            logger.error(`Failed to request tokens from faucet for node ${nodeIndex}`, { error });
+            logger_js_1.contractLogger.error(`Failed to request tokens from faucet for node ${nodeIndex}`, { error });
             return false;
         }
     }
-    /**
-     * Check and ensure all nodes have minimum tokens
-     */
     async ensureMinimumTokensForAllNodes() {
         const nodeCount = this.walletService.getWalletCount();
         for (let i = 0; i < nodeCount; i++) {
             try {
                 const hasTokens = await this.hasMinimumTokens(i);
                 if (!hasTokens) {
-                    logger.warn(`Node ${i} has insufficient DLOOP tokens for governance`, {
+                    logger_js_1.contractLogger.warn(`Node ${i} has insufficient DLOOP tokens for governance`, {
                         nodeIndex: i,
-                        requiredAmount: ethers.formatEther(this.minTokenBalance)
+                        requiredAmount: ethers_1.ethers.formatEther(this.minTokenBalance)
                     });
-                    // Attempt to get tokens from faucet
                     await this.requestTokensFromFaucet(i);
                 }
             }
             catch (error) {
-                logger.error(`Failed to check tokens for node ${i}`, { error });
+                logger_js_1.contractLogger.error(`Failed to check tokens for node ${i}`, { error });
             }
         }
     }
-    /**
-     * Get token status for all nodes
-     */
     async getTokenStatusForAllNodes() {
         const nodeCount = this.walletService.getWalletCount();
         const results = [];
@@ -90,7 +73,7 @@ export class TokenService {
                 });
             }
             catch (error) {
-                logger.error(`Failed to get token status for node ${i}`, { error });
+                logger_js_1.contractLogger.error(`Failed to get token status for node ${i}`, { error });
                 results.push({
                     nodeIndex: i,
                     address: this.walletService.getWallet(i).address,
@@ -103,4 +86,5 @@ export class TokenService {
         return results;
     }
 }
+exports.TokenService = TokenService;
 //# sourceMappingURL=TokenService.js.map

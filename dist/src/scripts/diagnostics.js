@@ -1,22 +1,23 @@
 #!/usr/bin/env node
-import dotenv from 'dotenv';
-import { WalletService } from '../services/WalletService.js';
-import { ContractService } from '../services/ContractService.js';
-import { DiagnosticService } from '../utils/diagnostics.js';
-import { contractLogger as logger } from '../utils/logger.js';
-// Load environment variables
-dotenv.config();
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const dotenv_1 = __importDefault(require("dotenv"));
+const WalletService_js_1 = require("../services/WalletService.js");
+const ContractService_js_1 = require("../services/ContractService.js");
+const diagnostics_js_1 = require("../utils/diagnostics.js");
+const logger_js_1 = require("../utils/logger.js");
+dotenv_1.default.config();
 async function runDiagnostics() {
-    logger.info('🔍 Starting DLoop AI Governance Node Diagnostics...');
+    logger_js_1.contractLogger.info('🔍 Starting DLoop AI Governance Node Diagnostics...');
     try {
-        // Initialize services
-        const walletService = new WalletService();
-        const contractService = new ContractService(walletService);
-        const diagnosticService = new DiagnosticService(walletService, contractService);
-        // Run full diagnostics
-        logger.info('Running comprehensive diagnostics on all nodes...');
+        const walletService = new WalletService_js_1.WalletService();
+        const contractService = new ContractService_js_1.ContractService(walletService);
+        const diagnosticService = new diagnostics_js_1.DiagnosticService(walletService, contractService);
+        logger_js_1.contractLogger.info('Running comprehensive diagnostics on all nodes...');
         const results = await diagnosticService.runFullDiagnostics();
-        // Display results
         console.log('\n=== DIAGNOSTIC RESULTS ===\n');
         results.forEach((result, index) => {
             console.log(`Node ${index + 1} (${result.address}):`);
@@ -32,12 +33,11 @@ async function runDiagnostics() {
             }
             console.log('');
         });
-        // Attempt auto-fix for nodes with issues
         const nodesWithIssues = results.filter(r => r.registrationErrors.length > 0 || !r.isRegistered);
         if (nodesWithIssues.length > 0) {
             console.log('\n=== ATTEMPTING AUTO-FIX ===\n');
             for (const node of nodesWithIssues) {
-                logger.info(`🔧 Attempting to fix issues for Node ${node.nodeIndex + 1}...`);
+                logger_js_1.contractLogger.info(`🔧 Attempting to fix issues for Node ${node.nodeIndex + 1}...`);
                 try {
                     const fixResult = await diagnosticService.attemptAutoFix(node.nodeIndex);
                     console.log(`Node ${node.nodeIndex + 1} Auto-Fix Results:`);
@@ -53,17 +53,16 @@ async function runDiagnostics() {
                     console.log('');
                 }
                 catch (error) {
-                    logger.error(`Failed to auto-fix Node ${node.nodeIndex + 1}:`, error);
+                    logger_js_1.contractLogger.error(`Failed to auto-fix Node ${node.nodeIndex + 1}:`, error);
                 }
             }
         }
         else {
             console.log('\n✅ All nodes are functioning correctly! No fixes needed.\n');
         }
-        // Run final diagnostics to verify fixes
         if (nodesWithIssues.length > 0) {
             console.log('\n=== POST-FIX VERIFICATION ===\n');
-            logger.info('Running post-fix verification...');
+            logger_js_1.contractLogger.info('Running post-fix verification...');
             const postFixResults = await diagnosticService.runFullDiagnostics();
             const stillBroken = postFixResults.filter(r => r.registrationErrors.length > 0 || !r.isRegistered);
             if (stillBroken.length === 0) {
@@ -78,30 +77,27 @@ async function runDiagnostics() {
         }
     }
     catch (error) {
-        logger.error('Diagnostic script failed:', error);
+        logger_js_1.contractLogger.error('Diagnostic script failed:', error);
         console.error('❌ Diagnostic script failed:', error instanceof Error ? error.message : String(error));
         process.exit(1);
     }
 }
 async function startMonitoring() {
-    logger.info('🔄 Starting continuous monitoring...');
+    logger_js_1.contractLogger.info('🔄 Starting continuous monitoring...');
     try {
-        const walletService = new WalletService();
-        const contractService = new ContractService(walletService);
-        const diagnosticService = new DiagnosticService(walletService, contractService);
-        // Start continuous monitoring every 5 minutes
+        const walletService = new WalletService_js_1.WalletService();
+        const contractService = new ContractService_js_1.ContractService(walletService);
+        const diagnosticService = new diagnostics_js_1.DiagnosticService(walletService, contractService);
         await diagnosticService.startContinuousMonitoring(5 * 60 * 1000);
         console.log('🔄 Continuous monitoring started. Press Ctrl+C to stop.');
-        // Keep the process running
         process.stdin.resume();
     }
     catch (error) {
-        logger.error('Monitoring startup failed:', error);
+        logger_js_1.contractLogger.error('Monitoring startup failed:', error);
         console.error('❌ Monitoring startup failed:', error instanceof Error ? error.message : String(error));
         process.exit(1);
     }
 }
-// Main execution
 async function main() {
     const command = process.argv[2] || 'diagnose';
     switch (command) {
@@ -133,19 +129,17 @@ Examples:
             process.exit(1);
     }
 }
-// Handle graceful shutdown
 process.on('SIGINT', () => {
-    logger.info('Received SIGINT, shutting down gracefully...');
+    logger_js_1.contractLogger.info('Received SIGINT, shutting down gracefully...');
     process.exit(0);
 });
 process.on('SIGTERM', () => {
-    logger.info('Received SIGTERM, shutting down gracefully...');
+    logger_js_1.contractLogger.info('Received SIGTERM, shutting down gracefully...');
     process.exit(0);
 });
-// Run the main function
 if (require.main === module) {
     main().catch(error => {
-        logger.error('Main execution failed:', error);
+        logger_js_1.contractLogger.error('Main execution failed:', error);
         console.error('❌ Execution failed:', error instanceof Error ? error.message : String(error));
         process.exit(1);
     });

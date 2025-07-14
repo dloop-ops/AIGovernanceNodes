@@ -200,18 +200,23 @@ class EmergencyGovernanceFix {
               if (timeLeft > 0) {
                 activeProposals.push({
                   id: i.toString(),
-                  proposer: proposalData[5],
-                  proposalType: proposalData[1],
-                  assetAddress: proposalData[2],
+                  proposer: proposalData[2],
+                  proposalType: proposalData[1].toString(),
+                  assetAddress: proposalData[5],
                   amount: ethers.formatEther(proposalData[3]),
-                  description: proposalData[4],
-                  state: ProposalState.ACTIVE,
+                  description: proposalData[4] || `Emergency Proposal ${i}`,
+                  state: Number(proposalData[10]),
                   votesFor: ethers.formatEther(proposalData[8]),
                   votesAgainst: ethers.formatEther(proposalData[9]),
                   startTime: Number(proposalData[6]),
                   endTime: Number(proposalData[7]),
                   executed: proposalData[11],
-                  cancelled: false
+                  cancelled: false,
+                  title: `Emergency Proposal ${i}`,
+                  asset: 'USDC',
+                  status: 'ACTIVE',
+                  totalSupply: 1000000,
+                  quorumReached: false
                 });
                 console.log(`   ✅ Found VALID active proposal ${i} (${Math.floor(timeLeft / 3600)}h left)`);
               } else {

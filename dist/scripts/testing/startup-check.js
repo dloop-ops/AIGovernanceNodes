@@ -1,7 +1,8 @@
-import { ethers } from 'ethers';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const ethers_1 = require("ethers");
 console.log('🔍 STARTUP ENVIRONMENT CHECK');
 console.log('===========================');
-// Check environment variables
 const requiredVars = [
     'AI_NODE_1_PRIVATE_KEY',
     'AI_NODE_2_PRIVATE_KEY',
@@ -20,17 +21,14 @@ if (missingVars.length > 0) {
     process.exit(1);
 }
 console.log('✅ All required private keys are present');
-// Check RPC connectivity with very conservative approach
 const rpcUrl = process.env.ETHEREUM_RPC_URL || 'https://sepolia.infura.io/v3/ca485bd6567e4c5fb5693ee66a5885d8';
 console.log(`🔗 Testing RPC connectivity: ${rpcUrl.replace(/\/v3\/.*/, '/v3/***')}`);
 try {
-    // Add delay before any network call
     await new Promise(resolve => setTimeout(resolve, 2000));
-    const provider = new ethers.JsonRpcProvider(rpcUrl, {
+    const provider = new ethers_1.ethers.JsonRpcProvider(rpcUrl, {
         name: 'sepolia',
         chainId: 11155111
     });
-    // Test with timeout
     const blockNumber = await Promise.race([
         provider.getBlockNumber(),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 10000))

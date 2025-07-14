@@ -70,7 +70,7 @@ export class ConservativeStrategy extends BaseStrategy {
         reasoning = 'High market volatility detected, avoiding new positions';
       }
       // Stable coin preference for investments
-      else if (proposal.proposalType === ProposalType.INVEST) {
+      else if (proposal.proposalType === ProposalType.INVEST.toString()) {
         const isStableCoin = proposal.description.toUpperCase().includes('USDC') || 
                            proposal.description.toUpperCase().includes('EURT');
         
@@ -89,7 +89,7 @@ export class ConservativeStrategy extends BaseStrategy {
         }
       }
       // Divestment analysis - generally supportive of risk reduction
-      else if (proposal.proposalType === ProposalType.DIVEST) {
+      else if (proposal.proposalType === ProposalType.DIVEST.toString()) {
         if (marketAnalysis && marketAnalysis.riskScore > 0.5) {
           voteSupport = true;
           confidence = 0.8;
@@ -105,7 +105,7 @@ export class ConservativeStrategy extends BaseStrategy {
         }
       }
       // Rebalancing - support if conservative
-      else if (proposal.proposalType === ProposalType.REBALANCE) {
+      else if (proposal.proposalType === ProposalType.REBALANCE.toString()) {
         if (marketAnalysis && marketAnalysis.portfolioRebalance) {
           voteSupport = true;
           confidence = 0.7;
@@ -200,7 +200,7 @@ export class ConservativeStrategy extends BaseStrategy {
     const isStableCoin = proposal.description.toUpperCase().includes('USDC') || 
                         proposal.description.toUpperCase().includes('EURT');
     
-    if (isStableCoin && proposal.proposalType === ProposalType.INVEST) {
+    if (isStableCoin && proposal.proposalType === ProposalType.INVEST.toString()) {
       return true;
     }
 

@@ -15,7 +15,7 @@ export class AggressiveStrategy extends BaseStrategy {
         volume: 0.3 // Moderate weight on volume
       }
     };
-    
+
     super('Aggressive', config);
   }
 
@@ -64,10 +64,10 @@ export class AggressiveStrategy extends BaseStrategy {
         reasoning = 'Amount exceeds aggressive strategy limits';
       }
       // Investment analysis - favor growth assets
-      else if (proposal.proposalType === ProposalType.INVEST) {
+      else if (proposal.proposalType === ProposalType.INVEST.toString()) {
         const isGrowthAsset = proposal.description.toUpperCase().includes('WBTC') || 
                              proposal.description.toUpperCase().includes('PAXG');
-        
+
         if (isGrowthAsset && marketAligned) {
           voteSupport = true;
           confidence = 0.9;
@@ -96,7 +96,7 @@ export class AggressiveStrategy extends BaseStrategy {
         }
       }
       // Divestment analysis - avoid during potential uptrends
-      else if (proposal.proposalType === ProposalType.DIVEST) {
+      else if (proposal.proposalType === ProposalType.DIVEST.toString()) {
         if (marketAnalysis && marketAnalysis.riskScore > 0.8) {
           voteSupport = true;
           confidence = 0.8;
@@ -116,7 +116,7 @@ export class AggressiveStrategy extends BaseStrategy {
         }
       }
       // Rebalancing - support aggressive rebalancing for optimization
-      else if (proposal.proposalType === ProposalType.REBALANCE) {
+      else if (proposal.proposalType === ProposalType.REBALANCE.toString()) {
         if (marketAnalysis && marketAnalysis.portfolioRebalance) {
           voteSupport = true;
           confidence = 0.8;
@@ -187,12 +187,12 @@ export class AggressiveStrategy extends BaseStrategy {
    */
   private detectStrongTrend(marketAnalysis: MarketAnalysis): boolean {
     const recommendations = Object.values(marketAnalysis.recommendations);
-    
+
     // Count strong buy/sell signals
     const strongBuys = recommendations.filter(r => 
       r.action === 'buy' && r.confidence > 0.7
     ).length;
-    
+
     const strongSells = recommendations.filter(r => 
       r.action === 'sell' && r.confidence > 0.7
     ).length;
@@ -209,7 +209,7 @@ export class AggressiveStrategy extends BaseStrategy {
 
     // Look for asset-specific downtrend signals
     const assetSymbols = ['USDC', 'WBTC', 'PAXG', 'EURT'];
-    let relevantAsset = null;
+    let relevantAsset: string | null = null;
 
     for (const symbol of assetSymbols) {
       if (proposal.description.toUpperCase().includes(symbol)) {
@@ -226,7 +226,7 @@ export class AggressiveStrategy extends BaseStrategy {
     // General market downtrend
     const sellSignals = Object.values(marketAnalysis.recommendations)
       .filter(r => r.action === 'sell').length;
-    
+
     return sellSignals >= 2;
   }
 
@@ -241,7 +241,7 @@ export class AggressiveStrategy extends BaseStrategy {
       const recommendations = Object.values(marketAnalysis.recommendations);
       const buyCount = recommendations.filter(r => r.action === 'buy').length;
       const sellCount = recommendations.filter(r => r.action === 'sell').length;
-      
+
       // Mixed signals in volatile market = rebalancing opportunity
       return buyCount > 0 && sellCount > 0;
     }
@@ -270,7 +270,7 @@ export class AggressiveStrategy extends BaseStrategy {
       const avgConfidence = Object.values(marketAnalysis.recommendations)
         .reduce((sum, rec) => sum + rec.confidence, 0) / 
         Object.values(marketAnalysis.recommendations).length;
-      
+
       if (avgConfidence > 0.7) {
         growthScore += 0.2; // High confidence in market direction
       }

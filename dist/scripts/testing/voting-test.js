@@ -1,9 +1,10 @@
-import { ethers } from 'ethers';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const ethers_1 = require("ethers");
 async function testVotingCapability() {
     console.log('🗳️ VOTING CAPABILITY TEST');
     console.log('=========================');
     try {
-        // Use the same RPC providers as diagnostic script
         const rpcProviders = [
             {
                 url: process.env.ETHEREUM_RPC_URL || 'https://sepolia.infura.io/v3/ca485bd6567e4c5fb5693ee66a5885d8',
@@ -20,11 +21,10 @@ async function testVotingCapability() {
         ];
         let provider = null;
         let providerName = '';
-        // Find working provider
         for (const rpc of rpcProviders) {
             try {
                 console.log(`🔄 Testing ${rpc.name}...`);
-                const testProvider = new ethers.JsonRpcProvider(rpc.url);
+                const testProvider = new ethers_1.ethers.JsonRpcProvider(rpc.url);
                 await Promise.race([
                     testProvider.getBlockNumber(),
                     new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
@@ -41,7 +41,6 @@ async function testVotingCapability() {
         if (!provider) {
             throw new Error('All RPC providers failed');
         }
-        // Initialize wallets
         const wallets = [];
         for (let i = 1; i <= 5; i++) {
             const privateKey = process.env[`AI_NODE_${i}_PRIVATE_KEY`];
@@ -50,7 +49,7 @@ async function testVotingCapability() {
                 if (!normalizedKey.startsWith('0x')) {
                     normalizedKey = '0x' + normalizedKey;
                 }
-                const wallet = new ethers.Wallet(normalizedKey, provider);
+                const wallet = new ethers_1.ethers.Wallet(normalizedKey, provider);
                 wallets.push({ index: i, wallet, address: wallet.address });
                 console.log(`🤖 Node ${i}: ${wallet.address.slice(0, 10)}...`);
             }
@@ -58,20 +57,16 @@ async function testVotingCapability() {
         if (wallets.length === 0) {
             throw new Error('No wallets found - check environment variables');
         }
-        // Contract setup
         const assetDAOAddress = '0xa87e662061237a121Ca2E83E77dA8251bc4B3529';
         const assetDAOABI = [
             "function getProposal(uint256) external view returns (uint256, uint8, address, uint256, string, address, uint256, uint256, uint256, uint256, uint8, bool)",
             "function hasVoted(uint256 proposalId, address voter) external view returns (bool)",
             "function vote(uint256 proposalId, bool support) external"
         ];
-        const contract = new ethers.Contract(assetDAOAddress, assetDAOABI, provider);
-        // Test with the first active proposal found in diagnostic (proposal 121)
+        const contract = new ethers_1.ethers.Contract(assetDAOAddress, assetDAOABI, provider);
         const testProposalId = 121;
         console.log(`\n🎯 Testing voting on proposal ${testProposalId}...`);
-        // Add delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 2000));
-        // Check proposal details
         const proposalData = await Promise.race([
             contract.getProposal(testProposalId),
             new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
@@ -94,14 +89,11 @@ async function testVotingCapability() {
             canVote: 0,
             errors: 0
         };
-        // Test each wallet
-        for (const walletInfo of wallets.slice(0, 3)) { // Test first 3 nodes only
+        for (const walletInfo of wallets.slice(0, 3)) {
             const { index, wallet, address } = walletInfo;
             try {
                 console.log(`\n🤖 Testing Node ${index} (${address.slice(0, 10)}...):`);
-                // Add delay between wallet checks
                 await new Promise(resolve => setTimeout(resolve, 1500));
-                // Check if already voted
                 const hasVoted = await Promise.race([
                     contract.hasVoted(testProposalId, address),
                     new Promise((_, reject) => setTimeout(() => reject(new Error('hasVoted timeout')), 5000))
@@ -112,15 +104,12 @@ async function testVotingCapability() {
                     continue;
                 }
                 console.log(`   🎯 Can vote on proposal ${testProposalId}`);
-                // Test vote transaction preparation (don't actually send)
                 const contractWithSigner = contract.connect(wallet);
-                // Estimate gas for voting
                 try {
                     const gasEstimate = await contractWithSigner.vote.estimateGas(testProposalId, true);
                     console.log(`   ⛽ Estimated gas: ${gasEstimate.toString()}`);
-                    // Check ETH balance for gas
                     const balance = await wallet.provider.getBalance(address);
-                    const balanceEth = ethers.formatEther(balance);
+                    const balanceEth = ethers_1.ethers.formatEther(balance);
                     console.log(`   💰 ETH balance: ${balanceEth}`);
                     if (parseFloat(balanceEth) > 0.001) {
                         console.log(`   ✅ Node ${index} CAN VOTE (sufficient gas + not voted)`);
@@ -162,7 +151,6 @@ async function testVotingCapability() {
         console.error('❌ Voting test failed:', error.message);
     }
 }
-// Run the test
 testVotingCapability().then(() => {
     console.log('\n🔍 Voting test complete');
     process.exit(0);

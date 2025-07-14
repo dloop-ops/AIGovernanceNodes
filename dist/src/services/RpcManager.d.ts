@@ -34,41 +34,14 @@ export declare class RpcManager {
     constructor();
     private initializeEndpointsAsync;
     private initializeEndpoints;
-    /**
-     * Execute operation with retry logic and comprehensive rate limiting
-     */
     executeWithRetry<T>(operation: (provider: ethers.JsonRpcProvider) => Promise<T>, maxRetries?: number, description?: string): Promise<T>;
-    /**
-     * Enhanced sequential execution for AssetDAO operations
-     */
     executeSequentially<T>(operations: Array<(provider: ethers.JsonRpcProvider) => Promise<T>>, operationName?: string, delayBetweenOps?: number): Promise<T[]>;
-    /**
-     * Check if error is related to rate limiting
-     */
     private isRateLimitError;
-    /**
-     * Check if error is related to batch request limits
-     */
     private isBatchError;
-    /**
-     * Mark provider as rate limited temporarily
-     */
     private markProviderRateLimited;
-    /**
-     * Enhanced provider health check considering rate limits
-     */
     private getHealthyProvider;
-    /**
-     * Execute operation with timeout
-     */
     private executeWithTimeout;
-    /**
-     * Update provider metrics
-     */
     private updateProviderMetrics;
-    /**
-     * Simple delay helper
-     */
     private delay;
     private getCurrentEndpoint;
     private getHealthyEndpoints;
@@ -105,13 +78,10 @@ export declare class RpcManager {
             totalEndpoints: number;
             healthyEndpoints: number;
             networkHealthy: boolean;
-            bestProvider: string;
+            bestProvider: string | null;
         };
     };
     stop(): void;
-    /**
-     * Enhanced endpoint initialization with network detection
-     */
     private initializeEndpointsWithRetry;
 }
 //# sourceMappingURL=RpcManager.d.ts.map

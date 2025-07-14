@@ -1,13 +1,16 @@
-import { ethers } from 'ethers';
-import { contractLogger as logger } from '../utils/logger.js';
-import fs from 'fs';
-import path from 'path';
-export class EnhancedContractService {
-    rpcManager;
-    walletService;
-    contractAddresses;
-    contractABIs = new Map();
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.EnhancedContractService = void 0;
+const ethers_1 = require("ethers");
+const logger_js_1 = require("../utils/logger.js");
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
+class EnhancedContractService {
     constructor(rpcManager, walletService) {
+        this.contractABIs = new Map();
         this.rpcManager = rpcManager;
         this.walletService = walletService;
         this.contractAddresses = {
@@ -19,15 +22,13 @@ export class EnhancedContractService {
     }
     loadEnhancedABIs() {
         try {
-            // Load enhanced AI Node Registry ABI
-            const registryABIPath = path.join(process.cwd(), 'abis', 'ainoderegistry.abi.v2.json');
-            if (fs.existsSync(registryABIPath)) {
-                const registryData = JSON.parse(fs.readFileSync(registryABIPath, 'utf8'));
+            const registryABIPath = path_1.default.join(process.cwd(), 'abis', 'ainoderegistry.abi.v2.json');
+            if (fs_1.default.existsSync(registryABIPath)) {
+                const registryData = JSON.parse(fs_1.default.readFileSync(registryABIPath, 'utf8'));
                 this.contractABIs.set('aiNodeRegistry', registryData.abi);
-                logger.info('Enhanced AI Node Registry ABI loaded');
+                logger_js_1.contractLogger.info('Enhanced AI Node Registry ABI loaded');
             }
             else {
-                // Fallback to minimal ABI
                 this.contractABIs.set('aiNodeRegistry', [
                     'function registerNode(string metadata) external',
                     'function getNodeInfo(address) external view returns (tuple(address, string, bool, uint256, uint256, uint256))',
@@ -37,32 +38,29 @@ export class EnhancedContractService {
                     'error NodeAlreadyRegistered()'
                 ]);
             }
-            // Load enhanced SoulBound NFT ABI
-            const nftABIPath = path.join(process.cwd(), 'abis', 'soulboundnft.abi.v2.json');
-            if (fs.existsSync(nftABIPath)) {
-                const nftData = JSON.parse(fs.readFileSync(nftABIPath, 'utf8'));
+            const nftABIPath = path_1.default.join(process.cwd(), 'abis', 'soulboundnft.abi.v2.json');
+            if (fs_1.default.existsSync(nftABIPath)) {
+                const nftData = JSON.parse(fs_1.default.readFileSync(nftABIPath, 'utf8'));
                 this.contractABIs.set('soulboundNft', nftData.abi);
-                logger.info('Enhanced SoulBound NFT ABI loaded');
+                logger_js_1.contractLogger.info('Enhanced SoulBound NFT ABI loaded');
             }
             else {
-                // Fallback to minimal ABI
                 this.contractABIs.set('soulboundNft', [
                     'function balanceOf(address) external view returns (uint256)',
                     'function mint(address, string) external returns (uint256)',
                     'function ownerOf(uint256) external view returns (address)'
                 ]);
             }
-            // DLOOP Token ABI
             this.contractABIs.set('dloopToken', [
                 'function balanceOf(address) external view returns (uint256)',
                 'function approve(address, uint256) external returns (bool)',
                 'function allowance(address, address) external view returns (uint256)',
                 'function transfer(address, uint256) external returns (bool)'
             ]);
-            logger.info('Enhanced contract ABIs loaded successfully');
+            logger_js_1.contractLogger.info('Enhanced contract ABIs loaded successfully');
         }
         catch (error) {
-            logger.error('Failed to load enhanced ABIs', { error });
+            logger_js_1.contractLogger.error('Failed to load enhanced ABIs', { error });
             throw error;
         }
     }
@@ -73,17 +71,16 @@ export class EnhancedContractService {
             if (!registryABI) {
                 throw new Error('AI Node Registry ABI not found');
             }
-            logger.info('Attempting node registration with enhanced service', {
+            logger_js_1.contractLogger.info('Attempting node registration with enhanced service', {
                 nodeIndex,
                 nodeAddress: wallet.address,
                 metadataLength: metadata.length
             });
             const result = await this.rpcManager.executeWithRetry(async (provider) => {
-                const contract = new ethers.Contract(this.contractAddresses.aiNodeRegistry, registryABI, wallet.connect(provider));
-                // Check if already registered
+                const contract = new ethers_1.ethers.Contract(this.contractAddresses.aiNodeRegistry, registryABI, wallet.connect(provider));
                 try {
                     await contract.getNodeInfo(wallet.address);
-                    logger.info('Node already registered', { nodeAddress: wallet.address });
+                    logger_js_1.contractLogger.info('Node already registered', { nodeAddress: wallet.address });
                     return 'already_registered';
                 }
                 catch (error) {
@@ -91,21 +88,20 @@ export class EnhancedContractService {
                         throw error;
                     }
                 }
-                // Proceed with registration
                 const gasEstimate = await contract.registerNode.estimateGas(metadata);
-                const gasLimit = (gasEstimate * 120n) / 100n; // Add 20% buffer
+                const gasLimit = (gasEstimate * 120n) / 100n;
                 const tx = await contract.registerNode(metadata, {
                     gasLimit: gasLimit.toString(),
-                    maxFeePerGas: ethers.parseUnits('15', 'gwei'),
-                    maxPriorityFeePerGas: ethers.parseUnits('1.5', 'gwei')
+                    maxFeePerGas: ethers_1.ethers.parseUnits('15', 'gwei'),
+                    maxPriorityFeePerGas: ethers_1.ethers.parseUnits('1.5', 'gwei')
                 });
-                logger.info('Registration transaction submitted', {
+                logger_js_1.contractLogger.info('Registration transaction submitted', {
                     txHash: tx.hash,
                     gasLimit: gasLimit.toString()
                 });
                 const receipt = await tx.wait(1);
                 if (receipt && receipt.status === 1) {
-                    logger.info('Node registration successful', {
+                    logger_js_1.contractLogger.info('Node registration successful', {
                         nodeAddress: wallet.address,
                         txHash: tx.hash,
                         gasUsed: receipt.gasUsed.toString()
@@ -119,12 +115,12 @@ export class EnhancedContractService {
             return result;
         }
         catch (error) {
-            logger.error('Node registration failed', {
+            logger_js_1.contractLogger.error('Node registration failed', {
                 nodeIndex,
                 error: error.message
             });
             if (error.message.includes('NodeAlreadyRegistered')) {
-                logger.info('Node was already registered', { nodeIndex });
+                logger_js_1.contractLogger.info('Node was already registered', { nodeIndex });
                 return 'already_registered';
             }
             throw error;
@@ -137,7 +133,7 @@ export class EnhancedContractService {
                 throw new Error('AI Node Registry ABI not found');
             }
             const result = await this.rpcManager.executeWithRetry(async (provider) => {
-                const contract = new ethers.Contract(this.contractAddresses.aiNodeRegistry, registryABI, provider);
+                const contract = new ethers_1.ethers.Contract(this.contractAddresses.aiNodeRegistry, registryABI, provider);
                 const nodeInfo = await contract.getNodeInfo(nodeAddress);
                 return {
                     nodeAddress: nodeInfo[0],
@@ -164,7 +160,7 @@ export class EnhancedContractService {
                 throw new Error('AI Node Registry ABI not found');
             }
             const result = await this.rpcManager.executeWithRetry(async (provider) => {
-                const contract = new ethers.Contract(this.contractAddresses.aiNodeRegistry, registryABI, provider);
+                const contract = new ethers_1.ethers.Contract(this.contractAddresses.aiNodeRegistry, registryABI, provider);
                 return await contract.isNodeActive(nodeAddress);
             }, 3, 'Check Node Active Status');
             return result;
@@ -183,14 +179,14 @@ export class EnhancedContractService {
                 throw new Error('SoulBound NFT ABI not found');
             }
             const result = await this.rpcManager.executeWithRetry(async (provider) => {
-                const contract = new ethers.Contract(this.contractAddresses.soulboundNft, nftABI, provider);
+                const contract = new ethers_1.ethers.Contract(this.contractAddresses.soulboundNft, nftABI, provider);
                 const balance = await contract.balanceOf(nodeAddress);
                 return parseInt(balance.toString());
             }, 3, 'Get SoulBound NFT Balance');
             return result;
         }
         catch (error) {
-            logger.error('Failed to get SoulBound NFT balance', { nodeAddress, error });
+            logger_js_1.contractLogger.error('Failed to get SoulBound NFT balance', { nodeAddress, error });
             return 0;
         }
     }
@@ -201,14 +197,14 @@ export class EnhancedContractService {
                 throw new Error('DLOOP Token ABI not found');
             }
             const result = await this.rpcManager.executeWithRetry(async (provider) => {
-                const contract = new ethers.Contract(this.contractAddresses.dloopToken, tokenABI, provider);
+                const contract = new ethers_1.ethers.Contract(this.contractAddresses.dloopToken, tokenABI, provider);
                 const balance = await contract.balanceOf(nodeAddress);
-                return ethers.formatEther(balance);
+                return ethers_1.ethers.formatEther(balance);
             }, 3, 'Get DLOOP Token Balance');
             return result;
         }
         catch (error) {
-            logger.error('Failed to get DLOOP token balance', { nodeAddress, error });
+            logger_js_1.contractLogger.error('Failed to get DLOOP token balance', { nodeAddress, error });
             return '0';
         }
     }
@@ -220,16 +216,16 @@ export class EnhancedContractService {
                 throw new Error('DLOOP Token ABI not found');
             }
             const result = await this.rpcManager.executeWithRetry(async (provider) => {
-                const contract = new ethers.Contract(this.contractAddresses.dloopToken, tokenABI, wallet.connect(provider));
-                const amountWei = ethers.parseEther(amount);
+                const contract = new ethers_1.ethers.Contract(this.contractAddresses.dloopToken, tokenABI, wallet.connect(provider));
+                const amountWei = ethers_1.ethers.parseEther(amount);
                 const tx = await contract.approve(spender, amountWei, {
                     gasLimit: '100000',
-                    maxFeePerGas: ethers.parseUnits('15', 'gwei'),
-                    maxPriorityFeePerGas: ethers.parseUnits('1.5', 'gwei')
+                    maxFeePerGas: ethers_1.ethers.parseUnits('15', 'gwei'),
+                    maxPriorityFeePerGas: ethers_1.ethers.parseUnits('1.5', 'gwei')
                 });
                 const receipt = await tx.wait(1);
                 if (receipt && receipt.status === 1) {
-                    logger.info('Token approval successful', {
+                    logger_js_1.contractLogger.info('Token approval successful', {
                         nodeIndex,
                         spender,
                         amount,
@@ -244,7 +240,7 @@ export class EnhancedContractService {
             return result;
         }
         catch (error) {
-            logger.error('Token approval failed', { nodeIndex, spender, amount, error });
+            logger_js_1.contractLogger.error('Token approval failed', { nodeIndex, spender, amount, error });
             throw error;
         }
     }
@@ -252,4 +248,5 @@ export class EnhancedContractService {
         return this.contractAddresses;
     }
 }
+exports.EnhancedContractService = EnhancedContractService;
 //# sourceMappingURL=EnhancedContractService.js.map

@@ -785,7 +785,9 @@ export class RpcManager {
           logger.warn('Failed to initialize RPC endpoint after retries', {
             component: 'contract',
             name: config.name,
-            error: lastError?.message?.substring(0, 100)
+            error: lastError && typeof lastError === 'object' && 'message' in lastError 
+                ? (lastError as Error).message?.substring(0, 100) 
+                : 'Unknown error'
           });
         }
 

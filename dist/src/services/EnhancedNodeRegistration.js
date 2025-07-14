@@ -1,16 +1,18 @@
-import { ethers } from 'ethers';
-import fs from 'fs';
-import logger from '../utils/logger.js';
-import { TransactionManager } from './TransactionManager.js';
-export class EnhancedNodeRegistration {
-    rpcManager;
-    transactionManager;
-    walletService;
-    contractAddresses;
-    contractABIs = new Map();
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.EnhancedNodeRegistration = void 0;
+const ethers_1 = require("ethers");
+const fs_1 = __importDefault(require("fs"));
+const logger_js_1 = __importDefault(require("../utils/logger.js"));
+const TransactionManager_js_1 = require("./TransactionManager.js");
+class EnhancedNodeRegistration {
     constructor(rpcManager, walletService) {
+        this.contractABIs = new Map();
         this.rpcManager = rpcManager;
-        this.transactionManager = new TransactionManager(rpcManager);
+        this.transactionManager = new TransactionManager_js_1.TransactionManager(rpcManager);
         this.walletService = walletService;
         this.contractAddresses = {
             aiNodeRegistry: '0x0045c7D99489f1d8A5900243956B0206344417DD',
@@ -28,29 +30,28 @@ export class EnhancedNodeRegistration {
             ];
             for (const { name, file } of abiFiles) {
                 try {
-                    const abiData = JSON.parse(fs.readFileSync(file, 'utf8'));
+                    const abiData = JSON.parse(fs_1.default.readFileSync(file, 'utf8'));
                     this.contractABIs.set(name, abiData.abi || abiData);
-                    logger.info(`Loaded ABI for ${name}`, { file });
+                    logger_js_1.default.info(`Loaded ABI for ${name}`, { file });
                 }
                 catch (error) {
-                    logger.warn(`Failed to load ABI for ${name}`, { file, error: error.message });
+                    logger_js_1.default.warn(`Failed to load ABI for ${name}`, { file, error: error.message });
                 }
             }
         }
         catch (error) {
-            logger.error('Failed to initialize contract ABIs', { error: error.message });
+            logger_js_1.default.error('Failed to initialize contract ABIs', { error: error.message });
         }
     }
     async registerNodeWithComprehensiveFlow(config) {
-        logger.info('Starting comprehensive node registration', {
+        logger_js_1.default.info('Starting comprehensive node registration', {
             nodeId: config.nodeId,
             address: config.nodeAddress
         });
         try {
-            // Step 1: Check current registration status
             const registrationStatus = await this.checkNodeRegistrationStatus(config.nodeAddress);
             if (registrationStatus.isRegistered) {
-                logger.info('Node already registered', { nodeId: config.nodeId });
+                logger_js_1.default.info('Node already registered', { nodeId: config.nodeId });
                 return {
                     success: true,
                     isRegistered: true,
@@ -58,10 +59,9 @@ export class EnhancedNodeRegistration {
                     stakingComplete: true
                 };
             }
-            // Step 2: Verify DLOOP token requirements
             const tokenRequirements = await this.verifyTokenRequirements(config.nodeAddress);
             if (!tokenRequirements.sufficient) {
-                logger.error('Insufficient DLOOP tokens for registration', {
+                logger_js_1.default.error('Insufficient DLOOP tokens for registration', {
                     nodeId: config.nodeId,
                     required: tokenRequirements.required,
                     available: tokenRequirements.available
@@ -73,7 +73,6 @@ export class EnhancedNodeRegistration {
                     requirementsMet: false
                 };
             }
-            // Step 3: Approve DLOOP tokens with enhanced gas handling
             const approvalResult = await this.approveTokensWithFallback(config);
             if (!approvalResult.success) {
                 return {
@@ -83,15 +82,13 @@ export class EnhancedNodeRegistration {
                     requirementsMet: false
                 };
             }
-            // Step 4: Register node with multiple fallback strategies
             const registrationResult = await this.registerWithMultipleStrategies(config);
             if (registrationResult.success) {
-                logger.info('Node registration completed successfully', {
+                logger_js_1.default.info('Node registration completed successfully', {
                     nodeId: config.nodeId,
                     txHash: registrationResult.transactionHash
                 });
-                // Step 5: Verify registration completion
-                await this.delay(5000); // Wait for block confirmation
+                await this.delay(5000);
                 const finalStatus = await this.checkNodeRegistrationStatus(config.nodeAddress);
                 return {
                     success: true,
@@ -107,7 +104,7 @@ export class EnhancedNodeRegistration {
             };
         }
         catch (error) {
-            logger.error('Comprehensive registration failed', {
+            logger_js_1.default.error('Comprehensive registration failed', {
                 nodeId: config.nodeId,
                 error: error.message
             });
@@ -148,24 +145,23 @@ export class EnhancedNodeRegistration {
             if (!dloopAbi) {
                 throw new Error('DLOOP Token ABI not loaded');
             }
-            // Check DLOOP balance
             const balance = await this.transactionManager.executeContractRead(this.contractAddresses.dloopToken, dloopAbi, 'balanceOf', [nodeAddress]);
-            const requiredAmount = ethers.parseEther('1.0'); // 1 DLOOP token
+            const requiredAmount = ethers_1.ethers.parseEther('1.0');
             const availableAmount = BigInt(balance.toString());
-            logger.debug('Token requirements verification', {
+            logger_js_1.default.debug('Token requirements verification', {
                 nodeAddress,
-                required: ethers.formatEther(requiredAmount),
-                available: ethers.formatEther(availableAmount),
+                required: ethers_1.ethers.formatEther(requiredAmount),
+                available: ethers_1.ethers.formatEther(availableAmount),
                 sufficient: availableAmount >= requiredAmount
             });
             return {
                 sufficient: availableAmount >= requiredAmount,
-                required: ethers.formatEther(requiredAmount),
-                available: ethers.formatEther(availableAmount)
+                required: ethers_1.ethers.formatEther(requiredAmount),
+                available: ethers_1.ethers.formatEther(availableAmount)
             };
         }
         catch (error) {
-            logger.error('Token requirements verification failed', {
+            logger_js_1.default.error('Token requirements verification failed', {
                 nodeAddress,
                 error: error.message
             });
@@ -186,10 +182,10 @@ export class EnhancedNodeRegistration {
             if (!dloopAbi) {
                 throw new Error('DLOOP Token ABI not loaded');
             }
-            const approveAmount = ethers.parseEther('1.0');
-            logger.info('Approving DLOOP tokens with enhanced gas handling', {
+            const approveAmount = ethers_1.ethers.parseEther('1.0');
+            logger_js_1.default.info('Approving DLOOP tokens with enhanced gas handling', {
                 nodeId: config.nodeId,
-                amount: ethers.formatEther(approveAmount),
+                amount: ethers_1.ethers.formatEther(approveAmount),
                 spender: this.contractAddresses.aiNodeRegistry
             });
             const result = await this.transactionManager.executeTransaction(wallet, this.contractAddresses.dloopToken, dloopAbi, 'approve', [this.contractAddresses.aiNodeRegistry, approveAmount], {
@@ -198,7 +194,7 @@ export class EnhancedNodeRegistration {
                 timeout: 60000
             });
             if (result.success) {
-                logger.info('Token approval successful', {
+                logger_js_1.default.info('Token approval successful', {
                     nodeId: config.nodeId,
                     txHash: result.transactionHash,
                     gasUsed: result.gasUsed
@@ -214,7 +210,7 @@ export class EnhancedNodeRegistration {
             };
         }
         catch (error) {
-            logger.error('Token approval failed', {
+            logger_js_1.default.error('Token approval failed', {
                 nodeId: config.nodeId,
                 error: error.message
             });
@@ -234,32 +230,31 @@ export class EnhancedNodeRegistration {
         for (let i = 0; i < strategies.length; i++) {
             const strategyName = ['Staking', 'SafeApproval', 'OptimizedApproval'][i];
             try {
-                logger.info(`Attempting registration strategy: ${strategyName}`, {
+                logger_js_1.default.info(`Attempting registration strategy: ${strategyName}`, {
                     nodeId: config.nodeId,
                     attempt: i + 1
                 });
                 const result = await strategies[i]();
                 if (result.success) {
-                    logger.info(`Registration successful with ${strategyName} strategy`, {
+                    logger_js_1.default.info(`Registration successful with ${strategyName} strategy`, {
                         nodeId: config.nodeId,
                         txHash: result.transactionHash
                     });
                     return result;
                 }
                 lastError = result.error || `${strategyName} strategy failed`;
-                logger.warn(`${strategyName} strategy failed, trying next`, {
+                logger_js_1.default.warn(`${strategyName} strategy failed, trying next`, {
                     nodeId: config.nodeId,
                     error: lastError
                 });
             }
             catch (error) {
                 lastError = error.message;
-                logger.warn(`${strategyName} strategy exception, trying next`, {
+                logger_js_1.default.warn(`${strategyName} strategy exception, trying next`, {
                     nodeId: config.nodeId,
                     error: error.message
                 });
             }
-            // Wait between attempts
             if (i < strategies.length - 1) {
                 await this.delay(2000);
             }
@@ -287,8 +282,7 @@ export class EnhancedNodeRegistration {
             version: "1.0.0",
             registeredAt: Date.now()
         });
-        return await this.transactionManager.executeTransaction(wallet, this.contractAddresses.aiNodeRegistry, abi, 'registerNodeWithStaking', [config.nodeAddress, metadata, 0], // requirementId = 0 for default
-        {
+        return await this.transactionManager.executeTransaction(wallet, this.contractAddresses.aiNodeRegistry, abi, 'registerNodeWithStaking', [config.nodeAddress, metadata, 0], {
             gasLimit: '1000000',
             retries: 3,
             timeout: 120000
@@ -327,7 +321,7 @@ export class EnhancedNodeRegistration {
     async batchRegisterNodes(configs) {
         const successful = [];
         const failed = [];
-        logger.info('Starting batch node registration', {
+        logger_js_1.default.info('Starting batch node registration', {
             totalNodes: configs.length
         });
         for (const config of configs) {
@@ -335,7 +329,7 @@ export class EnhancedNodeRegistration {
                 const result = await this.registerNodeWithComprehensiveFlow(config);
                 if (result.success) {
                     successful.push(config.nodeId);
-                    logger.info('Batch registration success', {
+                    logger_js_1.default.info('Batch registration success', {
                         nodeId: config.nodeId,
                         txHash: result.transactionHash
                     });
@@ -346,7 +340,6 @@ export class EnhancedNodeRegistration {
                         error: result.error || 'Unknown error'
                     });
                 }
-                // Wait between registrations to avoid rate limiting
                 await this.delay(3000);
             }
             catch (error) {
@@ -354,13 +347,13 @@ export class EnhancedNodeRegistration {
                     nodeId: config.nodeId,
                     error: error.message
                 });
-                logger.error('Batch registration error', {
+                logger_js_1.default.error('Batch registration error', {
                     nodeId: config.nodeId,
                     error: error.message
                 });
             }
         }
-        logger.info('Batch registration completed', {
+        logger_js_1.default.info('Batch registration completed', {
             successful: successful.length,
             failed: failed.length,
             totalProcessed: configs.length
@@ -375,4 +368,5 @@ export class EnhancedNodeRegistration {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
+exports.EnhancedNodeRegistration = EnhancedNodeRegistration;
 //# sourceMappingURL=EnhancedNodeRegistration.js.map

@@ -1,22 +1,20 @@
-import { contractLogger as logger } from '../utils/logger.js';
-import { NodeRegistrationService } from './NodeRegistrationService.js';
-export class ComprehensiveNodeManager {
-    rpcManager;
-    walletService;
-    nodeRegistrationService;
-    nodeStatuses = new Map();
-    isProcessing = false;
-    allNodeIds = [];
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ComprehensiveNodeManager = void 0;
+const logger_js_1 = require("../utils/logger.js");
+const NodeRegistrationService_js_1 = require("./NodeRegistrationService.js");
+class ComprehensiveNodeManager {
     constructor(rpcManager, walletService) {
+        this.nodeStatuses = new Map();
+        this.isProcessing = false;
+        this.allNodeIds = [];
         this.rpcManager = rpcManager;
         this.walletService = walletService;
-        this.nodeRegistrationService = new NodeRegistrationService(rpcManager);
+        this.nodeRegistrationService = new NodeRegistrationService_js_1.NodeRegistrationService(rpcManager);
     }
     async initializeAndRegisterAllNodes() {
-        // NUCLEAR OPTION: All nodes are already registered, skip all registration attempts
-        logger.info('SKIPPING ALL NODE REGISTRATION - All nodes already registered');
+        logger_js_1.contractLogger.info('SKIPPING ALL NODE REGISTRATION - All nodes already registered');
         const nodeConfigs = this.loadNodeConfigurations();
-        // Initialize node statuses as already registered
         nodeConfigs.forEach(config => {
             this.nodeStatuses.set(config.nodeId, {
                 nodeId: config.nodeId,
@@ -28,7 +26,7 @@ export class ComprehensiveNodeManager {
                 lastRegistrationAttempt: 0,
                 status: 'registered'
             });
-            logger.info('Node marked as already registered', {
+            logger_js_1.contractLogger.info('Node marked as already registered', {
                 nodeId: config.nodeId,
                 address: config.nodeAddress
             });
@@ -36,17 +34,15 @@ export class ComprehensiveNodeManager {
         this.logRegistrationSummary();
         try {
             const registrationResults = await Promise.allSettled(this.allNodeIds.map(nodeId => this.registerSingleNode(nodeId)));
-            // Check results
             const successfulRegistrations = registrationResults
                 .filter(result => result.status === 'fulfilled')
                 .length;
-            logger.info(`Node registration complete: ${successfulRegistrations}/${this.allNodeIds.length} successful`);
-            // Enhanced status check with detailed diagnostics
+            logger_js_1.contractLogger.info(`Node registration complete: ${successfulRegistrations}/${this.allNodeIds.length} successful`);
             await this.performDetailedStatusCheck();
             return true;
         }
         catch (error) {
-            logger.error('Failed to initialize and register nodes', { error });
+            logger_js_1.contractLogger.error('Failed to initialize and register nodes', { error });
             return false;
         }
     }
@@ -58,15 +54,14 @@ export class ComprehensiveNodeManager {
             nodeStatus.status = 'registering';
             nodeStatus.registrationAttempts++;
             nodeStatus.lastRegistrationAttempt = Date.now();
-            logger.info('Processing node registration', {
+            logger_js_1.contractLogger.info('Processing node registration', {
                 nodeId: config.nodeId,
                 address: config.nodeAddress,
                 attempt: nodeStatus.registrationAttempts
             });
-            // Check current registration status
             const isAlreadyRegistered = await this.nodeRegistrationService.checkNodeRegistration(config.nodeAddress);
             if (isAlreadyRegistered) {
-                logger.info('Node already registered, skipping registration', {
+                logger_js_1.contractLogger.info('Node already registered, skipping registration', {
                     nodeId: config.nodeId,
                     address: config.nodeAddress
                 });
@@ -74,10 +69,9 @@ export class ComprehensiveNodeManager {
                 nodeStatus.status = 'registered';
                 return;
             }
-            // Attempt registration
             const registrationResult = await this.nodeRegistrationService.registerNode(wallet, config);
             if (registrationResult.success) {
-                logger.info('Node registration completed successfully', {
+                logger_js_1.contractLogger.info('Node registration completed successfully', {
                     nodeId: config.nodeId,
                     address: config.nodeAddress,
                     txHash: registrationResult.transactionHash
@@ -86,7 +80,7 @@ export class ComprehensiveNodeManager {
                 nodeStatus.status = 'registered';
             }
             else {
-                logger.warn('Node registration failed', {
+                logger_js_1.contractLogger.warn('Node registration failed', {
                     nodeId: config.nodeId,
                     address: config.nodeAddress,
                     error: registrationResult.error,
@@ -96,7 +90,7 @@ export class ComprehensiveNodeManager {
             }
         }
         catch (error) {
-            logger.error('Error processing node registration', {
+            logger_js_1.contractLogger.error('Error processing node registration', {
                 nodeId: config.nodeId,
                 error: error instanceof Error ? error.message : 'Unknown error'
             });
@@ -104,7 +98,6 @@ export class ComprehensiveNodeManager {
         }
     }
     loadNodeConfigurations() {
-        // NUCLEAR OPTION: All nodes are already registered, skip all registration attempts
         const registeredAddresses = [
             '0x0E354b735a6eee60726e6e3A431e3320Ba26ba45',
             '0xb1c25B40A79b7D046E539A9fbBB58789efFD0874',
@@ -170,16 +163,15 @@ export class ComprehensiveNodeManager {
     }
     logRegistrationSummary() {
         const summary = this.getRegistrationSummary();
-        logger.info('Node registration process completed', {
+        logger_js_1.contractLogger.info('Node registration process completed', {
             totalNodes: summary.total,
             registeredNodes: summary.registered,
             pendingNodes: summary.pending,
             failedNodes: summary.failed,
             successRate: summary.total > 0 ? Math.round((summary.registered / summary.total) * 100) : 0
         });
-        // Log individual node statuses
         this.nodeStatuses.forEach((status, nodeId) => {
-            logger.info('Node status summary', {
+            logger_js_1.contractLogger.info('Node status summary', {
                 nodeId,
                 address: status.address,
                 status: status.status,
@@ -193,10 +185,10 @@ export class ComprehensiveNodeManager {
             .filter(([_, status]) => status.status === 'failed')
             .map(([nodeId, _]) => nodeId);
         if (failedNodes.length === 0) {
-            logger.info('No failed registrations to retry');
+            logger_js_1.contractLogger.info('No failed registrations to retry');
             return;
         }
-        logger.info('Retrying failed node registrations', {
+        logger_js_1.contractLogger.info('Retrying failed node registrations', {
             failedCount: failedNodes.length
         });
         const nodeConfigs = this.loadNodeConfigurations();
@@ -214,10 +206,9 @@ export class ComprehensiveNodeManager {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
     async registerSingleNode(nodeId) {
-        // Implementation of registerSingleNode method
     }
     async performDetailedStatusCheck() {
-        // Implementation of performDetailedStatusCheck method
     }
 }
+exports.ComprehensiveNodeManager = ComprehensiveNodeManager;
 //# sourceMappingURL=ComprehensiveNodeManager.js.map

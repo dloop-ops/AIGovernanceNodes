@@ -1,9 +1,12 @@
-import { contractLogger as logger } from '../utils/logger.js';
-export class SystemStatusService {
-    rpcManager = null;
-    nodeManager = null;
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SystemStatusService = void 0;
+const logger_js_1 = require("../utils/logger.js");
+class SystemStatusService {
     constructor() {
-        logger.info('System Status Service initialized');
+        this.rpcManager = null;
+        this.nodeManager = null;
+        logger_js_1.contractLogger.info('System Status Service initialized');
     }
     setRpcManager(rpcManager) {
         this.rpcManager = rpcManager;
@@ -13,11 +16,8 @@ export class SystemStatusService {
     }
     getComprehensiveStatus() {
         const timestamp = Date.now();
-        // RPC Infrastructure Status
         const rpcStatus = this.getRpcInfrastructureStatus();
-        // Governance Nodes Status
         const nodeStatus = this.getGovernanceNodesStatus();
-        // Scheduled Tasks Status
         const taskStatus = this.getScheduledTasksStatus();
         const systemStatus = {
             timestamp,
@@ -95,8 +95,7 @@ export class SystemStatusService {
         const systemStatus = this.nodeManager.getSystemStatus();
         const totalNodes = systemStatus.totalNodes;
         const activeNodes = systemStatus.activeNodes;
-        // Estimate authentication status based on system behavior
-        const authenticatedNodes = activeNodes; // Nodes with SoulBound NFTs are active
+        const authenticatedNodes = activeNodes;
         let registrationStatus = 'pending';
         if (activeNodes > 0) {
             registrationStatus = activeNodes === totalNodes ? 'completed' : 'in_progress';
@@ -112,30 +111,28 @@ export class SystemStatusService {
         if (!this.nodeManager) {
             return [];
         }
-        // For now, return basic scheduled tasks status
-        // This would need to be enhanced to track actual scheduled tasks
         return [
             {
                 name: 'Daily Proposal Creation',
                 status: 'running',
-                lastExecution: Date.now() - (12 * 60 * 60 * 1000) // 12 hours ago
+                lastExecution: Date.now() - (12 * 60 * 60 * 1000)
             },
             {
                 name: 'Voting Check',
                 status: 'running',
-                lastExecution: Date.now() - (4 * 60 * 60 * 1000) // 4 hours ago
+                lastExecution: Date.now() - (4 * 60 * 60 * 1000)
             },
             {
                 name: 'Market Data Fetch',
                 status: 'running',
-                lastExecution: Date.now() - (30 * 60 * 1000) // 30 minutes ago
+                lastExecution: Date.now() - (30 * 60 * 1000)
             }
         ];
     }
     logSystemHealth(status) {
         const rpc = status.rpcInfrastructure;
         const nodes = status.governanceNodes;
-        logger.info('System Health Summary', {
+        logger_js_1.contractLogger.info('System Health Summary', {
             rpcStatus: rpc.status,
             rpcConnections: `${rpc.activeConnections}/${rpc.totalEndpoints}`,
             rateLimitHandling: {
@@ -173,4 +170,5 @@ export class SystemStatusService {
         };
     }
 }
+exports.SystemStatusService = SystemStatusService;
 //# sourceMappingURL=SystemStatusService.js.map

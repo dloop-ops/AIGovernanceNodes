@@ -207,7 +207,7 @@ async function diagnoseProposals(): Promise<void> {
 }
 
 // Run if called directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
   diagnoseProposals().then(() => {
     process.exit(0);
   }).catch(() => {

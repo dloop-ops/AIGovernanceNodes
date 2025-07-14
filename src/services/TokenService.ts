@@ -59,7 +59,7 @@ export class TokenService {
    */
   async ensureMinimumTokensForAllNodes(): Promise<void> {
     const nodeCount = this.walletService.getWalletCount();
-    
+
     for (let i = 0; i < nodeCount; i++) {
       try {
         const hasTokens = await this.hasMinimumTokens(i);
@@ -68,7 +68,7 @@ export class TokenService {
             nodeIndex: i,
             requiredAmount: ethers.formatEther(this.minTokenBalance)
           });
-          
+
           // Attempt to get tokens from faucet
           await this.requestTokensFromFaucet(i);
         }
@@ -89,7 +89,7 @@ export class TokenService {
     votingPower: string;
   }>> {
     const nodeCount = this.walletService.getWalletCount();
-    const results = [];
+    const results: { nodeIndex: number; address: string; balance: string; hasMinimum: boolean; votingPower: string }[] = [];
 
     for (let i = 0; i < nodeCount; i++) {
       try {

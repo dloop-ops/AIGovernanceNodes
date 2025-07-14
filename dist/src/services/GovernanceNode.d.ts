@@ -1,11 +1,10 @@
 import { ethers } from 'ethers';
-import { NodeConfig, GovernanceNodeState } from '../types/index.js';
-import { WalletService } from './WalletService.js';
+import { NodeConfig, GovernanceNodeState } from '../types/index';
+import { WalletService } from './WalletService';
 export declare class GovernanceNode {
     private nodeId;
     private wallet;
     private contractService;
-    private marketDataService;
     private strategy;
     private isActive;
     private lastProposalTime;
@@ -28,5 +27,11 @@ export declare class GovernanceNode {
     private isValidProposal;
     private delay;
     private getActiveProposalsDirectly;
+    processVotingRound(): Promise<{
+        success: boolean;
+        votesSubmitted: number;
+        skipped: number;
+        errors: number;
+    }>;
 }
 //# sourceMappingURL=GovernanceNode.d.ts.map

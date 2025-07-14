@@ -1,19 +1,16 @@
-import { ConservativeStrategy } from '../strategies/ConservativeStrategy.js';
-import { AggressiveStrategy } from '../strategies/AggressiveStrategy.js';
-import { GovernanceError } from '../types/index.js';
-import logger from '../utils/logger.js';
-export class GovernanceNode {
-    nodeId;
-    wallet;
-    strategy;
-    contractService;
-    marketDataService;
-    proposalService;
-    walletService;
-    nodeIndex;
-    state;
-    isActive = false;
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.GovernanceNode = void 0;
+const ConservativeStrategy_js_1 = require("../strategies/ConservativeStrategy.js");
+const AggressiveStrategy_js_1 = require("../strategies/AggressiveStrategy.js");
+const index_js_1 = require("../types/index.js");
+const logger_js_1 = __importDefault(require("../utils/logger.js"));
+class GovernanceNode {
     constructor(config, walletService, contractService, marketDataService, proposalService) {
+        this.isActive = false;
         this.nodeId = config.id;
         this.nodeIndex = config.walletIndex;
         this.walletService = walletService;
@@ -21,9 +18,7 @@ export class GovernanceNode {
         this.contractService = contractService;
         this.marketDataService = marketDataService;
         this.proposalService = proposalService;
-        // Initialize strategy
         this.strategy = this.createStrategy(config.strategy);
-        // Initialize state
         this.state = {
             nodeId: this.nodeId,
             wallet: this.wallet,
@@ -34,168 +29,139 @@ export class GovernanceNode {
             proposalsCreated: 0,
             votesAcast: 0
         };
-        logger.info('Governance node initialized', {
+        logger_js_1.default.info('Governance node initialized', {
             nodeId: this.nodeId,
             address: this.wallet.address,
             strategy: config.strategy,
             enabled: config.enabled
         });
     }
-    /**
-     * Create strategy instance based on type
-     */
     createStrategy(strategyType) {
         switch (strategyType.toLowerCase()) {
             case 'conservative':
-                return new ConservativeStrategy();
+                return new ConservativeStrategy_js_1.ConservativeStrategy();
             case 'aggressive':
-                return new AggressiveStrategy();
+                return new AggressiveStrategy_js_1.AggressiveStrategy();
             default:
-                logger.warn(`Unknown strategy type: ${strategyType}, defaulting to conservative`);
-                return new ConservativeStrategy();
+                logger_js_1.default.warn(`Unknown strategy type: ${strategyType}, defaulting to conservative`);
+                return new ConservativeStrategy_js_1.ConservativeStrategy();
         }
     }
-    /**
-     * Start the governance node
-     */
     async start() {
         try {
-            // 🛑 NUCLEAR OPTION: All 5 nodes are already registered - COMPLETE BLOCK OF REGISTRATION
             const REGISTERED_ADDRESSES = [
-                '0x0E354b735a6eee60726e6e3A431e3320Ba26ba45', // ai-gov-01 ✅ REGISTERED
-                '0xb1c25B40A79b7D046E539A9fbBB58789efFD0874', // ai-gov-02 ✅ REGISTERED  
-                '0x65b1d03F5F2Ad4Ff036ea7AeEf5Ec07Db27a5C58', // ai-gov-03 ✅ REGISTERED
-                '0x766766f2815f835E4A0b1360833C7A15DDF2b72a', // ai-gov-04 ✅ REGISTERED
-                '0xA6fBf2dD68dB92dA309D6b82DAe2180d903a36FA' // ai-gov-05 ✅ REGISTERED
+                '0x0E354b735a6eee60726e6e3A431e3320Ba26ba45',
+                '0xb1c25B40A79b7D046E539A9fbBB58789efFD0874',
+                '0x65b1d03F5F2Ad4Ff036ea7AeEf5Ec07Db27a5C58',
+                '0x766766f2815f835E4A0b1360833C7A15DDF2b72a',
+                '0xA6fBf2dD68dB92dA309D6b82DAe2180d903a36FA'
             ];
             if (REGISTERED_ADDRESSES.includes(this.wallet.address)) {
-                logger.info(`🛑 Node ${this.nodeId} - COMPLETE SKIP OF ALL REGISTRATION (already registered)`, {
+                logger_js_1.default.info(`🛑 Node ${this.nodeId} - COMPLETE SKIP OF ALL REGISTRATION (already registered)`, {
                     component: 'governance',
                     nodeAddress: this.wallet.address,
                     action: 'NUCLEAR_SKIP_ALL_REGISTRATION'
                 });
-                // Set as active and skip ALL registration-related activities
                 this.isActive = true;
                 this.state.isActive = true;
-                logger.info(`Governance node ${this.nodeId} started successfully WITHOUT REGISTRATION`, {
+                logger_js_1.default.info(`Governance node ${this.nodeId} started successfully WITHOUT REGISTRATION`, {
                     component: 'governance'
                 });
-                // EARLY RETURN - NO REGISTRATION OR BALANCE CHECKS
                 return;
             }
-            logger.info(`Starting governance node ${this.nodeId}`, {
+            logger_js_1.default.info(`Starting governance node ${this.nodeId}`, {
                 component: 'governance'
             });
-            // Check balances (made resilient to failures)
             await this.checkBalances();
             this.isActive = true;
             this.state.isActive = true;
-            logger.info(`Governance node ${this.nodeId} started successfully`, {
+            logger_js_1.default.info(`Governance node ${this.nodeId} started successfully`, {
                 component: 'governance'
             });
         }
         catch (error) {
             this.isActive = false;
             this.state.isActive = false;
-            logger.error(`Failed to start governance node ${this.nodeId}`, {
+            logger_js_1.default.error(`Failed to start governance node ${this.nodeId}`, {
                 component: 'governance',
                 error: error instanceof Error ? error.message : String(error)
             });
             throw error;
         }
     }
-    /**
-     * Stop the governance node
-     */
     stop() {
-        logger.info(`Stopping governance node ${this.nodeId}`, {
+        logger_js_1.default.info(`Stopping governance node ${this.nodeId}`, {
             component: 'governance'
         });
         this.isActive = false;
         this.state.isActive = false;
     }
-    /**
-     * AI Governance Nodes do not create proposals - they only vote on existing proposals
-     * Proposals are created by Investment Nodes or human participants
-     */
     async createDailyProposal() {
-        logger.info(`GovernanceNode ${this.nodeId} does not create proposals - only votes on them`, {
+        logger_js_1.default.info(`GovernanceNode ${this.nodeId} does not create proposals - only votes on them`, {
             component: 'governance',
             note: 'As per d-loop whitepaper: AI Governance Nodes vote, Investment Nodes create proposals'
         });
-        // No-op: Governance nodes only vote, they don't create proposals
         return;
     }
-    /**
-     * Check and vote on active AssetDAO proposals
-     */
     async checkAndVoteOnProposals() {
         if (!this.isActive) {
-            logger.warn(`Node ${this.nodeId} is not active, skipping voting`);
+            logger_js_1.default.warn(`Node ${this.nodeId} is not active, skipping voting`);
             return;
         }
         try {
-            logger.info(`Checking and voting on proposals for node ${this.nodeId}`, { component: 'governance' });
-            // Get active proposals from AssetDAO
+            logger_js_1.default.info(`Checking and voting on proposals for node ${this.nodeId}`, { component: 'governance' });
             const activeProposals = await this.contractService.getActiveProposals();
             if (!activeProposals || activeProposals.length === 0) {
-                logger.info(`No active proposals found for voting`, { nodeId: this.nodeId });
+                logger_js_1.default.info(`No active proposals found for voting`, { nodeId: this.nodeId });
                 return;
             }
-            logger.info(`Found ${activeProposals.length} active proposals`, {
+            logger_js_1.default.info(`Found ${activeProposals.length} active proposals`, {
                 nodeId: this.nodeId,
                 component: 'governance'
             });
-            // Get market analysis for decision making
             const marketAnalysis = await this.marketDataService.analyzeMarketData();
             let votesAttempted = 0;
             let votesSuccessful = 0;
-            // Process each proposal with intelligent rate limiting
             for (let i = 0; i < activeProposals.length; i++) {
                 const proposal = activeProposals[i];
                 try {
-                    // Add progressive delays to prevent rate limiting
                     if (i > 0) {
-                        const delayTime = 800 + (i * 200); // 800ms + 200ms per proposal
-                        logger.debug(`Adding ${delayTime}ms delay before processing proposal ${proposal.id}`, {
+                        const delayTime = 800 + (i * 200);
+                        logger_js_1.default.debug(`Adding ${delayTime}ms delay before processing proposal ${proposal.id}`, {
                             nodeId: this.nodeId,
                             proposalIndex: i
                         });
                         await this.delay(delayTime);
                     }
-                    // Check if we've already voted on this proposal
                     const hasVoted = await this.contractService.hasVoted(proposal.id, this.nodeIndex);
                     if (hasVoted) {
-                        logger.debug(`Already voted on proposal ${proposal.id}`, { nodeId: this.nodeId });
+                        logger_js_1.default.debug(`Already voted on proposal ${proposal.id}`, { nodeId: this.nodeId });
                         continue;
                     }
-                    // Additional delay before strategy analysis for USDC proposals
                     if (proposal.description.toUpperCase().includes('USDC')) {
-                        logger.info(`Processing high-priority USDC proposal ${proposal.id}`, {
+                        logger_js_1.default.info(`Processing high-priority USDC proposal ${proposal.id}`, {
                             nodeId: this.nodeId,
                             proposalType: proposal.proposalType
                         });
-                        await this.delay(200); // Extra delay for important proposals
+                        await this.delay(200);
                     }
-                    // Analyze proposal with strategy
                     const decision = await this.strategy.analyzeProposal(proposal, marketAnalysis, {
                         nodeId: this.nodeId,
                         nodeAddress: this.wallet.address
                     });
                     if (!decision.shouldVote) {
-                        logger.info(`Strategy decided not to vote on proposal ${proposal.id}`, {
+                        logger_js_1.default.info(`Strategy decided not to vote on proposal ${proposal.id}`, {
                             nodeId: this.nodeId,
                             reasoning: decision.reasoning
                         });
                         continue;
                     }
-                    // Cast vote with extra delay before transaction
-                    await this.delay(1000); // 1 second delay before voting transaction
+                    await this.delay(1000);
                     votesAttempted++;
                     const txHash = await this.contractService.vote(this.nodeIndex, proposal.id, decision.voteSupport);
                     votesSuccessful++;
                     this.state.votesAcast++;
-                    logger.info(`Vote cast successfully`, {
+                    logger_js_1.default.info(`Vote cast successfully`, {
                         nodeId: this.nodeId,
                         proposalId: proposal.id,
                         support: decision.voteSupport,
@@ -203,50 +169,43 @@ export class GovernanceNode {
                         reasoning: decision.reasoning,
                         txHash
                     });
-                    // Add delay after successful vote to respect rate limits
-                    await this.delay(2000); // 2 second delay after voting
+                    await this.delay(2000);
                 }
                 catch (voteError) {
                     const errorMessage = voteError instanceof Error ? voteError.message : String(voteError);
-                    logger.error(`Failed to vote on proposal ${proposal.id}`, {
+                    logger_js_1.default.error(`Failed to vote on proposal ${proposal.id}`, {
                         nodeId: this.nodeId,
                         error: errorMessage,
                         proposalId: proposal.id
                     });
-                    // If rate limited, add extra delay before continuing
                     if (errorMessage.includes('Too Many Requests') || errorMessage.includes('rate limit')) {
-                        logger.warn(`Rate limited while voting, adding 5 second delay`, { nodeId: this.nodeId });
+                        logger_js_1.default.warn(`Rate limited while voting, adding 5 second delay`, { nodeId: this.nodeId });
                         await this.delay(5000);
                     }
                 }
             }
             this.state.lastVoteTime = Date.now();
-            logger.info(`Voting round completed for ${this.nodeId}`, {
+            logger_js_1.default.info(`Voting round completed for ${this.nodeId}`, {
                 proposalsProcessed: activeProposals.length,
                 votesAttempted,
                 votesSuccessful
             });
         }
         catch (error) {
-            logger.error(`Failed to check and vote on proposals for node ${this.nodeId}`, {
+            logger_js_1.default.error(`Failed to check and vote on proposals for node ${this.nodeId}`, {
                 component: 'governance',
                 error: error instanceof Error ? error.message : String(error)
             });
-            throw new GovernanceError(`Voting failed for ${this.nodeId}: ${error instanceof Error ? error.message : String(error)}`, 'VOTING_ERROR');
+            throw new index_js_1.GovernanceError(`Voting failed for ${this.nodeId}: ${error instanceof Error ? error.message : String(error)}`, 'VOTING_ERROR');
         }
     }
-    /**
-     * Check wallet balances and log status - with enhanced error handling
-     */
     async checkBalances() {
         try {
-            logger.info(`Checking balances for node ${this.nodeId}`, {
+            logger_js_1.default.info(`Checking balances for node ${this.nodeId}`, {
                 component: 'governance',
                 nodeAddress: this.wallet.address
             });
-            // Add delay to prevent rate limiting
-            await this.delay(Math.random() * 300 + 100); // Random delay 100-400ms
-            // Use Promise.allSettled to handle partial failures gracefully
+            await this.delay(Math.random() * 300 + 100);
             const [ethResult, tokenResult] = await Promise.allSettled([
                 this.walletService.getBalance(this.nodeIndex),
                 this.contractService.getTokenBalance(this.nodeIndex)
@@ -257,57 +216,49 @@ export class GovernanceNode {
                 ethBalance = ethResult.value;
             }
             else {
-                logger.warn(`Failed to get ETH balance for node ${this.nodeId}`, {
+                logger_js_1.default.warn(`Failed to get ETH balance for node ${this.nodeId}`, {
                     component: 'governance',
                     error: ethResult.reason instanceof Error ? ethResult.reason.message : String(ethResult.reason)
                 });
-                ethBalance = '0.01'; // Assume minimal balance
+                ethBalance = '0.01';
             }
             if (tokenResult.status === 'fulfilled') {
                 tokenBalance = tokenResult.value;
             }
             else {
-                logger.warn(`Failed to get DLOOP balance for node ${this.nodeId}`, {
+                logger_js_1.default.warn(`Failed to get DLOOP balance for node ${this.nodeId}`, {
                     component: 'governance',
                     error: tokenResult.reason instanceof Error ? tokenResult.reason.message : String(tokenResult.reason)
                 });
-                tokenBalance = '1000.0'; // Assume good balance
+                tokenBalance = '1000.0';
             }
-            logger.info(`Node balances checked`, {
+            logger_js_1.default.info(`Node balances checked`, {
                 component: 'governance',
                 address: this.wallet.address,
                 ethBalance: `${ethBalance} ETH`,
                 tokenBalance: `${tokenBalance} DLOOP`
             });
-            // Warning for low balances (only if we got real values)
             if (ethResult.status === 'fulfilled' && parseFloat(ethBalance) < 0.01) {
-                logger.warn(`Low ETH balance for node ${this.nodeId}: ${ethBalance} ETH`, {
+                logger_js_1.default.warn(`Low ETH balance for node ${this.nodeId}: ${ethBalance} ETH`, {
                     component: 'governance'
                 });
             }
             if (tokenResult.status === 'fulfilled' && parseFloat(tokenBalance) < 100) {
-                logger.warn(`Low DLOOP balance for node ${this.nodeId}: ${tokenBalance} DLOOP`, {
+                logger_js_1.default.warn(`Low DLOOP balance for node ${this.nodeId}: ${tokenBalance} DLOOP`, {
                     component: 'governance'
                 });
             }
         }
         catch (error) {
-            // Log warning but don't throw - allow node to start
-            logger.warn(`Balance check had issues for node ${this.nodeId}, continuing with startup`, {
+            logger_js_1.default.warn(`Balance check had issues for node ${this.nodeId}, continuing with startup`, {
                 component: 'governance',
                 error: error instanceof Error ? error.message : String(error)
             });
         }
     }
-    /**
-     * Helper method to add delay between operations
-     */
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
-    /**
-     * Get node status and statistics
-     */
     getStatus() {
         return {
             nodeId: this.nodeId,
@@ -323,23 +274,15 @@ export class GovernanceNode {
             }
         };
     }
-    /**
-     * Get node state
-     */
     getState() {
         return { ...this.state };
     }
-    /**
-     * Get node ID
-     */
     getNodeId() {
         return this.nodeId;
     }
-    /**
-     * Check if node is active
-     */
     isNodeActive() {
         return this.isActive;
     }
 }
+exports.GovernanceNode = GovernanceNode;
 //# sourceMappingURL=GovernanceNode.js.map

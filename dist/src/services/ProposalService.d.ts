@@ -1,41 +1,34 @@
-import { ContractService } from './ContractService.js';
-import { MarketDataService } from './MarketDataService.js';
-import { ProposalParams } from '../types/index.js';
+import { ContractService } from './ContractService';
+import { MarketDataService } from './MarketDataService';
+import { ProposalParams, ProposalState } from '../types/index';
 export declare class ProposalService {
     private contractService;
     private marketDataService;
-    constructor(contractService: ContractService, marketDataService: MarketDataService);
-    /**
-     * Generate investment proposals based on market analysis
-     */
+    private proposalCache;
+    private cacheExpiry;
+    constructor(contractService: ContractService, marketDataService?: MarketDataService);
     generateProposals(nodeId: string): Promise<ProposalParams[]>;
-    /**
-     * Create a proposal from market recommendation
-     */
+    getAllProposals(): Promise<any[]>;
+    getActiveProposals(): Promise<any[]>;
+    getProposalById(id: number): Promise<any>;
+    getProposalsByState(state: ProposalState): Promise<any[]>;
+    getUrgentProposals(secondsRemaining: number): Promise<any[]>;
+    getProposalsByProposer(proposerAddress: string): Promise<any[]>;
+    analyzeProposal(proposalId: number): Promise<any>;
+    getVotingTrends(): Promise<any>;
+    isProposalActiveForVoting(proposal: any): boolean;
+    invalidateCache(): void;
+    makeVotingDecision(proposal: any): Promise<{
+        vote: string;
+        confidence: number;
+        reasoning: string;
+    }>;
     private createProposalFromRecommendation;
-    /**
-     * Create a portfolio rebalance proposal
-     */
     private createRebalanceProposal;
-    /**
-     * Calculate investment amount based on various factors
-     */
     private calculateInvestmentAmount;
-    /**
-     * Summarize market conditions for proposal metadata
-     */
     private summarizeMarketConditions;
-    /**
-     * Validate proposal parameters
-     */
     validateProposal(proposal: ProposalParams): boolean;
-    /**
-     * Prioritize proposals based on confidence and market conditions
-     */
     prioritizeProposals(proposals: ProposalParams[]): ProposalParams[];
-    /**
-     * Get proposal summary for logging
-     */
     getProposalSummary(proposal: ProposalParams): string;
 }
 //# sourceMappingURL=ProposalService.d.ts.map

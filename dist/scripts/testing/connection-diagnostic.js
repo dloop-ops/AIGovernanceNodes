@@ -1,8 +1,9 @@
-import { ethers } from 'ethers';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const ethers_1 = require("ethers");
 async function testRpcConnections() {
     console.log('🔍 DLoop AI Governance Nodes - Connection Diagnostic');
     console.log('=====================================================');
-    // Test providers
     const providers = [
         {
             name: 'Primary RPC (from env)',
@@ -33,7 +34,7 @@ async function testRpcConnections() {
         }
         try {
             console.log(`🔄 Testing ${config.name}...`);
-            const provider = new ethers.JsonRpcProvider(config.url);
+            const provider = new ethers_1.ethers.JsonRpcProvider(config.url);
             const startTime = Date.now();
             const [blockNumber, network] = await Promise.all([
                 Promise.race([

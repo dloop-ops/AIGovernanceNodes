@@ -7,29 +7,11 @@ export declare class RpcConnectionManager {
     private readonly HEALTH_CHECK_INTERVAL;
     private readonly MAX_FAILURES_BEFORE_DISABLE;
     constructor();
-    /**
-     * Get a working RPC provider with intelligent failover
-     */
     getProvider(): Promise<ethers.JsonRpcProvider>;
-    /**
-     * Check if provider can be used (considering rate limits and health)
-     */
     private isProviderUsable;
-    /**
-     * Handle provider failure and update health status
-     */
     private handleProviderFailure;
-    /**
-     * Execute contract call with automatic retry and provider switching
-     */
     executeContractCall<T>(contractCall: (provider: ethers.JsonRpcProvider) => Promise<T>, maxRetries?: number): Promise<T>;
-    /**
-     * Validate all providers at startup
-     */
     validateAllProviders(): Promise<void>;
-    /**
-     * Get current provider status for monitoring
-     */
     getProviderStatus(): any;
 }
 export declare const rpcManager: RpcConnectionManager;

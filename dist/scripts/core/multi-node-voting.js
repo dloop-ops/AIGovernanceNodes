@@ -1,35 +1,30 @@
 #!/usr/bin/env ts-node
-/**
- * 🗳️ MULTI-NODE VOTING SCRIPT
- *
- * This script ensures ALL 5 AI governance nodes vote on active proposals
- * instead of just the first node.
- */
-import dotenv from 'dotenv';
-import { ethers } from 'ethers';
-import { ContractService } from '../../src/services/ContractService.js';
-import { WalletService } from '../../src/services/WalletService.js';
-import { ProposalState } from '../../src/types/index.js';
-// Load environment variables from .env file
-dotenv.config();
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MultiNodeVoting = void 0;
+const dotenv_1 = __importDefault(require("dotenv"));
+const ethers_1 = require("ethers");
+const ContractService_js_1 = require("../../src/services/ContractService.js");
+const WalletService_js_1 = require("../../src/services/WalletService.js");
+dotenv_1.default.config();
 class MultiNodeVoting {
-    contractService;
-    walletService;
-    // Performance limits
-    TIMEOUT = 60000; // 60 seconds max execution
-    MAX_PROPOSALS = 10; // Process up to 10 proposals
-    RPC_TIMEOUT = 30000; // 30 second RPC timeout
-    OPERATION_DELAY = 3000; // 3 second delay between node operations
     constructor() {
+        this.TIMEOUT = 60000;
+        this.MAX_PROPOSALS = 10;
+        this.RPC_TIMEOUT = 30000;
+        this.OPERATION_DELAY = 3000;
         console.log('🗳️ INITIALIZING MULTI-NODE VOTING SYSTEM');
         console.log('========================================');
         this.initializeServices();
     }
     initializeServices() {
         try {
-            this.walletService = new WalletService();
+            this.walletService = new WalletService_js_1.WalletService();
             console.log('✅ WalletService initialized');
-            this.contractService = new ContractService(this.walletService);
+            this.contractService = new ContractService_js_1.ContractService(this.walletService);
             console.log('✅ ContractService initialized');
         }
         catch (error) {
@@ -37,22 +32,17 @@ class MultiNodeVoting {
             throw new Error('Service initialization failed');
         }
     }
-    /**
-     * Execute voting with all 5 nodes
-     */
     async executeMultiNodeVoting() {
         const startTime = Date.now();
         try {
             console.log('🗳️ STARTING MULTI-NODE VOTING');
             console.log('=============================');
             console.log(`⏰ Start time: ${new Date().toISOString()}`);
-            // Step 1: Health check
             console.log('\n🏥 STEP 1: Health Check');
             const isHealthy = await this.healthCheck();
             if (!isHealthy) {
                 throw new Error('🚨 CRITICAL: System health check failed');
             }
-            // Step 2: Get active proposals
             console.log('\n📊 STEP 2: Fetching Active Proposals');
             const proposals = await this.getActiveProposals();
             if (proposals.length === 0) {
@@ -60,7 +50,6 @@ class MultiNodeVoting {
                 return;
             }
             console.log(`📋 Found ${proposals.length} active proposals`);
-            // Step 3: Vote with all 5 nodes
             console.log('\n🗳️  STEP 3: Multi-Node Voting Process');
             await this.processVotingAllNodes(proposals);
             const totalTime = Date.now() - startTime;
@@ -76,9 +65,6 @@ class MultiNodeVoting {
             console.error(`🚨 Error: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
-    /**
-     * Health check with timeout
-     */
     async healthCheck() {
         return new Promise(async (resolve) => {
             console.log('🔍 Testing basic connectivity...');
@@ -88,7 +74,7 @@ class MultiNodeVoting {
             }, this.RPC_TIMEOUT);
             try {
                 const provider = this.walletService.getProvider();
-                const assetDao = new ethers.Contract(process.env.ASSET_DAO_CONTRACT_ADDRESS, ["function getProposalCount() view returns (uint256)"], provider);
+                const assetDao = new ethers_1.ethers.Contract(process.env.ASSET_DAO_CONTRACT_ADDRESS, ["function getProposalCount() view returns (uint256)"], provider);
                 const count = await assetDao.getProposalCount();
                 clearTimeout(timeoutId);
                 console.log(`✅ Health check passed - found ${count.toString()} total proposals`);
@@ -101,9 +87,6 @@ class MultiNodeVoting {
             }
         });
     }
-    /**
-     * Get active proposals
-     */
     async getActiveProposals() {
         return new Promise(async (resolve) => {
             console.log('📋 Fetching active proposals...');
@@ -113,20 +96,20 @@ class MultiNodeVoting {
             }, this.RPC_TIMEOUT);
             try {
                 const provider = this.walletService.getProvider();
-                const assetDao = new ethers.Contract(process.env.ASSET_DAO_CONTRACT_ADDRESS, [
+                const assetDao = new ethers_1.ethers.Contract(process.env.ASSET_DAO_CONTRACT_ADDRESS, [
                     "function getProposalCount() view returns (uint256)",
                     "function getProposal(uint256) view returns (uint256, uint8, address, uint256, string, address, uint256, uint256, uint256, uint256, uint8, bool)"
                 ], provider);
                 const count = await assetDao.getProposalCount();
                 const totalCount = Number(count);
-                const startFrom = Math.max(1, totalCount - 19); // Check last 20 proposals
+                const startFrom = Math.max(1, totalCount - 19);
                 console.log(`📊 Checking proposals ${startFrom}-${totalCount} for active ones...`);
                 const activeProposals = [];
                 for (let i = startFrom; i <= totalCount; i++) {
                     try {
                         const proposalData = await assetDao.getProposal(i);
                         const state = proposalData[10];
-                        if (Number(state) === 1) { // ACTIVE
+                        if (Number(state) === 1) {
                             const currentTime = Math.floor(Date.now() / 1000);
                             const votingEnds = Number(proposalData[7]);
                             const timeLeft = votingEnds - currentTime;
@@ -134,17 +117,22 @@ class MultiNodeVoting {
                                 activeProposals.push({
                                     id: i.toString(),
                                     proposer: proposalData[2],
-                                    proposalType: proposalData[1],
-                                    state: ProposalState.ACTIVE,
+                                    proposalType: proposalData[1].toString(),
+                                    state: Number(proposalData[10]),
                                     assetAddress: proposalData[5],
-                                    amount: ethers.formatEther(proposalData[6]),
-                                    description: proposalData[4],
+                                    amount: ethers_1.ethers.formatEther(proposalData[3]),
+                                    description: proposalData[4] || `Multi-Node Proposal ${i}`,
                                     votesFor: "0",
                                     votesAgainst: "0",
-                                    startTime: Number(proposalData[8]),
-                                    endTime: votingEnds,
+                                    startTime: Number(proposalData[6]),
+                                    endTime: Number(proposalData[7]),
                                     executed: false,
-                                    cancelled: false
+                                    cancelled: false,
+                                    title: `Multi-Node Proposal ${i}`,
+                                    asset: 'USDC',
+                                    status: 'ACTIVE',
+                                    totalSupply: 1000000,
+                                    quorumReached: false
                                 });
                                 console.log(`   ✅ Found VALID active proposal ${i} (${Math.floor(timeLeft / 3600)}h left)`);
                             }
@@ -167,9 +155,6 @@ class MultiNodeVoting {
             }
         });
     }
-    /**
-     * Process voting with all 5 nodes
-     */
     async processVotingAllNodes(proposals) {
         console.log(`🎯 Processing ${proposals.length} proposals with all 5 nodes`);
         let totalVotes = 0;
@@ -177,30 +162,25 @@ class MultiNodeVoting {
             console.log(`\n📋 Processing Proposal ${proposal.id}`);
             console.log(`   💰 Amount: ${proposal.amount} ETH`);
             console.log(`   📍 Asset: ${proposal.assetAddress.slice(0, 10)}...`);
-            // Determine voting decision
             const shouldVote = this.makeVotingDecision(proposal);
             if (!shouldVote.vote) {
                 console.log(`   ⏭️  Skipping proposal ${proposal.id} (doesn't meet voting criteria)`);
                 continue;
             }
             console.log(`   🎯 Decision: Vote ${shouldVote.support ? 'YES' : 'NO'} on proposal ${proposal.id}`);
-            // Vote with each of the 5 nodes
             for (let nodeIndex = 0; nodeIndex < 5; nodeIndex++) {
                 const nodeId = `ai-gov-${String(nodeIndex + 1).padStart(2, '0')}`;
                 const nodeAddress = this.walletService.getWallet(nodeIndex).address;
                 console.log(`\n   🤖 Node ${nodeIndex + 1} (${nodeId}): ${nodeAddress.slice(0, 10)}...`);
                 try {
-                    // Check if this node has already voted
                     const hasVoted = await this.checkVoteStatus(proposal.id, nodeIndex);
                     if (hasVoted) {
                         console.log(`      ℹ️  Already voted`);
                         continue;
                     }
-                    // Cast vote
                     const txHash = await this.castVote(proposal.id, nodeIndex, shouldVote.support);
                     console.log(`      ✅ Vote cast: ${txHash.slice(0, 10)}...`);
                     totalVotes++;
-                    // Delay between nodes to avoid rate limiting
                     if (nodeIndex < 4) {
                         console.log(`      ⏱️  Waiting ${this.OPERATION_DELAY}ms before next node...`);
                         await this.delay(this.OPERATION_DELAY);
@@ -214,20 +194,15 @@ class MultiNodeVoting {
         console.log(`\n📊 MULTI-NODE VOTING SUMMARY`);
         console.log(`   📝 Total votes cast: ${totalVotes}`);
     }
-    /**
-     * Make voting decision
-     */
     makeVotingDecision(proposal) {
         const isUSDC = proposal.assetAddress.toLowerCase().includes('1c7d4b196cb0c7b01d743fbc6116a902379c7238');
         const amount = parseFloat(proposal.amount);
         console.log(`   🔍 Asset analysis: ${proposal.assetAddress.slice(0, 12)}... (USDC: ${isUSDC})`);
         console.log(`   💰 Amount analysis: ${amount} ETH (${amount} threshold)`);
-        // For testing: vote on all small proposals (not just USDC)
-        if (amount <= 1) { // Very small amount in ETH
+        if (amount <= 1) {
             console.log(`   ✅ Small amount proposal - voting YES`);
             return { vote: true, support: true };
         }
-        // Conservative approach: vote on small USDC proposals
         if (isUSDC && amount <= 5000) {
             console.log(`   ✅ USDC proposal under threshold - voting YES`);
             return { vote: true, support: true };
@@ -235,9 +210,6 @@ class MultiNodeVoting {
         console.log(`   ❌ Proposal doesn't meet criteria (amount too large or risky asset)`);
         return { vote: false, support: false };
     }
-    /**
-     * Check vote status for specific node
-     */
     async checkVoteStatus(proposalId, nodeIndex) {
         return new Promise(async (resolve) => {
             const timeoutId = setTimeout(() => {
@@ -254,9 +226,6 @@ class MultiNodeVoting {
             }
         });
     }
-    /**
-     * Cast vote for specific node
-     */
     async castVote(proposalId, nodeIndex, support) {
         return new Promise(async (resolve, reject) => {
             const timeoutId = setTimeout(() => {
@@ -273,16 +242,11 @@ class MultiNodeVoting {
             }
         });
     }
-    /**
-     * Utility delay function
-     */
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
-/**
- * MAIN EXECUTION
- */
+exports.MultiNodeVoting = MultiNodeVoting;
 async function main() {
     try {
         console.log('🗳️ Multi-Node Voting System');
@@ -298,7 +262,5 @@ async function main() {
         process.exit(1);
     }
 }
-// Execute if called directly
 main().catch(console.error);
-export { MultiNodeVoting };
 //# sourceMappingURL=multi-node-voting.js.map

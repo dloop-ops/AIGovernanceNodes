@@ -1,24 +1,26 @@
-import { BaseStrategy } from './BaseStrategy.js';
-import { ProposalType } from '../types/index.js';
-import { strategyLogger as logger } from '../utils/logger.js';
-export class AggressiveStrategy extends BaseStrategy {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AggressiveStrategy = void 0;
+const BaseStrategy_js_1 = require("./BaseStrategy.js");
+const index_js_1 = require("../types/index.js");
+const logger_js_1 = require("../utils/logger.js");
+class AggressiveStrategy extends BaseStrategy_js_1.BaseStrategy {
     constructor() {
         const config = {
-            riskTolerance: 0.8, // High risk tolerance
-            maxPositionSize: 0.4, // Max 40% position size
-            diversificationThreshold: 0.15, // Less emphasis on diversification
-            rebalanceThreshold: 0.2, // More aggressive rebalancing
+            riskTolerance: 0.8,
+            maxPositionSize: 0.4,
+            diversificationThreshold: 0.15,
+            rebalanceThreshold: 0.2,
             marketConditionWeights: {
-                trending: 0.5, // High weight on trends
-                volatility: 0.2, // Lower weight on volatility (embrace volatility)
-                volume: 0.3 // Moderate weight on volume
+                trending: 0.5,
+                volatility: 0.2,
+                volume: 0.3
             }
         };
         super('Aggressive', config);
     }
     async analyzeProposal(proposal, marketAnalysis, nodeContext) {
         try {
-            // Basic validation
             if (!this.validateProposal(proposal)) {
                 return {
                     shouldVote: false,
@@ -34,21 +36,17 @@ export class AggressiveStrategy extends BaseStrategy {
             let voteSupport = false;
             let confidence = 0.5;
             let reasoning = '';
-            // Aggressive strategy: seek high returns, accept higher risk
-            // Risk assessment - embrace calculated risks
             if (riskScore > this.config.riskTolerance) {
                 voteSupport = false;
                 confidence = 0.6;
                 reasoning = `Risk score (${riskScore.toFixed(2)}) exceeds even aggressive tolerance`;
             }
-            // Large position analysis - aggressive sizing
             else if (parseFloat(proposal.amount) > 5000) {
                 voteSupport = false;
                 confidence = 0.5;
                 reasoning = 'Amount exceeds aggressive strategy limits';
             }
-            // Investment analysis - favor growth assets
-            else if (proposal.proposalType === ProposalType.INVEST) {
+            else if (proposal.proposalType === index_js_1.ProposalType.INVEST.toString()) {
                 const isGrowthAsset = proposal.description.toUpperCase().includes('WBTC') ||
                     proposal.description.toUpperCase().includes('PAXG');
                 if (isGrowthAsset && marketAligned) {
@@ -67,7 +65,6 @@ export class AggressiveStrategy extends BaseStrategy {
                     reasoning = 'Strong community support indicates potential opportunity';
                 }
                 else {
-                    // Still consider stable coins but with lower enthusiasm
                     const isStableCoin = proposal.description.toUpperCase().includes('USDC') ||
                         proposal.description.toUpperCase().includes('EURT');
                     if (isStableCoin) {
@@ -82,8 +79,7 @@ export class AggressiveStrategy extends BaseStrategy {
                     }
                 }
             }
-            // Divestment analysis - avoid during potential uptrends
-            else if (proposal.proposalType === ProposalType.DIVEST) {
+            else if (proposal.proposalType === index_js_1.ProposalType.DIVEST.toString()) {
                 if (marketAnalysis && marketAnalysis.riskScore > 0.8) {
                     voteSupport = true;
                     confidence = 0.8;
@@ -105,8 +101,7 @@ export class AggressiveStrategy extends BaseStrategy {
                     reasoning = 'Divestment may reduce potential upside in current market';
                 }
             }
-            // Rebalancing - support aggressive rebalancing for optimization
-            else if (proposal.proposalType === ProposalType.REBALANCE) {
+            else if (proposal.proposalType === index_js_1.ProposalType.REBALANCE.toString()) {
                 if (marketAnalysis && marketAnalysis.portfolioRebalance) {
                     voteSupport = true;
                     confidence = 0.8;
@@ -123,31 +118,26 @@ export class AggressiveStrategy extends BaseStrategy {
                     reasoning = 'Current market conditions do not justify rebalancing';
                 }
             }
-            // Momentum trading adjustments
             if (votingMomentum.votingActivity === 'high') {
                 if (votingMomentum.supportRatio > 0.8) {
-                    confidence += 0.1; // Strong momentum
+                    confidence += 0.1;
                     reasoning += ' (riding strong momentum)';
                 }
                 else if (votingMomentum.supportRatio < 0.3) {
-                    // Contrarian opportunity
                     if (!voteSupport) {
                         confidence += 0.1;
                         reasoning += ' (contrarian opportunity)';
                     }
                 }
             }
-            // Volatility bonus - aggressive strategy can benefit from volatility
             if (marketAnalysis && marketAnalysis.riskScore > 0.6 && marketAnalysis.riskScore < 0.8) {
                 confidence += 0.05;
                 reasoning += ' (volatility opportunity)';
             }
-            // Time pressure - aggressive strategy can make quick decisions
             if (this.isLastMinute(proposal) && voteSupport) {
-                confidence += 0.05; // Slight boost for decisive action
+                confidence += 0.05;
                 reasoning += ' (quick decisive action)';
             }
-            // Final confidence bounds
             confidence = Math.max(0.1, Math.min(0.95, confidence));
             const decision = {
                 shouldVote,
@@ -159,7 +149,7 @@ export class AggressiveStrategy extends BaseStrategy {
             return decision;
         }
         catch (error) {
-            logger.error(`Aggressive strategy analysis failed for proposal ${proposal.id}`, { error });
+            logger_js_1.strategyLogger.error(`Aggressive strategy analysis failed for proposal ${proposal.id}`, { error });
             return {
                 shouldVote: false,
                 voteSupport: false,
@@ -168,24 +158,15 @@ export class AggressiveStrategy extends BaseStrategy {
             };
         }
     }
-    /**
-     * Detect strong market trends for aggressive positioning
-     */
     detectStrongTrend(marketAnalysis) {
         const recommendations = Object.values(marketAnalysis.recommendations);
-        // Count strong buy/sell signals
         const strongBuys = recommendations.filter(r => r.action === 'buy' && r.confidence > 0.7).length;
         const strongSells = recommendations.filter(r => r.action === 'sell' && r.confidence > 0.7).length;
-        // Strong trend if majority of assets have strong signals in same direction
         return (strongBuys >= 3 || strongSells >= 3) && Math.abs(strongBuys - strongSells) >= 2;
     }
-    /**
-     * Detect downtrend for divestment decisions
-     */
     detectDowntrend(proposal, marketAnalysis) {
         if (!marketAnalysis)
             return false;
-        // Look for asset-specific downtrend signals
         const assetSymbols = ['USDC', 'WBTC', 'PAXG', 'EURT'];
         let relevantAsset = null;
         for (const symbol of assetSymbols) {
@@ -198,53 +179,43 @@ export class AggressiveStrategy extends BaseStrategy {
             const recommendation = marketAnalysis.recommendations[relevantAsset];
             return recommendation.action === 'sell' && recommendation.confidence > 0.6;
         }
-        // General market downtrend
         const sellSignals = Object.values(marketAnalysis.recommendations)
             .filter(r => r.action === 'sell').length;
         return sellSignals >= 2;
     }
-    /**
-     * Check if market volatility presents opportunities
-     */
     hasVolatilityOpportunity(marketAnalysis) {
         if (!marketAnalysis)
             return false;
-        // Moderate to high volatility with mixed signals can present rebalancing opportunities
         if (marketAnalysis.riskScore >= 0.4 && marketAnalysis.riskScore <= 0.7) {
             const recommendations = Object.values(marketAnalysis.recommendations);
             const buyCount = recommendations.filter(r => r.action === 'buy').length;
             const sellCount = recommendations.filter(r => r.action === 'sell').length;
-            // Mixed signals in volatile market = rebalancing opportunity
             return buyCount > 0 && sellCount > 0;
         }
         return false;
     }
-    /**
-     * Assess growth potential of the proposal
-     */
     assessGrowthPotential(proposal, marketAnalysis) {
-        let growthScore = 0.5; // Base score
-        // Asset type assessment
+        let growthScore = 0.5;
         if (proposal.description.toUpperCase().includes('WBTC')) {
-            growthScore += 0.3; // Bitcoin has high growth potential
+            growthScore += 0.3;
         }
         else if (proposal.description.toUpperCase().includes('PAXG')) {
-            growthScore += 0.2; // Gold has moderate growth potential
+            growthScore += 0.2;
         }
         else if (proposal.description.toUpperCase().includes('USDC') ||
             proposal.description.toUpperCase().includes('EURT')) {
-            growthScore -= 0.1; // Stable coins have limited growth
+            growthScore -= 0.1;
         }
-        // Market condition adjustment
         if (marketAnalysis) {
             const avgConfidence = Object.values(marketAnalysis.recommendations)
                 .reduce((sum, rec) => sum + rec.confidence, 0) /
                 Object.values(marketAnalysis.recommendations).length;
             if (avgConfidence > 0.7) {
-                growthScore += 0.2; // High confidence in market direction
+                growthScore += 0.2;
             }
         }
         return Math.max(0, Math.min(1, growthScore));
     }
 }
+exports.AggressiveStrategy = AggressiveStrategy;
 //# sourceMappingURL=AggressiveStrategy.js.map

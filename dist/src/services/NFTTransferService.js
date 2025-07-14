@@ -1,29 +1,29 @@
-import { EtherscanService } from './EtherscanService.js';
-import { GovernanceError } from '../types/index.js';
-import logger from '../utils/logger.js';
-export class NFTTransferService {
-    etherscanService;
-    contractService;
-    walletService;
-    sourceAddress = '0x3639D1F746A977775522221f53D0B1eA5749b8b9';
-    soulboundContractAddress = '0x6391C14631b2Be5374297fA3110687b80233104c';
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.NFTTransferService = void 0;
+const EtherscanService_js_1 = require("./EtherscanService.js");
+const index_js_1 = require("../types/index.js");
+const logger_js_1 = __importDefault(require("../utils/logger.js"));
+class NFTTransferService {
     constructor(contractService, walletService) {
-        this.etherscanService = new EtherscanService();
+        this.sourceAddress = '0x3639D1F746A977775522221f53D0B1eA5749b8b9';
+        this.soulboundContractAddress = '0x6391C14631b2Be5374297fA3110687b80233104c';
+        this.etherscanService = new EtherscanService_js_1.EtherscanService();
         this.contractService = contractService;
         this.walletService = walletService;
     }
-    /**
-     * Analyze the source address for available SoulBound NFTs
-     */
     async analyzeSoulboundNFTs() {
         try {
-            logger.info('Analyzing source address for SoulBound NFTs', {
+            logger_js_1.default.info('Analyzing source address for SoulBound NFTs', {
                 component: 'nft-transfer',
                 sourceAddress: this.sourceAddress,
                 soulboundContract: this.soulboundContractAddress
             });
             const soulboundNFTs = await this.etherscanService.getSoulboundNFTs(this.sourceAddress, this.soulboundContractAddress);
-            logger.info('SoulBound NFT analysis complete', {
+            logger_js_1.default.info('SoulBound NFT analysis complete', {
                 component: 'nft-transfer',
                 availableNFTs: soulboundNFTs.length,
                 nfts: soulboundNFTs.map(nft => ({
@@ -34,7 +34,7 @@ export class NFTTransferService {
             return soulboundNFTs;
         }
         catch (error) {
-            logger.error('Failed to analyze SoulBound NFTs', {
+            logger_js_1.default.error('Failed to analyze SoulBound NFTs', {
                 component: 'nft-transfer',
                 sourceAddress: this.sourceAddress,
                 error
@@ -42,14 +42,9 @@ export class NFTTransferService {
             return [];
         }
     }
-    /**
-     * Transfer SoulBound NFTs to governance nodes
-     * Note: SoulBound NFTs are typically non-transferable, so this will attempt minting instead
-     */
     async distributeSoulboundNFTs() {
         const results = [];
         try {
-            // Get governance node addresses
             const governanceNodes = [
                 { nodeId: 'ai-gov-01', address: '0x561529036AB886c1FD3D112360383D79fBA9E71c', nodeIndex: 0 },
                 { nodeId: 'ai-gov-02', address: '0x48B2353954496679CF7C73d239bc12098cB0C5B4', nodeIndex: 1 },
@@ -57,17 +52,16 @@ export class NFTTransferService {
                 { nodeId: 'ai-gov-04', address: '0xC02764913ce2F23B094F0338a711EFD984024A46', nodeIndex: 3 },
                 { nodeId: 'ai-gov-05', address: '0x00FfF703fa6837A1a46b3DF9B6a047404046379E', nodeIndex: 4 }
             ];
-            logger.info('Starting SoulBound NFT distribution to governance nodes', {
+            logger_js_1.default.info('Starting SoulBound NFT distribution to governance nodes', {
                 component: 'nft-transfer',
                 nodeCount: governanceNodes.length
             });
-            // Check current authentication status
             const authStatuses = await this.getCurrentAuthenticationStatus();
             for (const node of governanceNodes) {
                 try {
                     const nodeAuth = authStatuses.find(auth => auth.nodeIndex === node.nodeIndex);
                     if (nodeAuth?.isAuthenticated) {
-                        logger.info(`Node ${node.nodeId} already has valid SoulBound NFT`, {
+                        logger_js_1.default.info(`Node ${node.nodeId} already has valid SoulBound NFT`, {
                             component: 'nft-transfer',
                             nodeId: node.nodeId,
                             address: node.address
@@ -80,7 +74,6 @@ export class NFTTransferService {
                         });
                         continue;
                     }
-                    // Attempt to mint SoulBound NFT for the node
                     const mintResult = await this.mintSoulboundNFTForNode(node.nodeId, node.nodeIndex);
                     results.push({
                         success: mintResult.success,
@@ -92,7 +85,7 @@ export class NFTTransferService {
                     });
                 }
                 catch (error) {
-                    logger.error(`Failed to process SoulBound NFT for node ${node.nodeId}`, {
+                    logger_js_1.default.error(`Failed to process SoulBound NFT for node ${node.nodeId}`, {
                         component: 'nft-transfer',
                         nodeId: node.nodeId,
                         error
@@ -106,10 +99,9 @@ export class NFTTransferService {
                     });
                 }
             }
-            // Log final distribution results
             const successful = results.filter(r => r.success).length;
             const failed = results.filter(r => !r.success).length;
-            logger.info('SoulBound NFT distribution completed', {
+            logger_js_1.default.info('SoulBound NFT distribution completed', {
                 component: 'nft-transfer',
                 totalNodes: governanceNodes.length,
                 successful,
@@ -124,20 +116,16 @@ export class NFTTransferService {
             return results;
         }
         catch (error) {
-            logger.error('SoulBound NFT distribution failed', {
+            logger_js_1.default.error('SoulBound NFT distribution failed', {
                 component: 'nft-transfer',
                 error
             });
-            throw new GovernanceError(`Failed to distribute SoulBound NFTs: ${error instanceof Error ? error.message : String(error)}`, 'NFT_DISTRIBUTION_ERROR');
+            throw new index_js_1.GovernanceError(`Failed to distribute SoulBound NFTs: ${error instanceof Error ? error.message : String(error)}`, 'NFT_DISTRIBUTION_ERROR');
         }
     }
-    /**
-     * Mint SoulBound NFT for a specific governance node
-     */
     async mintSoulboundNFTForNode(nodeId, nodeIndex) {
         try {
             const wallet = this.walletService.getWallet(nodeIndex);
-            // Create metadata for the governance node
             const metadata = JSON.stringify({
                 name: `AI Governance Node ${nodeId}`,
                 description: `SoulBound NFT for DLoop AI Governance Node ${nodeId}`,
@@ -161,7 +149,7 @@ export class NFTTransferService {
                     }
                 ]
             });
-            logger.info(`Attempting to mint SoulBound NFT for ${nodeId}`, {
+            logger_js_1.default.info(`Attempting to mint SoulBound NFT for ${nodeId}`, {
                 component: 'nft-transfer',
                 nodeId,
                 nodeIndex,
@@ -175,7 +163,7 @@ export class NFTTransferService {
             };
         }
         catch (error) {
-            logger.error(`Failed to mint SoulBound NFT for ${nodeId}`, {
+            logger_js_1.default.error(`Failed to mint SoulBound NFT for ${nodeId}`, {
                 component: 'nft-transfer',
                 nodeId,
                 nodeIndex,
@@ -187,24 +175,23 @@ export class NFTTransferService {
             };
         }
     }
-    /**
-     * Get current authentication status for all nodes
-     */
     async getCurrentAuthenticationStatus() {
         const statuses = [];
         for (let i = 0; i < this.walletService.getWalletCount(); i++) {
             try {
                 const wallet = this.walletService.getWallet(i);
-                const isAuthenticated = await this.contractService.hasValidSoulboundNFT(i);
-                const tokens = await this.contractService.getNodeSoulboundTokens(i);
+                const address = wallet.address;
+                const tokens = await this.contractService.getNodeSoulboundTokens(0);
+                const isAuthenticated = tokens.length > 0;
                 statuses.push({
                     nodeIndex: i,
-                    address: wallet.address,
+                    address,
                     isAuthenticated,
                     tokenCount: tokens.length
                 });
             }
             catch (error) {
+                logger_js_1.default.error(`Failed to check status for node ${i}:`, error);
                 statuses.push({
                     nodeIndex: i,
                     address: this.walletService.getWallet(i).address,
@@ -215,12 +202,9 @@ export class NFTTransferService {
         }
         return statuses;
     }
-    /**
-     * Verify SoulBound NFT ownership after distribution
-     */
     async verifyDistribution() {
         try {
-            logger.info('Verifying SoulBound NFT distribution', {
+            logger_js_1.default.info('Verifying SoulBound NFT distribution', {
                 component: 'nft-transfer'
             });
             const authStatuses = await this.getCurrentAuthenticationStatus();
@@ -231,7 +215,7 @@ export class NFTTransferService {
                 hasValidNFT: status.isAuthenticated,
                 tokenCount: status.tokenCount
             }));
-            logger.info('Distribution verification complete', {
+            logger_js_1.default.info('Distribution verification complete', {
                 component: 'nft-transfer',
                 totalNodes: authStatuses.length,
                 authenticatedNodes,
@@ -244,12 +228,13 @@ export class NFTTransferService {
             };
         }
         catch (error) {
-            logger.error('Failed to verify distribution', {
+            logger_js_1.default.error('Failed to verify distribution', {
                 component: 'nft-transfer',
                 error
             });
-            throw new GovernanceError(`Failed to verify SoulBound NFT distribution: ${error instanceof Error ? error.message : String(error)}`, 'NFT_VERIFICATION_ERROR');
+            throw new index_js_1.GovernanceError(`Failed to verify SoulBound NFT distribution: ${error instanceof Error ? error.message : String(error)}`, 'NFT_VERIFICATION_ERROR');
         }
     }
 }
+exports.NFTTransferService = NFTTransferService;
 //# sourceMappingURL=NFTTransferService.js.map

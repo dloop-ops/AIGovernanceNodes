@@ -1,5 +1,7 @@
 import { NetworkConfig } from '../types/index.js';
 
+// Ensure proper module exports for both ESM and CommonJS
+
 export const networks: Record<string, NetworkConfig> = {
   sepolia: {
     name: 'Sepolia',

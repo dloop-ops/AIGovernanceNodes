@@ -1,21 +1,49 @@
 #!/usr/bin/env node
-import { ethers } from 'ethers';
-import * as fs from 'fs';
-import * as path from 'path';
-/**
- * Generate a new private key and address
- */
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+const ethers_1 = require("ethers");
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
 function generateWallet() {
-    const wallet = ethers.Wallet.createRandom();
+    const wallet = ethers_1.ethers.Wallet.createRandom();
     return {
         privateKey: wallet.privateKey,
         address: wallet.address
     };
 }
-/**
- * Create environment configuration
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function createEnvironmentConfig() {
     const nodes = [];
     console.log('\n🔐 Generating AI Governance Node Wallets...\n');
@@ -28,10 +56,6 @@ function createEnvironmentConfig() {
     }
     return nodes;
 }
-/**
- * Create .env file with required configuration
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function createEnvFile(nodes) {
     const envPath = path.join(process.cwd(), '.env');
     let envContent = `# DLoop AI Governance Node Configuration
@@ -75,10 +99,6 @@ MIN_PRIVATE_KEY_ENTROPY=128
         throw error;
     }
 }
-/**
- * Create funding script for the wallets
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function createFundingInstructions(nodes) {
     const fundingPath = path.join(process.cwd(), 'FUNDING_INSTRUCTIONS.md');
     let content = `# Funding Instructions for AI Governance Nodes
@@ -156,17 +176,10 @@ Generated on: ${new Date().toISOString()}
         throw error;
     }
 }
-/**
- * Check if environment is already configured
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function checkExistingConfig() {
     const envPath = path.join(process.cwd(), '.env');
     return fs.existsSync(envPath);
 }
-/**
- * Main setup function
- */
 function main() {
     console.log('🚀 AI Governance Node Environment Setup Complete');
     console.log('=====================================');
@@ -176,13 +189,11 @@ function main() {
     catch (error) {
         console.error('❌ Setup failed:', error.message);
     }
-    // Show command paths
     const command = 'npm run dev';
     console.log(`\nTo start the governance nodes, run:`);
     console.log(`  ${command}`);
     console.log('\n===========================================');
 }
-// Run the setup
 if (require.main === module) {
     try {
         main();

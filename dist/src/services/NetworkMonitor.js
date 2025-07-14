@@ -1,12 +1,16 @@
-import { ethers } from 'ethers';
-import { contractLogger as logger } from '../utils/logger.js';
-export class NetworkMonitor {
-    providers = new Map();
-    networkStatus = new Map();
-    metrics = new Map();
-    isMonitoring = false;
-    monitoringInterval = null;
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.NetworkMonitor = void 0;
+const ethers_1 = require("ethers");
+const logger_js_1 = require("../utils/logger.js");
+class NetworkMonitor {
     constructor() {
+        this.providers = new Map();
+        this.networkStatus = new Map();
+        this.metrics = new Map();
+        this.isMonitoring = false;
+        this.monitoringInterval = null;
+        this.lastMetricsLog = 0;
         this.initializeProviders();
         this.startMonitoring();
     }
@@ -32,17 +36,14 @@ export class NetworkMonitor {
                 url: 'https://ethereum-sepolia-rpc.publicnode.com',
                 priority: 4
             }
-            // Removed Ankr Public endpoint due to API key requirements
         ];
         providerConfigs.forEach((endpoint, index) => {
             if (endpoint.url && !endpoint.url.includes('undefined')) {
                 try {
-                    // Initialize provider for monitoring  
                     setTimeout(() => {
                         try {
-                            const provider = new ethers.JsonRpcProvider(endpoint.url);
+                            const provider = new ethers_1.ethers.JsonRpcProvider(endpoint.url);
                             this.providers.set(endpoint.name, provider);
-                            // Initialize metrics
                             this.metrics.set(endpoint.name, {
                                 successRate: 0,
                                 averageLatency: 0,
@@ -50,23 +51,23 @@ export class NetworkMonitor {
                                 failedChecks: 0,
                                 lastSuccessfulCheck: 0
                             });
-                            logger.debug('Provider initialized for monitoring', {
+                            logger_js_1.walletLogger.debug('Provider initialized for monitoring', {
                                 component: 'contract',
                                 provider: endpoint.name,
                                 url: endpoint.url.substring(0, 50) + '...'
                             });
                         }
                         catch (error) {
-                            logger.warn('Failed to initialize provider for monitoring', {
+                            logger_js_1.walletLogger.warn('Failed to initialize provider for monitoring', {
                                 component: 'contract',
                                 provider: endpoint.name,
                                 error: error instanceof Error ? error.message : 'Unknown error'
                             });
                         }
-                    }, index * 300); // 300ms delay between each provider initialization
+                    }, index * 300);
                 }
                 catch (error) {
-                    logger.warn('Failed to schedule provider initialization for monitoring', {
+                    logger_js_1.walletLogger.warn('Failed to schedule provider initialization for monitoring', {
                         component: 'contract',
                         provider: endpoint.name,
                         error: error instanceof Error ? error.message : 'Unknown error'
@@ -79,25 +80,21 @@ export class NetworkMonitor {
         if (this.isMonitoring)
             return;
         this.isMonitoring = true;
-        logger.info('Starting network monitoring');
-        // Check every 30 seconds
+        logger_js_1.walletLogger.info('Starting network monitoring');
         this.monitoringInterval = setInterval(() => {
             this.performHealthChecks();
         }, 30000);
-        // Initial check
         this.performHealthChecks();
     }
     async performHealthChecks() {
-        // Use sequential checks to avoid batch request limits on free tier RPC providers
         const providers = Array.from(this.providers.entries());
         for (const [name, provider] of providers) {
             try {
                 await this.checkProviderHealth(name, provider);
-                // Add small delay between checks to respect rate limits
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
             catch (error) {
-                logger.debug('Health check failed for provider', { provider: name, error });
+                logger_js_1.walletLogger.debug('Health check failed for provider', { provider: name, error });
             }
         }
         this.logNetworkStatus();
@@ -107,14 +104,12 @@ export class NetworkMonitor {
         const metrics = this.metrics.get(name);
         try {
             metrics.totalChecks++;
-            // Perform multiple checks
             const [blockNumber, chainId] = await Promise.all([
                 provider.getBlockNumber(),
                 provider.getNetwork().then(network => Number(network.chainId))
             ]);
             const latency = Date.now() - startTime;
             const now = Date.now();
-            // Update status
             this.networkStatus.set(name, {
                 isConnected: true,
                 latency,
@@ -123,11 +118,10 @@ export class NetworkMonitor {
                 provider: name,
                 lastCheck: now
             });
-            // Update metrics
             metrics.lastSuccessfulCheck = now;
             metrics.averageLatency = (metrics.averageLatency + latency) / 2;
             metrics.successRate = ((metrics.totalChecks - metrics.failedChecks) / metrics.totalChecks) * 100;
-            logger.debug('Provider health check passed', {
+            logger_js_1.walletLogger.debug('Provider health check passed', {
                 provider: name,
                 latency,
                 blockNumber,
@@ -145,7 +139,7 @@ export class NetworkMonitor {
                 provider: name,
                 lastCheck: Date.now()
             });
-            logger.warn('Provider health check failed', {
+            logger_js_1.walletLogger.warn('Provider health check failed', {
                 provider: name,
                 error: error instanceof Error ? error.message : 'Unknown error',
                 failureRate: (metrics.failedChecks / metrics.totalChecks) * 100
@@ -157,20 +151,19 @@ export class NetworkMonitor {
         const connected = statuses.filter(s => s.isConnected);
         const disconnected = statuses.filter(s => !s.isConnected);
         if (connected.length === 0) {
-            logger.error('All RPC providers are disconnected', {
+            logger_js_1.walletLogger.error('All RPC providers are disconnected', {
                 totalProviders: statuses.length,
                 connectedProviders: 0
             });
         }
         else if (disconnected.length > 0) {
-            logger.warn('Some RPC providers are experiencing issues', {
+            logger_js_1.walletLogger.warn('Some RPC providers are experiencing issues', {
                 totalProviders: statuses.length,
                 connectedProviders: connected.length,
                 disconnectedProviders: disconnected.length,
                 healthyProviders: connected.map(s => s.provider)
             });
         }
-        // Log metrics every 5 minutes
         const now = Date.now();
         const fiveMinutes = 5 * 60 * 1000;
         if (!this.lastMetricsLog || (now - this.lastMetricsLog) > fiveMinutes) {
@@ -178,7 +171,6 @@ export class NetworkMonitor {
             this.lastMetricsLog = now;
         }
     }
-    lastMetricsLog = 0;
     logDetailedMetrics() {
         const metricsReport = Array.from(this.metrics.entries()).map(([name, metrics]) => ({
             provider: name,
@@ -189,7 +181,7 @@ export class NetworkMonitor {
                 ? Math.round((Date.now() - metrics.lastSuccessfulCheck) / 1000)
                 : -1
         }));
-        logger.info('Network monitoring metrics', {
+        logger_js_1.walletLogger.info('Network monitoring metrics', {
             providers: metricsReport,
             monitoringActive: this.isMonitoring
         });
@@ -214,7 +206,7 @@ export class NetworkMonitor {
     isNetworkHealthy() {
         const healthyCount = this.getHealthyProviders().length;
         const totalCount = this.providers.size;
-        return healthyCount > 0 && (healthyCount / totalCount) >= 0.25; // At least 25% healthy
+        return healthyCount > 0 && (healthyCount / totalCount) >= 0.25;
     }
     stop() {
         if (this.monitoringInterval) {
@@ -222,7 +214,8 @@ export class NetworkMonitor {
             this.monitoringInterval = null;
         }
         this.isMonitoring = false;
-        logger.info('Network monitoring stopped');
+        logger_js_1.walletLogger.info('Network monitoring stopped');
     }
 }
+exports.NetworkMonitor = NetworkMonitor;
 //# sourceMappingURL=NetworkMonitor.js.map

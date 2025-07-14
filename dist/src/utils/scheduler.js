@@ -1,33 +1,70 @@
-import * as cron from 'node-cron';
-import logger from './logger.js';
-export class Scheduler {
-    tasks = new Map();
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.scheduler = exports.Scheduler = void 0;
+const cron = __importStar(require("node-cron"));
+const logger_js_1 = __importDefault(require("./logger.js"));
+class Scheduler {
     constructor() {
-        logger.info('Scheduler initialized');
+        this.tasks = new Map();
+        logger_js_1.default.info('Scheduler initialized');
     }
     addTask(name, schedule, taskFunction) {
         try {
-            // Remove existing task if it exists
             if (this.tasks.has(name)) {
                 this.stopTask(name);
             }
-            // Create the scheduled task using node-cron
             const task = cron.schedule(schedule, async () => {
                 const scheduledTask = this.tasks.get(name);
                 if (!scheduledTask)
                     return;
                 if (scheduledTask.isRunning) {
-                    logger.warn(`Task "${name}" is already running, skipping this execution`);
+                    logger_js_1.default.warn(`Task "${name}" is already running, skipping this execution`);
                     return;
                 }
                 try {
                     scheduledTask.isRunning = true;
-                    logger.info(`Starting scheduled task: ${name}`);
+                    logger_js_1.default.info(`Starting scheduled task: ${name}`);
                     await taskFunction();
-                    logger.info(`Completed scheduled task: ${name}`);
+                    logger_js_1.default.info(`Completed scheduled task: ${name}`);
                 }
                 catch (error) {
-                    logger.error(`Error in scheduled task "${name}":`, error);
+                    logger_js_1.default.error(`Error in scheduled task "${name}":`, error);
                 }
                 finally {
                     scheduledTask.isRunning = false;
@@ -35,17 +72,16 @@ export class Scheduler {
             }, {
                 timezone: 'UTC'
             });
-            // Store the task
             this.tasks.set(name, {
                 name,
                 schedule,
                 task,
                 isRunning: false
             });
-            logger.info(`Added scheduled task "${name}" with schedule: ${schedule}`);
+            logger_js_1.default.info(`Added scheduled task "${name}" with schedule: ${schedule}`);
         }
         catch (error) {
-            logger.error(`Failed to add scheduled task "${name}":`, error);
+            logger_js_1.default.error(`Failed to add scheduled task "${name}":`, error);
             throw error;
         }
     }
@@ -55,26 +91,26 @@ export class Scheduler {
             throw new Error(`Task "${name}" not found`);
         }
         scheduledTask.task.start();
-        logger.info(`Started task: ${name}`);
+        logger_js_1.default.info(`Started task: ${name}`);
     }
     stopTask(name) {
         const scheduledTask = this.tasks.get(name);
         if (!scheduledTask) {
-            logger.warn(`Task "${name}" not found when attempting to stop`);
+            logger_js_1.default.warn(`Task "${name}" not found when attempting to stop`);
             return;
         }
         scheduledTask.task.stop();
         this.tasks.delete(name);
-        logger.info(`Stopped and removed task: ${name}`);
+        logger_js_1.default.info(`Stopped and removed task: ${name}`);
     }
     startAll() {
         for (const [name, scheduledTask] of this.tasks) {
             try {
                 scheduledTask.task.start();
-                logger.info(`Started task: ${name}`);
+                logger_js_1.default.info(`Started task: ${name}`);
             }
             catch (error) {
-                logger.error(`Failed to start task "${name}":`, error);
+                logger_js_1.default.error(`Failed to start task "${name}":`, error);
             }
         }
     }
@@ -82,18 +118,15 @@ export class Scheduler {
         for (const [name, scheduledTask] of this.tasks) {
             try {
                 scheduledTask.task.stop();
-                logger.info(`Stopped task: ${name}`);
+                logger_js_1.default.info(`Stopped task: ${name}`);
             }
             catch (error) {
-                logger.error(`Failed to stop task "${name}":`, error);
+                logger_js_1.default.error(`Failed to stop task "${name}":`, error);
             }
         }
         this.tasks.clear();
-        logger.info('All scheduled tasks stopped');
+        logger_js_1.default.info('All scheduled tasks stopped');
     }
-    /**
-     * Get task status
-     */
     getTaskStatus(name) {
         const task = this.tasks.get(name);
         return {
@@ -101,9 +134,6 @@ export class Scheduler {
             isRunning: task ? task.isRunning : false
         };
     }
-    /**
-     * Get all task statuses
-     */
     getAllTaskStatuses() {
         const statuses = {};
         for (const [name] of this.tasks) {
@@ -115,5 +145,6 @@ export class Scheduler {
         return Array.from(this.tasks.values());
     }
 }
-export const scheduler = new Scheduler();
+exports.Scheduler = Scheduler;
+exports.scheduler = new Scheduler();
 //# sourceMappingURL=scheduler.js.map

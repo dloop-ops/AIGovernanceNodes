@@ -1,17 +1,18 @@
-import { ethers } from 'ethers';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const ethers_1 = require("ethers");
 console.log('💰 GOVERNANCE NODE BALANCE CHECKER');
 console.log('==================================');
 async function checkAllNodeBalances() {
     try {
-        // Use PublicNode since Primary RPC is having issues
-        const provider = new ethers.JsonRpcProvider('https://ethereum-sepolia-rpc.publicnode.com');
+        const provider = new ethers_1.ethers.JsonRpcProvider('https://ethereum-sepolia-rpc.publicnode.com');
         console.log('🔗 Connected to PublicNode Sepolia');
         const nodeAddresses = [
-            process.env.AI_NODE_1_PRIVATE_KEY ? new ethers.Wallet(process.env.AI_NODE_1_PRIVATE_KEY).address : null,
-            process.env.AI_NODE_2_PRIVATE_KEY ? new ethers.Wallet(process.env.AI_NODE_2_PRIVATE_KEY).address : null,
-            process.env.AI_NODE_3_PRIVATE_KEY ? new ethers.Wallet(process.env.AI_NODE_3_PRIVATE_KEY).address : null,
-            process.env.AI_NODE_4_PRIVATE_KEY ? new ethers.Wallet(process.env.AI_NODE_4_PRIVATE_KEY).address : null,
-            process.env.AI_NODE_5_PRIVATE_KEY ? new ethers.Wallet(process.env.AI_NODE_5_PRIVATE_KEY).address : null,
+            process.env.AI_NODE_1_PRIVATE_KEY ? new ethers_1.ethers.Wallet(process.env.AI_NODE_1_PRIVATE_KEY).address : null,
+            process.env.AI_NODE_2_PRIVATE_KEY ? new ethers_1.ethers.Wallet(process.env.AI_NODE_2_PRIVATE_KEY).address : null,
+            process.env.AI_NODE_3_PRIVATE_KEY ? new ethers_1.ethers.Wallet(process.env.AI_NODE_3_PRIVATE_KEY).address : null,
+            process.env.AI_NODE_4_PRIVATE_KEY ? new ethers_1.ethers.Wallet(process.env.AI_NODE_4_PRIVATE_KEY).address : null,
+            process.env.AI_NODE_5_PRIVATE_KEY ? new ethers_1.ethers.Wallet(process.env.AI_NODE_5_PRIVATE_KEY).address : null,
         ];
         console.log('\n📊 NODE BALANCE SUMMARY:');
         console.log('Node | Address           | ETH Balance | Status');
@@ -26,7 +27,7 @@ async function checkAllNodeBalances() {
             }
             try {
                 const balance = await provider.getBalance(address);
-                const balanceEth = ethers.formatEther(balance);
+                const balanceEth = ethers_1.ethers.formatEther(balance);
                 const balanceNum = parseFloat(balanceEth);
                 let status = '✅ Good';
                 if (balanceNum < 0.001) {
@@ -42,7 +43,6 @@ async function checkAllNodeBalances() {
                     status = '⚠️  Low';
                 }
                 console.log(`  ${i + 1}  | ${address.slice(0, 10)}...${address.slice(-6)} | ${balanceEth.padEnd(11)} | ${status}`);
-                // Small delay to avoid rate limiting
                 await new Promise(resolve => setTimeout(resolve, 500));
             }
             catch (error) {

@@ -1,37 +1,34 @@
-import { GovernanceError } from '../types/index.js';
-import logger from '../utils/logger.js';
-/**
- * Service for managing SoulBound NFT authentication for AI governance nodes
- */
-export class SoulboundNFTService {
-    walletService;
-    contractService;
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SoulboundNFTService = void 0;
+const index_js_1 = require("../types/index.js");
+const logger_js_1 = __importDefault(require("../utils/logger.js"));
+class SoulboundNFTService {
     constructor(walletService, contractService) {
         this.walletService = walletService;
         this.contractService = contractService;
     }
-    /**
-     * Authenticate node by checking for valid SoulBound NFT
-     */
     async authenticateNode(nodeIndex) {
         try {
             const wallet = this.walletService.getWallet(nodeIndex);
-            logger.info('Authenticating node with SoulBound NFT', {
+            logger_js_1.default.info('Authenticating node with SoulBound NFT', {
                 component: 'soulbound-nft',
                 nodeIndex,
                 nodeAddress: wallet.address
             });
-            // Check if node has valid SoulBound NFT
             const hasValidNFT = await this.contractService.hasValidSoulboundNFT(nodeIndex);
             if (!hasValidNFT) {
-                logger.warn('Node lacks valid SoulBound NFT for authentication', {
+                logger_js_1.default.warn('Node lacks valid SoulBound NFT for authentication', {
                     component: 'soulbound-nft',
                     nodeIndex,
                     nodeAddress: wallet.address
                 });
                 return false;
             }
-            logger.info('Node authentication successful', {
+            logger_js_1.default.info('Node authentication successful', {
                 component: 'soulbound-nft',
                 nodeIndex,
                 nodeAddress: wallet.address
@@ -39,7 +36,7 @@ export class SoulboundNFTService {
             return true;
         }
         catch (error) {
-            logger.error('Node authentication failed', {
+            logger_js_1.default.error('Node authentication failed', {
                 component: 'soulbound-nft',
                 nodeIndex,
                 error
@@ -47,9 +44,6 @@ export class SoulboundNFTService {
             return false;
         }
     }
-    /**
-     * Get authentication status for all nodes
-     */
     async getAuthenticationStatus() {
         const statuses = [];
         for (let i = 0; i < this.walletService.getWalletCount(); i++) {
@@ -66,7 +60,7 @@ export class SoulboundNFTService {
                 });
             }
             catch (error) {
-                logger.error(`Failed to get authentication status for node ${i}`, { error });
+                logger_js_1.default.error(`Failed to get authentication status for node ${i}`, { error });
                 statuses.push({
                     nodeIndex: i,
                     address: this.walletService.getWallet(i).address,
@@ -78,13 +72,9 @@ export class SoulboundNFTService {
         }
         return statuses;
     }
-    /**
-     * Attempt to mint SoulBound NFT for node authentication
-     */
     async mintAuthenticationNFT(nodeIndex, nodeId, strategy) {
         try {
             const wallet = this.walletService.getWallet(nodeIndex);
-            // Create metadata for the SoulBound NFT
             const metadata = JSON.stringify({
                 nodeId,
                 nodeType: 'governance',
@@ -108,16 +98,15 @@ export class SoulboundNFTService {
                     }
                 ]
             });
-            logger.info('Attempting to mint SoulBound NFT for node authentication', {
+            logger_js_1.default.info('Attempting to mint SoulBound NFT for node authentication', {
                 component: 'soulbound-nft',
                 nodeIndex,
                 nodeId,
                 strategy,
                 nodeAddress: wallet.address
             });
-            // Attempt to mint SoulBound NFT
             const txHash = await this.contractService.mintSoulboundNFT(nodeIndex, metadata);
-            logger.info('SoulBound NFT minted successfully for node', {
+            logger_js_1.default.info('SoulBound NFT minted successfully for node', {
                 component: 'soulbound-nft',
                 nodeIndex,
                 nodeId,
@@ -126,7 +115,7 @@ export class SoulboundNFTService {
             return true;
         }
         catch (error) {
-            logger.error('Failed to mint SoulBound NFT for node', {
+            logger_js_1.default.error('Failed to mint SoulBound NFT for node', {
                 component: 'soulbound-nft',
                 nodeIndex,
                 nodeId,
@@ -135,18 +124,12 @@ export class SoulboundNFTService {
             return false;
         }
     }
-    /**
-     * Validate authentication before governance operations
-     */
     async validateForGovernance(nodeIndex) {
         const isAuthenticated = await this.authenticateNode(nodeIndex);
         if (!isAuthenticated) {
-            throw new GovernanceError(`Node ${nodeIndex} lacks valid SoulBound NFT authentication for governance participation`, 'AUTHENTICATION_REQUIRED');
+            throw new index_js_1.GovernanceError(`Node ${nodeIndex} lacks valid SoulBound NFT authentication for governance participation`, 'AUTHENTICATION_REQUIRED');
         }
     }
-    /**
-     * Check if any nodes need authentication
-     */
     async identifyUnauthenticatedNodes() {
         const unauthenticatedNodes = [];
         for (let i = 0; i < this.walletService.getWalletCount(); i++) {
@@ -157,14 +140,11 @@ export class SoulboundNFTService {
         }
         return unauthenticatedNodes;
     }
-    /**
-     * Attempt to authenticate all nodes
-     */
     async authenticateAllNodes() {
         const totalNodes = this.walletService.getWalletCount();
         const unauthenticatedNodes = await this.identifyUnauthenticatedNodes();
         const authenticatedNodes = totalNodes - unauthenticatedNodes.length;
-        logger.info('Node authentication summary', {
+        logger_js_1.default.info('Node authentication summary', {
             component: 'soulbound-nft',
             totalNodes,
             authenticatedNodes,
@@ -178,4 +158,5 @@ export class SoulboundNFTService {
         };
     }
 }
+exports.SoulboundNFTService = SoulboundNFTService;
 //# sourceMappingURL=SoulboundNFTService.js.map

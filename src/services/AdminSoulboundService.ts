@@ -14,15 +14,15 @@ export class AdminSoulboundService {
   constructor() {
     const network = getCurrentNetwork();
     this.provider = new ethers.JsonRpcProvider(network.rpcUrl);
-    
+
     const adminPrivateKey = process.env.SOULBOUND_ADMIN_PRIVATE_KEY;
     if (!adminPrivateKey) {
       throw new Error('SOULBOUND_ADMIN_PRIVATE_KEY environment variable is required');
     }
-    
+
     this.adminWallet = new ethers.Wallet(adminPrivateKey, this.provider);
     this.initializeContract();
-    
+
     logger.info('Admin SoulBound service initialized', {
       component: 'admin-soulbound',
       adminAddress: this.adminWallet.address
@@ -31,7 +31,7 @@ export class AdminSoulboundService {
 
   private initializeContract(): void {
     const addresses = getCurrentContractAddresses();
-    
+
     // SoulBound NFT ABI for minting and verification
     const soulboundAbi = [
       "function mint(address to, string memory tokenURI) external returns (uint256)",
@@ -59,13 +59,13 @@ export class AdminSoulboundService {
     try {
       const minterRole = await this.soulboundContract.MINTER_ROLE();
       const hasMinterRole = await this.soulboundContract.hasRole(minterRole, this.adminWallet.address);
-      
+
       logger.info('Minter role check', {
         component: 'admin-soulbound',
         adminAddress: this.adminWallet.address,
         hasMinterRole
       });
-      
+
       return hasMinterRole;
     } catch (error) {
       logger.error('Failed to check minter role', {
@@ -100,7 +100,7 @@ export class AdminSoulboundService {
           nodeAddress,
           balance: balance.toString()
         });
-        
+
         return {
           success: true,
           tokenId: 'existing'
@@ -136,7 +136,7 @@ export class AdminSoulboundService {
 
       // Mint the SoulBound NFT
       const tx = await this.soulboundContract.mint(nodeAddress, tokenURI);
-      
+
       logger.info('SoulBound NFT mint transaction submitted', {
         component: 'admin-soulbound',
         nodeAddress,
@@ -145,15 +145,15 @@ export class AdminSoulboundService {
 
       // Wait for transaction confirmation
       const receipt = await tx.wait();
-      
+
       if (receipt.status === 1) {
         // Extract token ID from logs
         const mintEvent = receipt.logs.find((log: any) => 
           log.topics[0] === ethers.id('Transfer(address,address,uint256)')
         );
-        
+
         const tokenId = mintEvent ? ethers.toBigInt(mintEvent.topics[3]).toString() : 'unknown';
-        
+
         logger.info('SoulBound NFT minted successfully', {
           component: 'admin-soulbound',
           nodeAddress,
@@ -200,7 +200,14 @@ export class AdminSoulboundService {
     tokenId?: string;
     error?: string;
   }>> {
-    const results = [];
+    const results: Array<{
+      nodeId: string;
+      address: string;
+      success: boolean;
+      txHash?: string;
+      tokenId?: string;
+      error?: string;
+    }> = [];
 
     logger.info('Starting batch mint for governance nodes', {
       component: 'admin-soulbound',
@@ -209,7 +216,7 @@ export class AdminSoulboundService {
 
     for (const node of nodes) {
       const result = await this.mintForGovernanceNode(node.address, node.nodeId);
-      
+
       results.push({
         nodeId: node.nodeId,
         address: node.address,
@@ -325,5 +332,113 @@ export class AdminSoulboundService {
    */
   getAdminAddress(): string {
     return this.adminWallet.address;
+  }
+
+  async batchDistribute(nodes: Array<{nodeId: string, address: string}>): Promise<any> {
+        const results: Array<{
+            nodeId: string;
+            address: string;
+            success: boolean;
+            txHash?: string;
+            tokenId?: string;
+            error?: string;
+        }> = [];
+
+        logger.info(`Starting batch distribution for ${nodes.length} nodes...`);
+
+        for (const node of nodes) {
+            try {
+                const result = await this.mintForGovernanceNode(node.address, node.nodeId);
+                results.push({
+                    nodeId: node.nodeId,
+                    address: node.address,
+                    ...result
+                });
+            } catch (error: any) {
+                logger.error(`Failed to distribute to ${node.nodeId}:`, error);
+                results.push({
+                    nodeId: node.nodeId,
+                    address: node.address,
+                    success: false,
+                    error: error.message
+                });
+            }
+        }
+
+        const successful = results.filter(r => r.success).length;
+        const failed = results.filter(r => !r.success).length;
+
+        return {
+            distributed: successful,
+            failed: failed,
+            results: results
+        };
+    }
+/**
+   * Distribute SoulBound NFTs to all registered nodes
+   */
+  async distributeAllSoulboundNFTs(): Promise<{
+    distributed: number;
+    failed: number;
+    results: Array<{
+      nodeId: string;
+      address: string;
+      success: boolean;
+      txHash?: string;
+      tokenId?: string;
+      error?: string;
+    }>;
+  }> {
+    logger.info('🎯 Distributing SoulBound NFTs to all registered nodes...');
+
+    const results: Array<{
+      nodeId: string;
+      address: string;
+      success: boolean;
+      txHash?: string;
+      tokenId?: string;
+      error?: string;
+    }> = [];
+
+    const nodes = await this.getRegisteredNodes();
+
+    for (const node of nodes) {
+      try {
+        const result = await this.mintForGovernanceNode(node.address, node.nodeId);
+        results.push({
+          nodeId: node.nodeId,
+          address: node.address,
+          ...result
+        });
+      } catch (error: any) {
+        logger.error(`Failed to distribute SoulBound NFT to node ${node.nodeId}:`, error);
+        results.push({
+          nodeId: node.nodeId,
+          address: node.address,
+          success: false,
+          error: error.message
+        });
+      }
+    }
+
+    const successful = results.filter(r => r.success).length;
+    const failed = results.filter(r => !r.success).length;
+
+    logger.info(`✅ SoulBound NFT distribution complete: ${successful} successful, ${failed} failed`);
+
+    return {
+      distributed: successful,
+      failed: failed,
+      results: results
+    };
+  }
+
+  /**
+   * Get registered nodes from the registry
+   */
+  private async getRegisteredNodes(): Promise<Array<{ nodeId: string; address: string }>> {
+    // Implementation would depend on your node registry
+    // For now, return empty array or implement based on your registry
+    return [];
   }
 }

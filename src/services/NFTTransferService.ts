@@ -68,7 +68,7 @@ export class NFTTransferService {
    */
   async distributeSoulboundNFTs(): Promise<TransferResult[]> {
     const results: TransferResult[] = [];
-    
+
     try {
       // Get governance node addresses
       const governanceNodes = [
@@ -86,18 +86,18 @@ export class NFTTransferService {
 
       // Check current authentication status
       const authStatuses = await this.getCurrentAuthenticationStatus();
-      
+
       for (const node of governanceNodes) {
         try {
           const nodeAuth = authStatuses.find(auth => auth.nodeIndex === node.nodeIndex);
-          
+
           if (nodeAuth?.isAuthenticated) {
             logger.info(`Node ${node.nodeId} already has valid SoulBound NFT`, {
               component: 'nft-transfer',
               nodeId: node.nodeId,
               address: node.address
             });
-            
+
             results.push({
               success: true,
               tokenId: 'existing',
@@ -109,7 +109,7 @@ export class NFTTransferService {
 
           // Attempt to mint SoulBound NFT for the node
           const mintResult = await this.mintSoulboundNFTForNode(node.nodeId, node.nodeIndex);
-          
+
           results.push({
             success: mintResult.success,
             txHash: mintResult.txHash,
@@ -125,7 +125,7 @@ export class NFTTransferService {
             nodeId: node.nodeId,
             error
           });
-          
+
           results.push({
             success: false,
             error: error instanceof Error ? error.message : String(error),
@@ -177,7 +177,7 @@ export class NFTTransferService {
   }> {
     try {
       const wallet = this.walletService.getWallet(nodeIndex);
-      
+
       // Create metadata for the governance node
       const metadata = JSON.stringify({
         name: `AI Governance Node ${nodeId}`,
@@ -241,30 +241,37 @@ export class NFTTransferService {
     isAuthenticated: boolean;
     tokenCount: number;
   }>> {
-    const statuses = [];
-    
-    for (let i = 0; i < this.walletService.getWalletCount(); i++) {
-      try {
-        const wallet = this.walletService.getWallet(i);
-        const isAuthenticated = await this.contractService.hasValidSoulboundNFT(i);
-        const tokens = await this.contractService.getNodeSoulboundTokens(i);
-        
-        statuses.push({
-          nodeIndex: i,
-          address: wallet.address,
-          isAuthenticated,
-          tokenCount: tokens.length
-        });
-      } catch (error) {
-        statuses.push({
-          nodeIndex: i,
-          address: this.walletService.getWallet(i).address,
-          isAuthenticated: false,
-          tokenCount: 0
-        });
-      }
-    }
-    
+    const statuses: Array<{
+            nodeIndex: number;
+            address: string;
+            isAuthenticated: boolean;
+            tokenCount: number;
+        }> = [];
+
+        for (let i = 0; i < this.walletService.getWalletCount(); i++) {
+            try {
+                const wallet = this.walletService.getWallet(i);
+                const address = wallet.address;
+                const tokens = await this.contractService.getNodeSoulboundTokens(0); // Using node index
+                const isAuthenticated = tokens.length > 0;
+
+                statuses.push({
+                    nodeIndex: i,
+                    address,
+                    isAuthenticated,
+                    tokenCount: tokens.length
+                });
+            } catch (error: any) {
+                logger.error(`Failed to check status for node ${i}:`, error);
+                statuses.push({
+                    nodeIndex: i,
+                    address: this.walletService.getWallet(i).address,
+                    isAuthenticated: false,
+                    tokenCount: 0
+                });
+            }
+        }
+
     return statuses;
   }
 

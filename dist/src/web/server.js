@@ -1,22 +1,20 @@
-import { createServer } from 'http';
-import logger from '../utils/logger.js';
-export class WebServer {
-    server;
-    nodeManager;
-    port;
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.WebServer = void 0;
+const http_1 = require("http");
+const logger_js_1 = __importDefault(require("../utils/logger.js"));
+class WebServer {
     constructor(nodeManager) {
         this.nodeManager = nodeManager;
-        // Use environment variable PORT, fallback to 5001 to avoid conflict with common port 5000
         this.port = process.env.PORT ? parseInt(process.env.PORT) : 5001;
     }
-    /**
-     * Start the web server with optional port override
-     */
     start(portOverride) {
         return new Promise((resolve, reject) => {
-            // Use override port if provided, otherwise use instance port
             const targetPort = portOverride || this.port;
-            this.server = createServer((req, res) => {
+            this.server = (0, http_1.createServer)((req, res) => {
                 res.setHeader('Content-Type', 'application/json');
                 res.setHeader('Access-Control-Allow-Origin', '*');
                 if (req.url === '/') {
@@ -44,8 +42,7 @@ export class WebServer {
             });
             this.server.on('error', (error) => {
                 if (error.code === 'EADDRINUSE') {
-                    logger.warn(`Port ${targetPort} is in use, retrying with next port...`);
-                    // If we're using an override port, try the next one
+                    logger_js_1.default.warn(`Port ${targetPort} is in use, retrying with next port...`);
                     if (portOverride) {
                         this.start(portOverride + 1).then(resolve).catch(reject);
                     }
@@ -57,13 +54,13 @@ export class WebServer {
                     }
                 }
                 else {
-                    logger.error('Web server error:', error);
+                    logger_js_1.default.error('Web server error:', error);
                     reject(error);
                 }
             });
             this.server.listen(targetPort, '0.0.0.0', () => {
-                this.port = targetPort; // Update instance port to the actually used port
-                logger.info(`Web server started on port ${targetPort}`);
+                this.port = targetPort;
+                logger_js_1.default.info(`Web server started on port ${targetPort}`);
                 resolve();
             });
         });
@@ -101,8 +98,7 @@ export class WebServer {
     }
     async handleTriggerVoting(res) {
         try {
-            logger.info('Manual voting trigger requested via API');
-            // Execute immediate voting round
+            logger_js_1.default.info('Manual voting trigger requested via API');
             await this.nodeManager.triggerVotingRound();
             res.writeHead(200);
             res.end(JSON.stringify({
@@ -112,7 +108,7 @@ export class WebServer {
             }));
         }
         catch (error) {
-            logger.error('Failed to trigger voting round', { error });
+            logger_js_1.default.error('Failed to trigger voting round', { error });
             res.writeHead(500);
             res.end(JSON.stringify({
                 success: false,
@@ -122,9 +118,7 @@ export class WebServer {
     }
     async handleEmergencyVoting(res) {
         try {
-            logger.info('🚨 Emergency voting trigger requested via API');
-            // For now, use the existing NodeManager trigger voting as emergency fallback
-            // TODO: Integrate proper emergency service when NodeManager exposes services
+            logger_js_1.default.info('🚨 Emergency voting trigger requested via API');
             await this.nodeManager.triggerVotingRound();
             res.writeHead(200);
             res.end(JSON.stringify({
@@ -138,7 +132,7 @@ export class WebServer {
             }));
         }
         catch (error) {
-            logger.error('🚨 Emergency voting failed', { error });
+            logger_js_1.default.error('🚨 Emergency voting failed', { error });
             res.writeHead(500);
             res.end(JSON.stringify({
                 success: false,
@@ -149,7 +143,6 @@ export class WebServer {
     }
     async handleActiveProposals(res) {
         try {
-            // Get active proposals from one of the nodes
             const nodes = Array.from(this.nodeManager.getAllNodes().values());
             if (nodes.length === 0) {
                 throw new Error('No nodes available');
@@ -164,7 +157,7 @@ export class WebServer {
             }, null, 2));
         }
         catch (error) {
-            logger.error('Failed to fetch active proposals', { error });
+            logger_js_1.default.error('Failed to fetch active proposals', { error });
             res.writeHead(500);
             res.end(JSON.stringify({
                 success: false,
@@ -176,7 +169,7 @@ export class WebServer {
         return new Promise((resolve) => {
             if (this.server) {
                 this.server.close(() => {
-                    logger.info('Web server stopped');
+                    logger_js_1.default.info('Web server stopped');
                     resolve();
                 });
             }
@@ -186,4 +179,5 @@ export class WebServer {
         });
     }
 }
+exports.WebServer = WebServer;
 //# sourceMappingURL=server.js.map

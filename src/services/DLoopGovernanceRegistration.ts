@@ -23,23 +23,23 @@ export class DLoopGovernanceRegistration {
   constructor(walletService: WalletService) {
     this.walletService = walletService;
     this.provider = walletService.getProvider();
-    
+
     // Initialize admin wallet for contract management
     const adminPrivateKey = process.env.ADMIN_PRIVATE_KEY;
     if (!adminPrivateKey) {
       throw new Error('ADMIN_PRIVATE_KEY not configured');
     }
     this.adminWallet = new ethers.Wallet(adminPrivateKey, this.provider);
-    
+
     this.initializeContracts();
   }
 
   private initializeContracts(): void {
     try {
       const addresses = getCurrentContractAddresses();
-      
+
       // Load ABIs with absolute paths
-      
+
       const abiDir = path.join(process.cwd(), 'abis');
       const aiNodeRegistryAbi = JSON.parse(fs.readFileSync(path.join(abiDir, 'ainoderegistry.abi.v1.json'), 'utf8')).abi;
       const dloopTokenAbi = JSON.parse(fs.readFileSync(path.join(abiDir, 'dlooptoken.abi.v1.json'), 'utf8')).abi;
@@ -104,7 +104,7 @@ export class DLoopGovernanceRegistration {
           nodeAddress,
           action: 'skip_registration_completely'
         });
-        
+
         // Return success immediately - no registration needed
         return {
           success: true,
@@ -146,7 +146,7 @@ export class DLoopGovernanceRegistration {
     try {
       // Check if admin address matches contract admin
       const contractAdmin = await this.aiNodeRegistryContract.admin();
-      
+
       if (contractAdmin.toLowerCase() !== this.adminWallet.address.toLowerCase()) {
         throw new Error(`Admin wallet ${this.adminWallet.address} is not the contract admin. Contract admin is: ${contractAdmin}`);
       }
@@ -181,7 +181,7 @@ export class DLoopGovernanceRegistration {
     try {
       // Check if node already has SoulBound NFT
       const balance = await this.soulboundNftContract.balanceOf(nodeAddress);
-      
+
       if (balance > 0) {
         logger.info('Node already has SoulBound NFT', {
           component: 'dloop-governance',
@@ -203,7 +203,7 @@ export class DLoopGovernanceRegistration {
       );
 
       const receipt = await mintTx.wait();
-      
+
       logger.info('SoulBound NFT minted successfully', {
         component: 'dloop-governance',
         nodeAddress,
@@ -225,7 +225,7 @@ export class DLoopGovernanceRegistration {
 
       // Check node's DLOOP balance
       const balance = await this.dloopTokenContract.balanceOf(nodeAddress);
-      
+
       if (balance < stakeAmount) {
         throw new Error(`Insufficient DLOOP balance. Required: 1.0, Available: ${ethers.formatEther(balance)}`);
       }
@@ -264,7 +264,7 @@ export class DLoopGovernanceRegistration {
   private async performAdminRegistration(nodeWallet: ethers.Wallet): Promise<{ success: boolean; txHash?: string; error?: string }> {
     try {
       const nodeAddress = nodeWallet.address;
-      
+
       // Create node metadata according to D-Loop specifications
       const nodeMetadata = {
         name: `D-Loop AI Governance Node ${nodeAddress.slice(0, 6)}`,
@@ -294,7 +294,7 @@ export class DLoopGovernanceRegistration {
       for (const approach of registrationApproaches) {
         try {
           let tx;
-          
+
           switch (approach) {
             case 'registerAINode':
               // registerAINode(string endpoint, string name, string description, uint256 nodeType)
@@ -342,7 +342,7 @@ export class DLoopGovernanceRegistration {
             nodeAddress,
             error: approachError instanceof Error ? approachError.message : String(approachError)
           });
-          
+
           // Continue to next approach
           continue;
         }
@@ -355,7 +355,7 @@ export class DLoopGovernanceRegistration {
         nodeAddress: nodeWallet.address,
         error: error instanceof Error ? error.message : String(error)
       });
-      
+
       return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   }
@@ -375,7 +375,7 @@ export class DLoopGovernanceRegistration {
       for (const method of verificationMethods) {
         try {
           let result;
-          
+
           switch (method) {
             case 'isNodeRegistered':
               result = await this.aiNodeRegistryContract.isNodeRegistered(nodeAddress);
@@ -436,45 +436,38 @@ export class DLoopGovernanceRegistration {
    * Register multiple AI governance nodes
    */
   async registerAllGovernanceNodes(): Promise<{ registered: number; failed: number; results: any[] }> {
-    const results = [];
-    let registered = 0;
-    let failed = 0;
+    const results: Array<{
+            nodeIndex: number;
+            success: boolean;
+            txHash?: string;
+            error?: string;
+        }> = [];
+    const nodeCount = 5; // We know there are 5 nodes
+    const nodes = Array.from({ length: nodeCount }, (_, i) => this.walletService.getWallet(i));
 
-    logger.info('Starting batch registration of D-Loop AI Governance Nodes', {
-      component: 'dloop-governance',
-      totalNodes: this.walletService.getWalletCount()
-    });
-
-    for (let i = 0; i < this.walletService.getWalletCount(); i++) {
-      try {
-        const result = await this.registerGovernanceNode(i);
-        results.push({ nodeIndex: i, ...result });
-
-        if (result.success) {
-          registered++;
-        } else {
-          failed++;
+        for (let i = 0; i < nodeCount; i++) {
+            try {
+                const result = await this.registerGovernanceNode(i);
+                results.push({ nodeIndex: i, ...result });
+            } catch (error: any) {
+                logger.error(`Failed to register node ${i}:`, error);
+                results.push({
+                    nodeIndex: i,
+                    success: false,
+                    error: error instanceof Error ? error.message : String(error)
+                });
+            }
         }
+    const registeredCount = results.filter(r => r.success).length;
+    const failedCount = results.filter(r => !r.success).length;
 
-        // Add delay between registrations to avoid nonce conflicts
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      } catch (error) {
-        failed++;
-        results.push({
-          nodeIndex: i,
-          success: false,
-          error: error instanceof Error ? error.message : String(error)
-        });
-      }
-    }
-
-    logger.info('Batch registration completed', {
-      component: 'dloop-governance',
-      registered,
-      failed,
-      totalAttempted: results.length
+    logger.info('🏁 D-Loop governance registration completed', {
+      registered: registeredCount,
+      failed: failedCount,
+      totalAttempted: nodeCount,
+      results: results.map(r => ({ nodeId: r.nodeIndex, success: r.success, error: r.error }))
     });
 
-    return { registered, failed, results };
+    return { registered: registeredCount, failed: failedCount, results };
   }
-} 
+}

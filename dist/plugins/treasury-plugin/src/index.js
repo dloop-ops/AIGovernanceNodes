@@ -1,13 +1,8 @@
-/**
- * DLoop Treasury Plugin
- *
- * Balance monitoring and financial tracking for DLoop AI governance nodes
- */
-import { ethers } from 'ethers';
-/**
- * Treasury Status Action
- */
-export const treasuryStatusAction = {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.treasuryPlugin = exports.treasuryProvider = exports.treasuryStatusAction = void 0;
+const ethers_1 = require("ethers");
+exports.treasuryStatusAction = {
     name: "TREASURY_STATUS",
     description: "Check balances and financial status of all governance nodes",
     handler: async (context) => {
@@ -17,24 +12,22 @@ export const treasuryStatusAction = {
             if (!rpcUrl || !tokenAddress) {
                 throw new Error('Missing required environment variables');
             }
-            const provider = new ethers.JsonRpcProvider(rpcUrl);
-            // ERC20 token ABI
+            const provider = new ethers_1.ethers.JsonRpcProvider(rpcUrl);
             const tokenABI = [
                 "function balanceOf(address owner) view returns (uint256)",
                 "function decimals() view returns (uint8)"
             ];
-            const tokenContract = new ethers.Contract(tokenAddress, tokenABI, provider);
+            const tokenContract = new ethers_1.ethers.Contract(tokenAddress, tokenABI, provider);
             const balances = [];
             let totalBalance = 0;
-            // Check balance for each node
             for (let i = 1; i <= 5; i++) {
                 try {
                     const privateKey = process.env[`AI_NODE_${i}_PRIVATE_KEY`];
                     if (!privateKey)
                         continue;
-                    const wallet = new ethers.Wallet(privateKey, provider);
+                    const wallet = new ethers_1.ethers.Wallet(privateKey, provider);
                     const balance = await tokenContract.balanceOf(wallet.address);
-                    const formattedBalance = parseFloat(ethers.formatEther(balance));
+                    const formattedBalance = parseFloat(ethers_1.ethers.formatEther(balance));
                     balances.push({
                         nodeIndex: i,
                         address: wallet.address,
@@ -72,15 +65,12 @@ export const treasuryStatusAction = {
         }
     }
 };
-/**
- * Treasury Provider - Get financial context
- */
-export const treasuryProvider = {
+exports.treasuryProvider = {
     name: "TREASURY_PROVIDER",
     description: "Provides financial context and balance information",
     get: async (runtime, message) => {
         try {
-            const statusResult = await treasuryStatusAction.handler({});
+            const statusResult = await exports.treasuryStatusAction.handler({});
             if (!statusResult.success) {
                 return "⚠️ Treasury information temporarily unavailable";
             }
@@ -103,14 +93,11 @@ ${healthyNodes < 5 ? '⚠️ Some nodes may need funding' : '✅ All nodes adequ
         }
     }
 };
-/**
- * Main treasury plugin export
- */
-export const treasuryPlugin = {
+exports.treasuryPlugin = {
     name: "treasury-plugin",
     description: "Balance monitoring and financial tracking for DLoop governance",
-    actions: [treasuryStatusAction],
-    providers: [treasuryProvider]
+    actions: [exports.treasuryStatusAction],
+    providers: [exports.treasuryProvider]
 };
-export default treasuryPlugin;
+exports.default = exports.treasuryPlugin;
 //# sourceMappingURL=index.js.map

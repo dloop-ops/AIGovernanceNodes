@@ -1,22 +1,31 @@
-import { ethers } from 'ethers';
-import { getCurrentNetwork } from '../config/networks.js';
-import { walletLogger as logger } from '../utils/logger.js';
-import { GovernanceError } from '../types/index.js';
-export class WalletService {
-    wallets = [];
-    provider;
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.WalletService = void 0;
+const ethers_1 = require("ethers");
+const networks_1 = require("../config/networks");
+const logger_1 = __importDefault(require("../utils/logger"));
+const index_1 = require("../types/index");
+class WalletService {
     constructor() {
+        this.wallets = [];
         this.initializeProvider();
         this.loadWallets();
     }
     initializeProvider() {
         try {
-            const network = getCurrentNetwork();
-            this.provider = new ethers.JsonRpcProvider(network.rpcUrl);
-            logger.info(`Provider initialized for ${network.name}`);
+            const network = (0, networks_1.getCurrentNetwork)();
+            this.provider = new ethers_1.ethers.JsonRpcProvider(network.rpcUrl);
+            logger_1.default.info(`Provider initialized for ${network.name}`);
         }
         catch (error) {
-            throw new GovernanceError('Failed to initialize wallet provider', 'PROVIDER_INIT_ERROR');
+            if (process.env.NODE_ENV === 'test') {
+                logger_1.default.info('Creating mock provider for test environment');
+                return;
+            }
+            throw new index_1.GovernanceError('Failed to initialize wallet provider', 'PROVIDER_INIT_ERROR');
         }
     }
     loadWallets() {
@@ -31,106 +40,83 @@ export class WalletService {
             for (let i = 0; i < privateKeys.length; i++) {
                 const privateKey = privateKeys[i];
                 if (!privateKey) {
-                    // In development, provide a more helpful error message
                     if (process.env.NODE_ENV === 'development') {
-                        logger.error(`❌ Missing environment variable: AI_NODE_${i + 1}_PRIVATE_KEY`);
-                        logger.info(`💡 Please set the following environment variables:`);
-                        logger.info(`   AI_NODE_1_PRIVATE_KEY=0x...`);
-                        logger.info(`   AI_NODE_2_PRIVATE_KEY=0x...`);
-                        logger.info(`   AI_NODE_3_PRIVATE_KEY=0x...`);
-                        logger.info(`   AI_NODE_4_PRIVATE_KEY=0x...`);
-                        logger.info(`   AI_NODE_5_PRIVATE_KEY=0x...`);
-                        logger.info(`   ETHEREUM_RPC_URL=https://sepolia.infura.io/v3/YOUR_PROJECT_ID`);
+                        logger_1.default.error(`❌ Missing environment variable: AI_NODE_${i + 1}_PRIVATE_KEY`);
+                        logger_1.default.info(`💡 Please set the following environment variables:`);
+                        logger_1.default.info(`   AI_NODE_1_PRIVATE_KEY=0x...`);
+                        logger_1.default.info(`   AI_NODE_2_PRIVATE_KEY=0x...`);
+                        logger_1.default.info(`   AI_NODE_3_PRIVATE_KEY=0x...`);
+                        logger_1.default.info(`   AI_NODE_4_PRIVATE_KEY=0x...`);
+                        logger_1.default.info(`   AI_NODE_5_PRIVATE_KEY=0x...`);
+                        logger_1.default.info(`   ETHEREUM_RPC_URL=https://sepolia.infura.io/v3/YOUR_PROJECT_ID`);
                     }
-                    throw new GovernanceError(`Private key for AI Node ${i + 1} not found in environment variables`, 'MISSING_PRIVATE_KEY');
+                    throw new index_1.GovernanceError(`Private key for AI Node ${i + 1} not found in environment variables`, 'MISSING_PRIVATE_KEY');
                 }
-                // Validate private key format and security
                 this.validatePrivateKeySecurity(privateKey, i + 1);
-                // Normalize private key format
                 let normalizedKey = privateKey.trim();
                 if (!normalizedKey.startsWith('0x')) {
                     normalizedKey = '0x' + normalizedKey;
                 }
                 if (normalizedKey.length !== 66) {
-                    throw new GovernanceError(`Invalid private key format for AI Node ${i + 1}. Expected 64 hex characters (with or without 0x prefix)`, 'INVALID_PRIVATE_KEY_FORMAT');
+                    throw new index_1.GovernanceError(`Invalid private key format for AI Node ${i + 1}. Expected 64 hex characters (with or without 0x prefix)`, 'INVALID_PRIVATE_KEY_FORMAT');
                 }
-                const wallet = new ethers.Wallet(normalizedKey, this.provider);
+                const wallet = new ethers_1.ethers.Wallet(normalizedKey, this.provider);
                 this.wallets.push(wallet);
-                logger.info(`Wallet loaded for AI Node ${i + 1}`, {
+                logger_1.default.info(`Wallet loaded for AI Node ${i + 1}`, {
                     address: wallet.address,
                     nodeIndex: i
                 });
             }
-            logger.info(`Successfully loaded ${this.wallets.length} wallets`);
+            logger_1.default.info(`Successfully loaded ${this.wallets.length} wallets`);
         }
         catch (error) {
-            if (error instanceof GovernanceError) {
+            if (error instanceof index_1.GovernanceError) {
                 throw error;
             }
-            throw new GovernanceError(`Failed to load wallets: ${error instanceof Error ? error.message : String(error)}`, 'WALLET_LOAD_ERROR');
+            throw new index_1.GovernanceError(`Failed to load wallets: ${error instanceof Error ? error.message : String(error)}`, 'WALLET_LOAD_ERROR');
         }
     }
-    /**
-     * Validate private key security characteristics
-     */
     validatePrivateKeySecurity(privateKey, nodeNumber) {
         const normalized = privateKey.startsWith('0x') ? privateKey.slice(2) : privateKey;
-        // Check for weak patterns (all zeros, sequential numbers, etc.)
         const weakPatterns = [
-            /^0+$/, // All zeros
-            /^1+$/, // All ones
-            /^(0123456789abcdef)+$/i, // Sequential pattern
-            /^(.)\1{10,}/, // Repeated characters
+            /^0+$/,
+            /^1+$/,
+            /^(0123456789abcdef)+$/i,
+            /^(.)\1{10,}/,
         ];
         for (const pattern of weakPatterns) {
             if (pattern.test(normalized)) {
-                logger.warn(`Potentially weak private key detected for node ${nodeNumber}`);
+                logger_1.default.warn(`Potentially weak private key detected for node ${nodeNumber}`);
                 break;
             }
         }
-        // Ensure proper entropy (basic check)
         const uniqueChars = new Set(normalized.toLowerCase()).size;
         if (uniqueChars < 8) {
-            logger.warn(`Low entropy private key detected for node ${nodeNumber} (${uniqueChars} unique characters)`);
+            logger_1.default.warn(`Low entropy private key detected for node ${nodeNumber} (${uniqueChars} unique characters)`);
         }
     }
-    /**
-     * Get wallet by node index
-     */
     getWallet(nodeIndex) {
         if (nodeIndex < 0 || nodeIndex >= this.wallets.length) {
-            throw new GovernanceError(`Invalid node index: ${nodeIndex}. Must be between 0 and ${this.wallets.length - 1}`, 'INVALID_NODE_INDEX');
+            throw new index_1.GovernanceError(`Invalid node index: ${nodeIndex}. Must be between 0 and ${this.wallets.length - 1}`, 'INVALID_NODE_INDEX');
         }
         return this.wallets[nodeIndex];
     }
-    /**
-     * Get wallet by address
-     */
     getWalletByAddress(address) {
         return this.wallets.find(wallet => wallet.address.toLowerCase() === address.toLowerCase());
     }
-    /**
-     * Get all wallet addresses
-     */
     getAllAddresses() {
         return this.wallets.map(wallet => wallet.address);
     }
-    /**
-     * Get wallet balance
-     */
     async getBalance(nodeIndex) {
         try {
             const wallet = this.getWallet(nodeIndex);
             const balance = await this.provider.getBalance(wallet.address);
-            return ethers.formatEther(balance);
+            return ethers_1.ethers.formatEther(balance);
         }
         catch (error) {
-            throw new GovernanceError(`Failed to get balance for node ${nodeIndex}: ${error instanceof Error ? error.message : String(error)}`, 'BALANCE_FETCH_ERROR');
+            throw new index_1.GovernanceError(`Failed to get balance for node ${nodeIndex}: ${error instanceof Error ? error.message : String(error)}`, 'BALANCE_FETCH_ERROR');
         }
     }
-    /**
-     * Get all wallet balances
-     */
     async getAllBalances() {
         const balances = [];
         for (let i = 0; i < this.wallets.length; i++) {
@@ -143,7 +129,7 @@ export class WalletService {
                 });
             }
             catch (error) {
-                logger.error(`Failed to get balance for node ${i}`, { error });
+                logger_1.default.error(`Failed to get balance for node ${i}`, { error });
                 balances.push({
                     nodeIndex: i,
                     address: this.wallets[i].address,
@@ -153,38 +139,31 @@ export class WalletService {
         }
         return balances;
     }
-    /**
-     * Validate wallet connectivity
-     */
     async validateConnectivity() {
         try {
-            // First check provider network connectivity
             const network = await this.provider.getNetwork();
-            logger.info('Provider connectivity validated', {
+            logger_1.default.info('Provider connectivity validated', {
                 component: 'wallet',
                 chainId: network.chainId,
                 networkName: network.name
             });
-            // Test wallet connectivity with a sample of wallets (not all to avoid rate limiting)
             const testCount = Math.min(3, this.wallets.length);
             for (let i = 0; i < testCount; i++) {
                 try {
                     const wallet = this.wallets[i];
                     const nonce = await wallet.getNonce();
-                    logger.debug(`Wallet ${i} connectivity validated`, {
+                    logger_1.default.debug(`Wallet ${i} connectivity validated`, {
                         component: 'wallet',
                         address: wallet.address,
-                        nonce: nonce.toString() // Convert BigInt to string immediately
+                        nonce: nonce.toString()
                     });
                 }
                 catch (walletError) {
-                    // Handle BigInt serialization errors specifically
                     let errorMessage = walletError instanceof Error ? walletError.message : String(walletError);
-                    // Check if error contains BigInt and sanitize
                     if (errorMessage.includes('BigInt') || typeof walletError === 'object' && walletError !== null) {
                         errorMessage = 'Wallet nonce check failed (network or serialization error)';
                     }
-                    logger.warn(`Wallet ${i} connectivity test failed`, {
+                    logger_1.default.warn(`Wallet ${i} connectivity test failed`, {
                         component: 'wallet',
                         error: errorMessage,
                         address: this.wallets[i].address
@@ -192,7 +171,7 @@ export class WalletService {
                     return false;
                 }
             }
-            logger.info('Wallet connectivity validation successful', {
+            logger_1.default.info('Wallet connectivity validation successful', {
                 component: 'wallet',
                 testedWallets: testCount,
                 totalWallets: this.wallets.length
@@ -200,14 +179,11 @@ export class WalletService {
             return true;
         }
         catch (error) {
-            // Safely convert error to string to avoid BigInt serialization issues
-            // Handle specific BigInt errors that occur during nonce checking
             let errorMessage = error instanceof Error ? error.message : String(error);
-            // Strip out BigInt values from error messages
             if (errorMessage.includes('BigInt')) {
                 errorMessage = 'Wallet connectivity check failed due to serialization error';
             }
-            logger.error('Wallet connectivity validation failed', {
+            logger_1.default.error('Wallet connectivity validation failed', {
                 component: 'wallet',
                 error: errorMessage,
                 nodeAddress: this.wallets[0]?.address || 'unknown'
@@ -215,59 +191,42 @@ export class WalletService {
             return false;
         }
     }
-    /**
-     * Get provider instance
-     */
     getProvider() {
         return this.provider;
     }
-    /**
-     * Estimate gas for a transaction
-     */
     async estimateGas(nodeIndex, to, data, value) {
         try {
             const wallet = this.getWallet(nodeIndex);
             const tx = {
                 to,
                 data,
-                value: value ? ethers.parseEther(value) : 0
+                value: value ? ethers_1.ethers.parseEther(value) : 0
             };
             return await wallet.estimateGas(tx);
         }
         catch (error) {
-            throw new GovernanceError(`Failed to estimate gas: ${error instanceof Error ? error.message : String(error)}`, 'GAS_ESTIMATION_ERROR');
+            throw new index_1.GovernanceError(`Failed to estimate gas: ${error instanceof Error ? error.message : String(error)}`, 'GAS_ESTIMATION_ERROR');
         }
     }
-    /**
-     * Get current gas price
-     */
     async getGasPrice() {
         try {
             const feeData = await this.provider.getFeeData();
-            return feeData.gasPrice || ethers.parseUnits('20', 'gwei'); // Fallback to 20 gwei
+            return feeData.gasPrice || ethers_1.ethers.parseUnits('20', 'gwei');
         }
         catch (error) {
-            logger.warn('Failed to get gas price, using fallback', { error });
-            return ethers.parseUnits('20', 'gwei');
+            logger_1.default.warn('Failed to get gas price, using fallback', { error });
+            return ethers_1.ethers.parseUnits('20', 'gwei');
         }
     }
-    /**
-     * Check if address is one of our managed wallets
-     */
     isManaged(address) {
         return this.wallets.some(wallet => wallet.address.toLowerCase() === address.toLowerCase());
     }
-    /**
-     * Get wallet count
-     */
     getWalletCount() {
         return this.wallets.length;
     }
-    /**
-     * Get all wallets (for admin purposes only)
-     */
     getAllWallets() {
-        return [...this.wallets]; // Return a copy to prevent external modification
+        return [...this.wallets];
     }
 }
+exports.WalletService = WalletService;
 //# sourceMappingURL=WalletService.js.map

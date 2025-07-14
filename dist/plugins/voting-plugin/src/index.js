@@ -1,12 +1,7 @@
-/**
- * DLoop Voting Plugin
- *
- * Multi-node voting coordination for DLoop AI governance
- */
-/**
- * Multi-Node Voting Action
- */
-export const multiNodeVoteAction = {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.votingPlugin = exports.votingEvaluator = exports.multiNodeVoteAction = void 0;
+exports.multiNodeVoteAction = {
     name: "MULTI_NODE_VOTE",
     description: "Coordinate voting across all 5 AI governance nodes",
     handler: async (context) => {
@@ -38,10 +33,7 @@ export const multiNodeVoteAction = {
         }
     }
 };
-/**
- * Voting Status Evaluator
- */
-export const votingEvaluator = {
+exports.votingEvaluator = {
     name: "VOTING_EVALUATOR",
     description: "Evaluates voting-related conversations and coordination needs",
     handler: async (context) => {
@@ -67,14 +59,11 @@ export const votingEvaluator = {
         };
     }
 };
-/**
- * Main voting plugin export
- */
-export const votingPlugin = {
+exports.votingPlugin = {
     name: "voting-plugin",
     description: "Multi-node voting coordination for DLoop governance",
-    actions: [multiNodeVoteAction],
-    evaluators: [votingEvaluator]
+    actions: [exports.multiNodeVoteAction],
+    evaluators: [exports.votingEvaluator]
 };
-export default votingPlugin;
+exports.default = exports.votingPlugin;
 //# sourceMappingURL=index.js.map

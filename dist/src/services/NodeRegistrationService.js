@@ -1,29 +1,31 @@
-import { ethers } from 'ethers';
-import fs from 'fs';
-import path from 'path';
-import { contractLogger as logger } from '../utils/logger.js';
-import { TransactionManager } from './TransactionManager.js';
-import { getCurrentContractAddresses } from '../config/contracts';
-export class NodeRegistrationService {
-    transactionManager;
-    rpcManager;
-    contractAddresses;
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.NodeRegistrationService = void 0;
+const ethers_1 = require("ethers");
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
+const logger_js_1 = require("../utils/logger.js");
+const TransactionManager_js_1 = require("./TransactionManager.js");
+const contracts_1 = require("../config/contracts");
+class NodeRegistrationService {
     constructor(rpcManager) {
         this.rpcManager = rpcManager;
-        this.transactionManager = new TransactionManager(rpcManager);
-        this.contractAddresses = getCurrentContractAddresses();
+        this.transactionManager = new TransactionManager_js_1.TransactionManager(rpcManager);
+        this.contractAddresses = (0, contracts_1.getCurrentContractAddresses)();
     }
     async registerNode(wallet, config) {
-        // 🛑 NUCLEAR OPTION: All 5 AI Governance Nodes are already registered - HARD BLOCK
         const REGISTERED_ADDRESSES = [
-            '0x0E354b735a6eee60726e6e3A431e3320Ba26ba45', // ai-gov-01 ✅ REGISTERED
-            '0xb1c25B40A79b7D046E539A9fbBB58789efFD0874', // ai-gov-02 ✅ REGISTERED  
-            '0x65b1d03F5F2Ad4Ff036ea7AeEf5Ec07Db27a5C58', // ai-gov-03 ✅ REGISTERED
-            '0x766766f2815f835E4A0b1360833C7A15DDF2b72a', // ai-gov-04 ✅ REGISTERED
-            '0xA6fBf2dD68dB92dA309D6b82DAe2180d903a36FA' // ai-gov-05 ✅ REGISTERED
+            '0x0E354b735a6eee60726e6e3A431e3320Ba26ba45',
+            '0xb1c25B40A79b7D046E539A9fbBB58789efFD0874',
+            '0x65b1d03F5F2Ad4Ff036ea7AeEf5Ec07Db27a5C58',
+            '0x766766f2815f835E4A0b1360833C7A15DDF2b72a',
+            '0xA6fBf2dD68dB92dA309D6b82DAe2180d903a36FA'
         ];
         if (REGISTERED_ADDRESSES.includes(config.nodeAddress)) {
-            logger.info('🛑 REGISTRATION BLOCKED - Node already registered', {
+            logger_js_1.contractLogger.info('🛑 REGISTRATION BLOCKED - Node already registered', {
                 nodeId: config.nodeId,
                 address: config.nodeAddress,
                 action: 'skip_registration_completely'
@@ -35,15 +37,14 @@ export class NodeRegistrationService {
             };
         }
         try {
-            logger.info('Starting node registration process', {
+            logger_js_1.contractLogger.info('Starting node registration process', {
                 nodeId: config.nodeId,
                 address: config.nodeAddress,
                 nodeIndex: config.nodeIndex
             });
-            // First check if node is already registered
             const isAlreadyRegistered = await this.checkNodeRegistration(config.nodeAddress);
             if (isAlreadyRegistered) {
-                logger.info('Node already registered', {
+                logger_js_1.contractLogger.info('Node already registered', {
                     nodeId: config.nodeId,
                     address: config.nodeAddress
                 });
@@ -52,24 +53,20 @@ export class NodeRegistrationService {
                     isRegistered: true
                 };
             }
-            // Load contract ABI
             const aiNodeRegistryABI = await this.loadContractABI('ainoderegistry.abi.v1.json');
             if (!aiNodeRegistryABI) {
                 throw new Error('Failed to load AI Node Registry ABI');
             }
-            // Prepare staking amount (1 DLOOP token)
-            const stakeAmount = ethers.parseEther('1.0');
-            // First approve DLOOP tokens for staking
+            const stakeAmount = ethers_1.ethers.parseEther('1.0');
             const approvalResult = await this.approveDloopTokens(wallet, stakeAmount);
             if (!approvalResult.success) {
                 throw new Error(`Token approval failed: ${approvalResult.error}`);
             }
-            logger.info('DLOOP token approval completed for staking', {
+            logger_js_1.contractLogger.info('DLOOP token approval completed for staking', {
                 nodeIndex: config.nodeIndex,
                 approvedAmount: '1.0',
                 approveTxHash: approvalResult.transactionHash
             });
-            // Create metadata JSON for node registration
             const metadata = JSON.stringify({
                 name: config.nodeName,
                 description: `Automated governance node using ${config.nodeType} strategy`,
@@ -79,18 +76,17 @@ export class NodeRegistrationService {
                 version: "1.0.0",
                 registeredAt: Date.now()
             });
-            // Register the node with staking - correct ABI parameters
             const registrationArgs = [
                 config.nodeAddress,
                 metadata,
-                0 // requirementId - using 0 for default requirement
+                0
             ];
             const result = await this.transactionManager.executeTransaction(wallet, this.contractAddresses.aiNodeRegistry, aiNodeRegistryABI, 'registerNodeWithStaking', registrationArgs, {
                 gasLimit: '800000',
                 retries: 3
             });
             if (result.success) {
-                logger.info('Node registration completed successfully', {
+                logger_js_1.contractLogger.info('Node registration completed successfully', {
                     nodeId: config.nodeId,
                     address: config.nodeAddress,
                     txHash: result.transactionHash,
@@ -109,7 +105,7 @@ export class NodeRegistrationService {
             }
         }
         catch (error) {
-            logger.error('Node registration failed', {
+            logger_js_1.contractLogger.error('Node registration failed', {
                 nodeId: config.nodeId,
                 address: config.nodeAddress,
                 error: error.message
@@ -122,16 +118,15 @@ export class NodeRegistrationService {
         }
     }
     async checkNodeRegistration(nodeAddress) {
-        // 🛑 NUCLEAR OPTION: All 5 AI Governance Nodes are already registered - NO RPC CALLS
         const REGISTERED_ADDRESSES = [
-            '0x0E354b735a6eee60726e6e3A431e3320Ba26ba45', // ai-gov-01 ✅ REGISTERED
-            '0xb1c25B40A79b7D046E539A9fbBB58789efFD0874', // ai-gov-02 ✅ REGISTERED  
-            '0x65b1d03F5F2Ad4Ff036ea7AeEf5Ec07Db27a5C58', // ai-gov-03 ✅ REGISTERED
-            '0x766766f2815f835E4A0b1360833C7A15DDF2b72a', // ai-gov-04 ✅ REGISTERED
-            '0xA6fBf2dD68dB92dA309D6b82DAe2180d903a36FA' // ai-gov-05 ✅ REGISTERED
+            '0x0E354b735a6eee60726e6e3A431e3320Ba26ba45',
+            '0xb1c25B40A79b7D046E539A9fbBB58789efFD0874',
+            '0x65b1d03F5F2Ad4Ff036ea7AeEf5Ec07Db27a5C58',
+            '0x766766f2815f835E4A0b1360833C7A15DDF2b72a',
+            '0xA6fBf2dD68dB92dA309D6b82DAe2180d903a36FA'
         ];
         if (REGISTERED_ADDRESSES.includes(nodeAddress)) {
-            logger.debug('Node registration check - already registered (cached)', {
+            logger_js_1.contractLogger.debug('Node registration check - already registered (cached)', {
                 address: nodeAddress,
                 action: 'skip_rpc_call'
             });
@@ -140,19 +135,17 @@ export class NodeRegistrationService {
         try {
             const aiNodeRegistryABI = await this.loadContractABI('ainoderegistry.abi.v1.json');
             if (!aiNodeRegistryABI) {
-                logger.warn('Failed to load AI Node Registry ABI for check');
+                logger_js_1.contractLogger.warn('Failed to load AI Node Registry ABI for check');
                 return false;
             }
             const nodeInfo = await this.transactionManager.executeContractRead(this.contractAddresses.aiNodeRegistry, aiNodeRegistryABI, 'getNodeInfo', [nodeAddress]);
-            // If we get node info without error, the node is registered
             return nodeInfo && nodeInfo.length > 0;
         }
         catch (error) {
-            // NodeNotRegistered error is expected for unregistered nodes
             if (error.message?.includes('NodeNotRegistered')) {
                 return false;
             }
-            logger.debug('Node registration check failed', {
+            logger_js_1.contractLogger.debug('Node registration check failed', {
                 address: nodeAddress,
                 error: error.message
             });
@@ -198,7 +191,7 @@ export class NodeRegistrationService {
             });
             return {
                 success: result.success,
-                isRegistered: false, // Not applicable for approval
+                isRegistered: false,
                 transactionHash: result.transactionHash,
                 error: result.error,
                 gasUsed: result.gasUsed
@@ -214,13 +207,12 @@ export class NodeRegistrationService {
     }
     async loadContractABI(filename) {
         try {
-            // Load ABI using ES module imports
-            const abiPath = path.join(process.cwd(), 'attached_assets', filename);
-            const abiContent = fs.readFileSync(abiPath, 'utf8');
+            const abiPath = path_1.default.join(process.cwd(), 'attached_assets', filename);
+            const abiContent = fs_1.default.readFileSync(abiPath, 'utf8');
             return JSON.parse(abiContent);
         }
         catch (error) {
-            logger.error('Failed to load contract ABI', {
+            logger_js_1.contractLogger.error('Failed to load contract ABI', {
                 filename,
                 error: error instanceof Error ? error.message : 'Unknown error'
             });
@@ -240,20 +232,19 @@ export class NodeRegistrationService {
                 });
                 continue;
             }
-            logger.info('Processing node registration batch', {
+            logger_js_1.contractLogger.info('Processing node registration batch', {
                 nodeIndex: i + 1,
                 totalNodes: configs.length,
                 nodeId: config.nodeId
             });
             const result = await this.registerNode(wallet, config);
             results.push(result);
-            // Add delay between registrations to avoid overwhelming the network
             if (i < configs.length - 1) {
-                await this.delay(2000); // 2 second delay
+                await this.delay(2000);
             }
         }
         const successCount = results.filter(r => r.success).length;
-        logger.info('Batch node registration completed', {
+        logger_js_1.contractLogger.info('Batch node registration completed', {
             totalNodes: configs.length,
             successfulRegistrations: successCount,
             failedRegistrations: configs.length - successCount
@@ -264,4 +255,5 @@ export class NodeRegistrationService {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
+exports.NodeRegistrationService = NodeRegistrationService;
 //# sourceMappingURL=NodeRegistrationService.js.map

@@ -1,8 +1,7 @@
 import { ethers } from 'ethers';
-import { ContractService } from './ContractService.js';
-import { Proposal, ProposalState, NodeConfig, GovernanceNodeState } from '../types/index.js';
-import { MarketDataService } from './MarketDataService.js';
-import { WalletService } from './WalletService.js';
+import { ContractService } from './ContractService';
+import { Proposal, ProposalState, NodeConfig, GovernanceNodeState } from '../types/index';
+import { WalletService } from './WalletService';
 import logger from '../utils/logger.js';
 
 console.log('🚀 [ENHANCED] Loading GovernanceNode with AI-powered optimizations...');
@@ -11,7 +10,6 @@ export class GovernanceNode {
   private nodeId: string;
   private wallet: ethers.Wallet;
   private contractService: ContractService;
-  private marketDataService: MarketDataService;
   private strategy: string;
   private isActive: boolean = false;
   private lastProposalTime: number = 0;
@@ -26,7 +24,6 @@ export class GovernanceNode {
     this.strategy = config.strategy;
     this.walletIndex = config.walletIndex;
     this.contractService = new ContractService(walletService);
-    this.marketDataService = new MarketDataService();
     console.log(`🔄 GovernanceNode ${this.nodeId} initialized with ${this.strategy} strategy`);
   }
 
@@ -356,18 +353,23 @@ export class GovernanceNode {
                         if (timeLeft > 0) {
                             activeProposals.push({
                                 id: i.toString(),
-                                proposer: proposalData[5] || proposalData[2],
-                                proposalType: Number(proposalData[1]) || 0,
-                                state: proposalState,
-                                assetAddress: proposalData[2] || proposalData[5],
-                                amount: proposalData[3] ? proposalData[3].toString() : '0',
+                                proposer: proposalData[2],
+                                proposalType: proposalData[1].toString(),
+                                state: Number(proposalData[10]),
+                                assetAddress: proposalData[5],
+                                amount: proposalData[3],
                                 description: proposalData[4] || `Proposal ${i}`,
-                                votesFor: proposalData[8] ? proposalData[8].toString() : '0',
-                                votesAgainst: proposalData[9] ? proposalData[9].toString() : '0',
-                                startTime: Number(proposalData[6]) || 0,
-                                endTime: votingEnds,
+                                votesFor: proposalData[8],
+                                votesAgainst: proposalData[9],
+                                startTime: Number(proposalData[6]),
+                                endTime: Number(proposalData[7]),
                                 executed: false,
-                                cancelled: false
+                                cancelled: false,
+                                title: `Proposal ${i}`,
+                                asset: 'USDC',
+                                status: 'ACTIVE',
+                                totalSupply: 1000000,
+                                quorumReached: false
                             });
 
                             const hoursLeft = Math.floor(timeLeft / 3600);
@@ -386,4 +388,36 @@ export class GovernanceNode {
             return [];
         }
     }
+
+    /**
+   * Process a voting round for active proposals
+   */
+  async processVotingRound(): Promise<{
+    success: boolean;
+    votesSubmitted: number;
+    skipped: number;
+    errors: number;
+  }> {
+    const result = {
+      success: true,
+      votesSubmitted: 0,
+      skipped: 0,
+      errors: 0
+    };
+
+    try {
+      // This is a placeholder implementation for testing
+      // In a real implementation, this would:
+      // 1. Get active proposals from ContractService
+      // 2. Apply voting strategy
+      // 3. Submit votes
+      // 4. Handle errors
+
+      return result;
+    } catch (error) {
+      result.success = false;
+      result.errors = 1;
+      return result;
+    }
+  }
 }

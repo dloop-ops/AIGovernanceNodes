@@ -1,15 +1,13 @@
+
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "CommonJS",
     "moduleResolution": "node",
-    "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
-    "allowJs": true,
-    "checkJs": false,
-    "outDir": "./dist",
-    "rootDir": "./",
-    "strict": false,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
@@ -18,7 +16,7 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "removeComments": false,
+    "removeComments": true,
     "noImplicitAny": false,
     "noImplicitThis": false,
     "noImplicitReturns": false,
@@ -27,7 +25,10 @@
     "exactOptionalPropertyTypes": false,
     "noPropertyAccessFromIndexSignature": false,
     "noUncheckedIndexedAccess": false,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "allowJs": true,
+    "checkJs": false,
+    "outDir": "./dist",
+    "rootDir": "./",
     "types": ["node", "jest"],
     "typeRoots": ["./node_modules/@types", "./types"],
     "baseUrl": ".",
@@ -49,16 +50,13 @@
     "dist",
     "build",
     "coverage",
-    "logs",
-    "**/*.test.ts",
-    "**/*.spec.ts"
+    "logs"
   ],
   "ts-node": {
-    "esm": true,
-    "experimentalSpecifierResolution": "node",
+    "esm": false,
     "compilerOptions": {
       "module": "CommonJS",
-      "target": "ES2022",
+      "target": "ES2020",
       "moduleResolution": "node",
       "allowSyntheticDefaultImports": true,
       "esModuleInterop": true

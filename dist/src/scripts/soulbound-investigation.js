@@ -1,68 +1,58 @@
 #!/usr/bin/env node
-import dotenv from 'dotenv';
-import { ethers } from 'ethers';
-import axios from 'axios';
-import { contractLogger as logger } from '../utils/logger.js';
-// Load environment variables
-dotenv.config();
-// Configuration
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SoulboundInvestigator = void 0;
+const dotenv_1 = __importDefault(require("dotenv"));
+const ethers_1 = require("ethers");
+const axios_1 = __importDefault(require("axios"));
+const logger_js_1 = require("../utils/logger.js");
+dotenv_1.default.config();
 const SEPOLIA_CHAIN_ID = 11155111;
 const ETHERSCAN_API_KEY = 'HG7DAYXKN5B6AZE35WRDVQRSNN5IDC3ZG6';
 const SOULBOUND_NFT_CONTRACT = '0x6391C14631b2Be5374297fA3110687b80233104c';
 const DEPLOYER_ADDRESS = '0x3639D1F746A977775522221f53D0B1eA5749b8b9';
-// AI Governance Node Addresses
 const NODE_ADDRESSES = [
-    '0x0E354b735a6eee60726e6e3A431e3320Ba26ba45', // Node 1
-    '0xb1c25B40A79b7D046E539A9fbBB58789efFD0874', // Node 2
-    '0x65b1d03F5F2Ad4Ff036ea7AeEf5Ec07Db27a5C58', // Node 3
-    '0x766766f2815f835E4A0b1360833C7A15DDF2b72a', // Node 4
-    '0xA6fBf2dD68dB92dA309D6b82DAe2180d903a36FA' // Node 5
+    '0x0E354b735a6eee60726e6e3A431e3320Ba26ba45',
+    '0xb1c25B40A79b7D046E539A9fbBB58789efFD0874',
+    '0x65b1d03F5F2Ad4Ff036ea7AeEf5Ec07Db27a5C58',
+    '0x766766f2815f835E4A0b1360833C7A15DDF2b72a',
+    '0xA6fBf2dD68dB92dA309D6b82DAe2180d903a36FA'
 ];
-// SoulBound NFT ABI (from the actual deployed contract)
 const SOULBOUND_ABI = [
-    // Basic ERC721 functions
     "function balanceOf(address owner) view returns (uint256)",
     "function ownerOf(uint256 tokenId) view returns (address)",
     "function tokenURI(uint256 tokenId) view returns (string)",
-    // SoulBound specific functions
     "function hasValidToken(address owner) view returns (bool)",
     "function getTokensByOwner(address owner) view returns (uint256[])",
     "function mint(address to, string memory uri) returns (uint256)",
     "function batchMint(address[] memory recipients, string[] memory uris)",
     "function revoke(uint256 tokenId)",
-    // Access control
     "function hasRole(bytes32 role, address account) view returns (bool)",
     "function ADMIN_ROLE() view returns (bytes32)",
     "function MINTER_ROLE() view returns (bytes32)",
     "function DEFAULT_ADMIN_ROLE() view returns (bytes32)",
-    // Token tracking - Note: totalSupply might not exist, using alternative approach
     "function nextTokenId() view returns (uint256)",
-    // Events
     "event TokenMinted(uint256 indexed tokenId, address indexed to, string tokenURI)",
     "event TokenRevoked(uint256 indexed tokenId, address indexed owner)",
     "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)"
 ];
 class SoulboundInvestigator {
-    provider;
-    contract;
-    deployerWallet;
     constructor() {
-        // Initialize provider with multiple endpoints for reliability
         const rpcUrls = [
             'https://ethereum-sepolia-rpc.publicnode.com',
             'https://sepolia.gateway.tenderly.co',
             'https://sepolia.infura.io/v3/ca485bd6567e4c5fb5693ee66a5885d8'
         ];
-        this.provider = new ethers.JsonRpcProvider(rpcUrls[0]);
-        this.contract = new ethers.Contract(SOULBOUND_NFT_CONTRACT, SOULBOUND_ABI, this.provider);
+        this.provider = new ethers_1.ethers.JsonRpcProvider(rpcUrls[0]);
+        this.contract = new ethers_1.ethers.Contract(SOULBOUND_NFT_CONTRACT, SOULBOUND_ABI, this.provider);
     }
-    /**
-     * Initialize with deployer private key if available
-     */
     async initializeWithDeployer(deployerPrivateKey) {
         if (deployerPrivateKey) {
-            this.deployerWallet = new ethers.Wallet(deployerPrivateKey, this.provider);
-            logger.info('Deployer wallet initialized', {
+            this.deployerWallet = new ethers_1.ethers.Wallet(deployerPrivateKey, this.provider);
+            logger_js_1.contractLogger.info('Deployer wallet initialized', {
                 address: this.deployerWallet.address,
                 expectedAddress: DEPLOYER_ADDRESS
             });
@@ -71,29 +61,23 @@ class SoulboundInvestigator {
             }
         }
     }
-    /**
-     * Get contract information and permissions
-     */
     async getContractInfo() {
         try {
-            logger.info('Fetching contract information...');
-            // Use a safer approach - try different methods to get token count
+            logger_js_1.contractLogger.info('Fetching contract information...');
             let totalSupply = 0;
             try {
-                // Try nextTokenId first (more likely to exist)
                 const nextId = await this.contract.nextTokenId();
-                totalSupply = Math.max(0, Number(nextId) - 1); // Assuming tokens start from 1
+                totalSupply = Math.max(0, Number(nextId) - 1);
             }
             catch (error) {
-                logger.warn('nextTokenId not available, estimating from known tokens');
-                // Fallback: check if tokens 1-20 exist (reasonable estimate)
+                logger_js_1.contractLogger.warn('nextTokenId not available, estimating from known tokens');
                 for (let i = 1; i <= 20; i++) {
                     try {
                         await this.contract.ownerOf(i);
                         totalSupply = i;
                     }
                     catch {
-                        break; // Token doesn't exist, so we found the limit
+                        break;
                     }
                 }
             }
@@ -108,7 +92,7 @@ class SoulboundInvestigator {
                 this.contract.hasRole(defaultAdminRole, DEPLOYER_ADDRESS)
             ]);
             const canMint = deployerIsMinter || deployerIsAdmin || deployerIsDefaultAdmin;
-            logger.info('Contract information retrieved', {
+            logger_js_1.contractLogger.info('Contract information retrieved', {
                 totalSupply,
                 deployerIsAdmin,
                 deployerIsMinter,
@@ -123,48 +107,41 @@ class SoulboundInvestigator {
             };
         }
         catch (error) {
-            logger.error('Failed to get contract info:', error);
+            logger_js_1.contractLogger.error('Failed to get contract info:', error);
             throw error;
         }
     }
-    /**
-     * Check NFT assignments for all AI governance nodes
-     */
     async investigateNodeNFTs() {
         const results = [];
-        logger.info('Starting SoulBound NFT investigation for AI governance nodes...');
+        logger_js_1.contractLogger.info('Starting SoulBound NFT investigation for AI governance nodes...');
         for (let i = 0; i < NODE_ADDRESSES.length; i++) {
             const address = NODE_ADDRESSES[i];
             try {
-                logger.info(`Investigating Node ${i + 1}: ${address}`);
-                // Check if node has any NFTs
+                logger_js_1.contractLogger.info(`Investigating Node ${i + 1}: ${address}`);
                 const [balance, hasValidToken] = await Promise.all([
                     this.contract.balanceOf(address),
-                    this.contract.hasValidToken(address).catch(() => false) // Fallback if method doesn't exist
+                    this.contract.hasValidToken(address).catch(() => false)
                 ]);
                 const nftCount = Number(balance);
                 let tokenIds = [];
                 const tokenURIs = [];
-                // If the node has NFTs, get token details
                 if (nftCount > 0) {
                     try {
-                        // Try to get tokens by owner (if method exists)
                         const tokens = await this.contract.getTokensByOwner(address).catch(() => []);
                         tokenIds = tokens.map((id) => Number(id));
-                        // Get token URIs
                         for (const tokenId of tokenIds) {
                             try {
                                 const uri = await this.contract.tokenURI(tokenId);
                                 tokenURIs.push(uri);
                             }
                             catch (error) {
-                                logger.warn(`Failed to get URI for token ${tokenId}:`, error);
+                                logger_js_1.contractLogger.warn(`Failed to get URI for token ${tokenId}:`, error);
                                 tokenURIs.push('');
                             }
                         }
                     }
                     catch (error) {
-                        logger.warn(`Failed to get detailed token info for ${address}:`, error);
+                        logger_js_1.contractLogger.warn(`Failed to get detailed token info for ${address}:`, error);
                     }
                 }
                 const result = {
@@ -176,7 +153,7 @@ class SoulboundInvestigator {
                     tokenURIs
                 };
                 results.push(result);
-                logger.info(`Node ${i + 1} investigation complete`, {
+                logger_js_1.contractLogger.info(`Node ${i + 1} investigation complete`, {
                     address,
                     hasNFT: result.hasNFT,
                     nftCount: result.nftCount,
@@ -184,7 +161,7 @@ class SoulboundInvestigator {
                 });
             }
             catch (error) {
-                logger.error(`Failed to investigate Node ${i + 1} (${address}):`, error);
+                logger_js_1.contractLogger.error(`Failed to investigate Node ${i + 1} (${address}):`, error);
                 results.push({
                     address,
                     nodeIndex: i,
@@ -197,23 +174,17 @@ class SoulboundInvestigator {
         }
         return results;
     }
-    /**
-     * Get identity metadata from d-loop.io
-     */
     async getIdentityMetadata() {
         try {
-            logger.info('Fetching identity metadata from d-loop.io...');
-            const response = await axios.get('https://d-loop.io/identity/identity.json');
+            logger_js_1.contractLogger.info('Fetching identity metadata from d-loop.io...');
+            const response = await axios_1.default.get('https://d-loop.io/identity/identity.json');
             return response.data;
         }
         catch (error) {
-            logger.error('Failed to fetch identity metadata:', error);
+            logger_js_1.contractLogger.error('Failed to fetch identity metadata:', error);
             return null;
         }
     }
-    /**
-     * Mint SoulBound NFTs for nodes that don't have them
-     */
     async mintMissingNFTs(missingNodes, contractInfo) {
         if (!this.deployerWallet) {
             throw new Error('Deployer wallet not initialized. Cannot mint NFTs.');
@@ -221,38 +192,33 @@ class SoulboundInvestigator {
         if (!contractInfo.canMint) {
             throw new Error('Deployer does not have minting permissions.');
         }
-        logger.info(`Minting SoulBound NFTs for ${missingNodes.length} nodes...`);
+        logger_js_1.contractLogger.info(`Minting SoulBound NFTs for ${missingNodes.length} nodes...`);
         const contractWithSigner = this.contract.connect(this.deployerWallet);
-        // Prepare batch mint data
         const recipients = [];
         const uris = [];
         for (const node of missingNodes) {
             recipients.push(node.address);
-            // Create unique URI for each node
             const uri = `https://d-loop.io/identity/ai-governance-node-${node.nodeIndex + 1}.json`;
             uris.push(uri);
         }
         try {
-            // Estimate gas for batch mint
             const gasEstimate = await contractWithSigner.batchMint.estimateGas(recipients, uris);
-            const gasLimit = gasEstimate * 120n / 100n; // 20% buffer
-            logger.info('Executing batch mint...', {
+            const gasLimit = gasEstimate * 120n / 100n;
+            logger_js_1.contractLogger.info('Executing batch mint...', {
                 recipients: recipients.length,
                 gasEstimate: gasEstimate.toString(),
                 gasLimit: gasLimit.toString()
             });
-            // Execute batch mint
             const tx = await contractWithSigner.batchMint(recipients, uris, {
                 gasLimit
             });
-            logger.info('Batch mint transaction sent', {
+            logger_js_1.contractLogger.info('Batch mint transaction sent', {
                 txHash: tx.hash,
                 recipients: recipients.length
             });
-            // Wait for confirmation
             const receipt = await tx.wait();
             if (receipt?.status === 1) {
-                logger.info('SoulBound NFTs minted successfully!', {
+                logger_js_1.contractLogger.info('SoulBound NFTs minted successfully!', {
                     txHash: tx.hash,
                     blockNumber: receipt.blockNumber,
                     gasUsed: receipt.gasUsed.toString()
@@ -263,86 +229,76 @@ class SoulboundInvestigator {
             }
         }
         catch (error) {
-            logger.error('Failed to mint SoulBound NFTs:', error);
-            // Try individual mints as fallback
-            logger.info('Attempting individual mints as fallback...');
+            logger_js_1.contractLogger.error('Failed to mint SoulBound NFTs:', error);
+            logger_js_1.contractLogger.info('Attempting individual mints as fallback...');
             for (let i = 0; i < recipients.length; i++) {
                 try {
                     const tx = await contractWithSigner.mint(recipients[i], uris[i]);
                     await tx.wait();
-                    logger.info(`Successfully minted NFT for ${recipients[i]}`);
+                    logger_js_1.contractLogger.info(`Successfully minted NFT for ${recipients[i]}`);
                 }
                 catch (error) {
-                    logger.error(`Failed to mint NFT for ${recipients[i]}:`, error);
+                    logger_js_1.contractLogger.error(`Failed to mint NFT for ${recipients[i]}:`, error);
                 }
             }
         }
     }
-    /**
-     * Verify NFT assignments after minting
-     */
     async verifyMinting(nodeAddresses) {
-        logger.info('Verifying NFT assignments after minting...');
+        logger_js_1.contractLogger.info('Verifying NFT assignments after minting...');
         for (const address of nodeAddresses) {
             try {
                 const balance = await this.contract.balanceOf(address);
                 const hasNFT = Number(balance) > 0;
-                logger.info(`Verification for ${address}:`, {
+                logger_js_1.contractLogger.info(`Verification for ${address}:`, {
                     hasNFT,
                     balance: balance.toString()
                 });
             }
             catch (error) {
-                logger.error(`Failed to verify ${address}:`, error);
+                logger_js_1.contractLogger.error(`Failed to verify ${address}:`, error);
             }
         }
     }
-    /**
-     * Check Etherscan for additional contract information and get ABI
-     */
     async checkEtherscan() {
         try {
-            logger.info('Checking Etherscan for additional contract information...');
+            logger_js_1.contractLogger.info('Checking Etherscan for additional contract information...');
             const abiUrl = `https://api-sepolia.etherscan.io/api?module=contract&action=getabi&address=${SOULBOUND_NFT_CONTRACT}&apikey=${ETHERSCAN_API_KEY}`;
             const codeUrl = `https://api-sepolia.etherscan.io/api?module=proxy&action=eth_getCode&address=${SOULBOUND_NFT_CONTRACT}&tag=latest&apikey=${ETHERSCAN_API_KEY}`;
             const [abiResponse, codeResponse] = await Promise.all([
-                axios.get(abiUrl),
-                axios.get(codeUrl)
+                axios_1.default.get(abiUrl),
+                axios_1.default.get(codeUrl)
             ]);
             const hasCode = codeResponse.data.result && codeResponse.data.result !== '0x';
-            logger.info(`Contract exists on Sepolia: ${hasCode}`);
+            logger_js_1.contractLogger.info(`Contract exists on Sepolia: ${hasCode}`);
             if (abiResponse.data.status === '1') {
-                logger.info('Contract verified on Etherscan');
+                logger_js_1.contractLogger.info('Contract verified on Etherscan');
                 try {
                     const abi = JSON.parse(abiResponse.data.result);
-                    logger.info(`Contract has ${abi.length} ABI functions/events`);
+                    logger_js_1.contractLogger.info(`Contract has ${abi.length} ABI functions/events`);
                     return abi;
                 }
                 catch (error) {
-                    logger.warn('Failed to parse ABI from Etherscan');
+                    logger_js_1.contractLogger.warn('Failed to parse ABI from Etherscan');
                 }
             }
             else {
-                logger.warn('Contract not verified on Etherscan or API error:', abiResponse.data.result);
+                logger_js_1.contractLogger.warn('Contract not verified on Etherscan or API error:', abiResponse.data.result);
             }
             return null;
         }
         catch (error) {
-            logger.warn('Failed to check Etherscan:', error);
+            logger_js_1.contractLogger.warn('Failed to check Etherscan:', error);
             return null;
         }
     }
 }
-/**
- * Main investigation function
- */
+exports.SoulboundInvestigator = SoulboundInvestigator;
 async function main() {
     const command = process.argv[2] || 'investigate';
-    const deployerPrivateKey = process.argv[3]; // Optional deployer private key
+    const deployerPrivateKey = process.argv[3];
     console.log('🔍 SoulBound NFT Investigation for AI Governance Nodes\n');
     try {
         const investigator = new SoulboundInvestigator();
-        // Initialize with deployer if private key provided
         if (deployerPrivateKey) {
             await investigator.initializeWithDeployer(deployerPrivateKey);
         }
@@ -379,21 +335,16 @@ Examples:
         }
     }
     catch (error) {
-        logger.error('Investigation script failed:', error);
+        logger_js_1.contractLogger.error('Investigation script failed:', error);
         console.error('❌ Investigation failed:', error instanceof Error ? error.message : String(error));
         process.exit(1);
     }
 }
 async function runInvestigation(investigator) {
-    // Get contract info
     const contractInfo = await investigator.getContractInfo();
-    // Get identity metadata
     const identityData = await investigator.getIdentityMetadata();
-    // Check Etherscan
     await investigator.checkEtherscan();
-    // Investigate node NFTs
     const results = await investigator.investigateNodeNFTs();
-    // Display results
     console.log('\n=== SOULBOUND NFT INVESTIGATION RESULTS ===\n');
     console.log('Contract Information:');
     console.log(`  📊 Total Supply: ${contractInfo.totalSupply} NFTs`);
@@ -447,7 +398,6 @@ async function runMinting(investigator) {
     }
     console.log(`🎯 Found ${missingNodes.length} nodes without SoulBound NFTs. Proceeding with minting...\n`);
     await investigator.mintMissingNFTs(missingNodes, contractInfo);
-    // Verify minting
     const missingAddresses = missingNodes.map(n => n.address);
     await investigator.verifyMinting(missingAddresses);
     console.log('🎉 Minting process completed! Run investigation again to verify results.\n');
@@ -463,13 +413,11 @@ async function runVerification(investigator) {
     const assignedCount = results.filter(r => r.hasNFT).length;
     console.log(`\n📊 Overall Status: ${assignedCount}/${results.length} nodes have SoulBound NFTs\n`);
 }
-// Run the main function
 if (require.main === module) {
     main().catch(error => {
-        logger.error('Main execution failed:', error);
+        logger_js_1.contractLogger.error('Main execution failed:', error);
         console.error('❌ Execution failed:', error instanceof Error ? error.message : String(error));
         process.exit(1);
     });
 }
-export { SoulboundInvestigator };
 //# sourceMappingURL=soulbound-investigation.js.map

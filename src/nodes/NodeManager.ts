@@ -8,7 +8,7 @@ import { SoulboundNFTService } from '../services/SoulboundNFTService.js';
 import { NFTTransferService } from '../services/NFTTransferService.js';
 import { DLoopGovernanceRegistration } from '../services/DLoopGovernanceRegistration.js';
 import { scheduler } from '../utils/scheduler.js';
-import { NodeConfig, GovernanceError } from '../types/index.js';
+import { NodeConfig, GovernanceError, NodeStrategy } from '../types/index.js';
 import logger, { governanceLogger } from '../utils/logger.js';
 
 export class NodeManager {
@@ -153,31 +153,31 @@ export class NodeManager {
     const configs: NodeConfig[] = [
       {
         id: 'ai-gov-01',
-        strategy: 'conservative',
+        strategy: NodeStrategy.CONSERVATIVE,
         walletIndex: 0,
         enabled: true
       },
       {
         id: 'ai-gov-02',
-        strategy: 'aggressive',
+        strategy: NodeStrategy.AGGRESSIVE,
         walletIndex: 1,
         enabled: true
       },
       {
         id: 'ai-gov-03',
-        strategy: 'conservative',
+        strategy: NodeStrategy.CONSERVATIVE,
         walletIndex: 2,
         enabled: true
       },
       {
         id: 'ai-gov-04',
-        strategy: 'aggressive',
+        strategy: NodeStrategy.AGGRESSIVE,
         walletIndex: 3,
         enabled: true
       },
       {
         id: 'ai-gov-05',
-        strategy: 'conservative',
+        strategy: NodeStrategy.CONSERVATIVE,
         walletIndex: 4,
         enabled: true
       }

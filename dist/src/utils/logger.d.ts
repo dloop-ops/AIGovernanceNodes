@@ -1,10 +1,10 @@
-declare const bigintReplacer: (key: string, value: any) => any;
-declare const logger: import("winston").Logger;
-export declare const governanceLogger: import("winston").Logger;
-export declare const marketDataLogger: import("winston").Logger;
-export declare const contractLogger: import("winston").Logger;
-export declare const walletLogger: import("winston").Logger;
-export declare const strategyLogger: import("winston").Logger;
-export { bigintReplacer };
+import winston from 'winston';
+declare const logger: winston.Logger;
+export declare const governanceLogger: winston.Logger;
+export declare const contractLogger: winston.Logger;
+export declare const strategyLogger: winston.Logger;
+export declare const walletLogger: winston.Logger;
+export declare const nodeLogger: winston.Logger;
 export default logger;
+export { logger };
 //# sourceMappingURL=logger.d.ts.map

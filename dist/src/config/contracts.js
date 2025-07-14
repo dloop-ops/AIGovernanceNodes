@@ -1,4 +1,7 @@
-export const contractAddresses = {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getAssetAddress = exports.getAssetAddresses = exports.assetAddresses = exports.getCurrentContractAddresses = exports.getContractAddresses = exports.contractAddresses = void 0;
+exports.contractAddresses = {
     sepolia: {
         assetDao: process.env.ASSET_DAO_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8251bc4B3529',
         aiNodeRegistry: process.env.AI_NODE_REGISTRY_ADDRESS || '0x0045c7D99489f1d8A5900243956B0206344417DD',
@@ -12,24 +15,25 @@ export const contractAddresses = {
         soulboundNft: process.env.MAINNET_SOULBOUND_NFT_ADDRESS || ''
     }
 };
-export const getContractAddresses = (networkName) => {
-    const addresses = contractAddresses[networkName];
+const getContractAddresses = (networkName) => {
+    const addresses = exports.contractAddresses[networkName];
     if (!addresses) {
         throw new Error(`Contract addresses not configured for network: ${networkName}`);
     }
     return addresses;
 };
-export const getCurrentContractAddresses = () => {
+exports.getContractAddresses = getContractAddresses;
+const getCurrentContractAddresses = () => {
     const networkName = process.env.NETWORK_NAME || 'sepolia';
-    return getContractAddresses(networkName);
+    return (0, exports.getContractAddresses)(networkName);
 };
-// Asset addresses for different networks
-export const assetAddresses = {
+exports.getCurrentContractAddresses = getCurrentContractAddresses;
+exports.assetAddresses = {
     sepolia: {
-        USDC: '0xA0b86a33E6417c90D01C24a37cbc88a3e5556c97', // Example USDC on Sepolia
-        WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599', // Example WBTC
-        PAXG: '0x45804880De22913dAFE09f4980848ECE6EcbAf78', // Example PAXG
-        EURT: '0xC581b735A1688071A1746c968e0798D642EDE491' // Example EURT
+        USDC: '0xA0b86a33E6417c90D01C24a37cbc88a3e5556c97',
+        WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
+        PAXG: '0x45804880De22913dAFE09f4980848ECE6EcbAf78',
+        EURT: '0xC581b735A1688071A1746c968e0798D642EDE491'
     },
     mainnet: {
         USDC: '0xA0b86a33E6417c90D01C24a37cbc88a3e5556c97',
@@ -38,19 +42,21 @@ export const assetAddresses = {
         EURT: '0xC581b735A1688071A1746c968e0798D642EDE491'
     }
 };
-export const getAssetAddresses = (networkName) => {
-    const assets = assetAddresses[networkName];
+const getAssetAddresses = (networkName) => {
+    const assets = exports.assetAddresses[networkName];
     if (!assets) {
         throw new Error(`Asset addresses not configured for network: ${networkName}`);
     }
     return assets;
 };
-export const getAssetAddress = (networkName, symbol) => {
-    const assets = getAssetAddresses(networkName);
+exports.getAssetAddresses = getAssetAddresses;
+const getAssetAddress = (networkName, symbol) => {
+    const assets = (0, exports.getAssetAddresses)(networkName);
     const address = assets[symbol];
     if (!address) {
         throw new Error(`Asset ${symbol} not configured for network: ${networkName}`);
     }
     return address;
 };
+exports.getAssetAddress = getAssetAddress;
 //# sourceMappingURL=contracts.js.map

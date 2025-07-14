@@ -45,7 +45,7 @@ export class EmergencyGovernanceService {
       // Step 1: Emergency health check
       console.log('🏥 Step 1: Emergency health check...');
       const isHealthy = await this.performQuickHealthCheck();
-      
+
       if (!isHealthy) {
         throw new Error('System health check failed - aborting emergency voting');
       }
@@ -59,10 +59,10 @@ export class EmergencyGovernanceService {
       const results = await this.verifyVotingResults();
 
       const totalTime = Date.now() - startTime;
-      
+
       console.log('✅ EMERGENCY GOVERNANCE INTERVENTION COMPLETED');
       console.log(`⏱️  Total time: ${totalTime}ms`);
-      
+
       return {
         success: true,
         message: 'Emergency voting completed successfully',
@@ -76,7 +76,7 @@ export class EmergencyGovernanceService {
     } catch (error) {
       const totalTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
-      
+
       console.error('❌ EMERGENCY GOVERNANCE INTERVENTION FAILED');
       console.error(`⏱️  Failed after: ${totalTime}ms`);
       console.error(`🚨 Error: ${errorMessage}`);
@@ -102,13 +102,13 @@ export class EmergencyGovernanceService {
   private async performQuickHealthCheck(): Promise<boolean> {
     try {
       console.log('🔍 Testing basic connectivity...');
-      
+
       // Test proposal count access (simplest operation)
       const proposals = await this.contractService.getProposals();
       console.log(`✅ Successfully accessed ${proposals.length} proposals`);
-      
+
       return true;
-      
+
     } catch (error) {
       console.error('❌ Health check failed:', error);
       return false;
@@ -121,19 +121,19 @@ export class EmergencyGovernanceService {
   private async verifyVotingResults(): Promise<any> {
     try {
       console.log('📋 Checking recent voting activity...');
-      
+
       // Get current proposal state
       const proposals = await this.contractService.getProposals();
-      const activeProposals = proposals.filter(p => p.state.toString() === 'ACTIVE');
-      
+      const activeProposals = proposals.filter(p => p.state?.toString() === 'ACTIVE' || p.state === 1);
+
       console.log(`📊 Found ${activeProposals.length} active proposals after voting round`);
-      
+
       return {
         totalProposals: proposals.length,
         activeProposals: activeProposals.length,
         status: 'verified'
       };
-      
+
     } catch (error) {
       console.error('❌ Result verification failed:', error);
       return {
@@ -149,8 +149,8 @@ export class EmergencyGovernanceService {
   async getGovernanceStatus(): Promise<any> {
     try {
       const proposals = await this.contractService.getProposals();
-      const activeProposals = proposals.filter(p => p.state.toString() === 'ACTIVE');
-      
+      const activeProposals = proposals.filter(p => p.state?.toString() === 'ACTIVE' || p.state === 1);
+
       // Count USDC proposals specifically
       const usdcProposals = activeProposals.filter(p => 
         p.assetAddress.toLowerCase().includes('1c7d4b196cb0c7b01d743fbc6116a902379c7238')
@@ -192,4 +192,4 @@ export class EmergencyGovernanceService {
   }
 }
 
-export default EmergencyGovernanceService; 
+export default EmergencyGovernanceService;

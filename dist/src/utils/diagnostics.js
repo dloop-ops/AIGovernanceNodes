@@ -1,24 +1,21 @@
-import { ethers } from 'ethers';
-import { contractLogger as logger } from './logger.js';
-export class DiagnosticService {
-    walletService;
-    contractService;
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.DiagnosticService = void 0;
+const ethers_1 = require("ethers");
+const logger_js_1 = require("./logger.js");
+class DiagnosticService {
     constructor(walletService, contractService) {
         this.walletService = walletService;
         this.contractService = contractService;
     }
-    /**
-     * Run comprehensive diagnostics on all nodes
-     */
     async runFullDiagnostics() {
         const results = [];
-        logger.info('Starting comprehensive node diagnostics...');
+        logger_js_1.contractLogger.info('Starting comprehensive node diagnostics...');
         for (let i = 0; i < this.walletService.getWalletCount(); i++) {
             try {
                 const result = await this.diagnoseNode(i);
                 results.push(result);
-                // Log summary for each node
-                logger.info(`Node ${i + 1} Diagnostic Summary:`, {
+                logger_js_1.contractLogger.info(`Node ${i + 1} Diagnostic Summary:`, {
                     address: result.address,
                     registered: result.isRegistered,
                     dloopBalance: result.dloopBalance,
@@ -28,7 +25,7 @@ export class DiagnosticService {
                 });
             }
             catch (error) {
-                logger.error(`Failed to diagnose node ${i}:`, error);
+                logger_js_1.contractLogger.error(`Failed to diagnose node ${i}:`, error);
                 results.push({
                     nodeIndex: i,
                     address: 'unknown',
@@ -41,22 +38,16 @@ export class DiagnosticService {
                 });
             }
         }
-        // Generate overall summary
         this.generateDiagnosticSummary(results);
         return results;
     }
-    /**
-     * Diagnose a specific node
-     */
     async diagnoseNode(nodeIndex) {
         const wallet = this.walletService.getWallet(nodeIndex);
         const address = wallet.address;
         const errors = [];
-        logger.info(`Diagnosing node ${nodeIndex + 1} (${address})...`);
-        // Check ETH balance
+        logger_js_1.contractLogger.info(`Diagnosing node ${nodeIndex + 1} (${address})...`);
         const ethBalance = await this.walletService.getProvider().getBalance(address);
-        const ethBalanceFormatted = ethers.formatEther(ethBalance);
-        // Check DLOOP token balance
+        const ethBalanceFormatted = ethers_1.ethers.formatEther(ethBalance);
         let dloopBalance = '0';
         try {
             dloopBalance = await this.contractService.getTokenBalance(nodeIndex);
@@ -64,20 +55,16 @@ export class DiagnosticService {
         catch (error) {
             errors.push(`Failed to get DLOOP balance: ${error.message}`);
         }
-        // Check if node is registered by checking node info
         let isRegistered = false;
         try {
             const nodeInfo = await this.contractService.getNodeInfo(address);
             isRegistered = nodeInfo.isActive;
         }
         catch (error) {
-            // If getNodeInfo fails, likely node is not registered
             isRegistered = false;
             errors.push(`Node not registered or failed to check: ${error.message}`);
         }
-        // For staking requirements, we'll use a default value since it's not available in ContractService
-        const stakeRequirement = '1000'; // Default staking requirement
-        // Check if node has valid SoulBound NFT (authentication requirement)
+        const stakeRequirement = '1000';
         let hasStakeApproval = false;
         try {
             hasStakeApproval = await this.contractService.hasValidSoulboundNFT(nodeIndex);
@@ -85,11 +72,10 @@ export class DiagnosticService {
         catch (error) {
             errors.push(`Failed to check SoulBound NFT validity: ${error.message}`);
         }
-        // Validate requirements
-        if (ethers.parseEther('0.01') > ethBalance) {
+        if (ethers_1.ethers.parseEther('0.01') > ethBalance) {
             errors.push('Insufficient ETH balance for transactions (minimum 0.01 ETH recommended)');
         }
-        if (ethers.parseEther(dloopBalance) < ethers.parseEther(stakeRequirement)) {
+        if (ethers_1.ethers.parseEther(dloopBalance) < ethers_1.ethers.parseEther(stakeRequirement)) {
             errors.push(`Insufficient DLOOP balance. Required: ${stakeRequirement}, Available: ${dloopBalance}`);
         }
         if (!hasStakeApproval && dloopBalance !== '0') {
@@ -106,21 +92,16 @@ export class DiagnosticService {
             registrationErrors: errors
         };
     }
-    /**
-     * Attempt to fix common registration issues
-     */
     async attemptAutoFix(nodeIndex) {
         const actions = [];
         const errors = [];
         let success = true;
-        logger.info(`Attempting auto-fix for node ${nodeIndex + 1}...`);
+        logger_js_1.contractLogger.info(`Attempting auto-fix for node ${nodeIndex + 1}...`);
         try {
-            // Get current diagnostic
             const diagnostic = await this.diagnoseNode(nodeIndex);
-            // Fix 1: Mint SoulBound NFT if needed (authentication requirement)
             if (!diagnostic.hasStakeApproval && parseFloat(diagnostic.dloopBalance) > 0) {
                 try {
-                    logger.info(`Minting SoulBound NFT for node ${nodeIndex + 1}...`);
+                    logger_js_1.contractLogger.info(`Minting SoulBound NFT for node ${nodeIndex + 1}...`);
                     const txHash = await this.contractService.mintSoulboundNFT(nodeIndex, 'Node Authentication Token');
                     actions.push(`Minted SoulBound NFT for authentication (tx: ${txHash})`);
                 }
@@ -129,12 +110,10 @@ export class DiagnosticService {
                     success = false;
                 }
             }
-            // Fix 2: Attempt registration if requirements are met
             if (!diagnostic.isRegistered && diagnostic.hasStakeApproval) {
                 try {
-                    logger.info(`Attempting to register node ${nodeIndex + 1}...`);
+                    logger_js_1.contractLogger.info(`Attempting to register node ${nodeIndex + 1}...`);
                     const wallet = this.walletService.getWallet(nodeIndex);
-                    // Try to auto-register the node
                     await this.contractService.registerAINode(nodeIndex);
                     actions.push(`Registered node successfully`);
                 }
@@ -150,15 +129,12 @@ export class DiagnosticService {
         }
         return { success, actions, errors };
     }
-    /**
-     * Generate diagnostic summary report
-     */
     generateDiagnosticSummary(results) {
         const registered = results.filter(r => r.isRegistered).length;
         const withSufficientBalance = results.filter(r => parseFloat(r.dloopBalance) > 0).length;
         const withApproval = results.filter(r => r.hasStakeApproval).length;
         const withErrors = results.filter(r => r.registrationErrors.length > 0).length;
-        logger.info('=== DIAGNOSTIC SUMMARY ===', {
+        logger_js_1.contractLogger.info('=== DIAGNOSTIC SUMMARY ===', {
             totalNodes: results.length,
             registeredNodes: registered,
             nodesWithBalance: withSufficientBalance,
@@ -166,34 +142,32 @@ export class DiagnosticService {
             nodesWithErrors: withErrors
         });
         if (withErrors > 0) {
-            logger.warn(`${withErrors} nodes have registration issues that need attention`);
+            logger_js_1.contractLogger.warn(`${withErrors} nodes have registration issues that need attention`);
         }
         if (registered === results.length) {
-            logger.info('✅ All nodes are successfully registered!');
+            logger_js_1.contractLogger.info('✅ All nodes are successfully registered!');
         }
         else {
-            logger.warn(`⚠️  ${results.length - registered} nodes need registration`);
+            logger_js_1.contractLogger.warn(`⚠️  ${results.length - registered} nodes need registration`);
         }
     }
-    /**
-     * Monitor node status continuously
-     */
     async startContinuousMonitoring(intervalMs = 60000) {
-        logger.info(`Starting continuous node monitoring (interval: ${intervalMs}ms)`);
+        logger_js_1.contractLogger.info(`Starting continuous node monitoring (interval: ${intervalMs}ms)`);
         setInterval(async () => {
             try {
                 const results = await this.runFullDiagnostics();
                 const issues = results.filter(r => r.registrationErrors.length > 0);
                 if (issues.length > 0) {
-                    logger.warn(`Monitoring alert: ${issues.length} nodes have issues`, {
+                    logger_js_1.contractLogger.warn(`Monitoring alert: ${issues.length} nodes have issues`, {
                         affectedNodes: issues.map(r => r.nodeIndex + 1)
                     });
                 }
             }
             catch (error) {
-                logger.error('Monitoring cycle failed:', error);
+                logger_js_1.contractLogger.error('Monitoring cycle failed:', error);
             }
         }, intervalMs);
     }
 }
+exports.DiagnosticService = DiagnosticService;
 //# sourceMappingURL=diagnostics.js.map

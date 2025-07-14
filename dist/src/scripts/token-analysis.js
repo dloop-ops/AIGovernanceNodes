@@ -1,55 +1,53 @@
 #!/usr/bin/env node
-import dotenv from 'dotenv';
-import { ethers } from 'ethers';
-import { contractLogger as logger } from '../utils/logger.js';
-// Load environment variables
-dotenv.config();
-// Configuration
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const dotenv_1 = __importDefault(require("dotenv"));
+const ethers_1 = require("ethers");
+const logger_js_1 = require("../utils/logger.js");
+dotenv_1.default.config();
 const SOULBOUND_NFT_CONTRACT = '0x6391C14631b2Be5374297fA3110687b80233104c';
 const DEPLOYER_ADDRESS = '0x3639D1F746A977775522221f53D0B1eA5749b8b9';
-// Basic ABI for token analysis
 const SOULBOUND_ABI = [
     "function ownerOf(uint256 tokenId) view returns (address)",
     "function tokenURI(uint256 tokenId) view returns (string)",
     "function balanceOf(address owner) view returns (uint256)"
 ];
 class TokenAnalyzer {
-    provider;
-    contract;
     constructor() {
         const rpcUrls = [
             'https://ethereum-sepolia-rpc.publicnode.com',
             'https://sepolia.gateway.tenderly.co',
             'https://sepolia.infura.io/v3/ca485bd6567e4c5fb5693ee66a5885d8'
         ];
-        this.provider = new ethers.JsonRpcProvider(rpcUrls[0]);
-        this.contract = new ethers.Contract(SOULBOUND_NFT_CONTRACT, SOULBOUND_ABI, this.provider);
+        this.provider = new ethers_1.ethers.JsonRpcProvider(rpcUrls[0]);
+        this.contract = new ethers_1.ethers.Contract(SOULBOUND_NFT_CONTRACT, SOULBOUND_ABI, this.provider);
     }
     async analyzeTokenDistribution() {
         console.log('🔍 Analyzing SoulBound NFT Token Distribution\n');
         const tokenHolders = new Map();
         const tokenDetails = [];
-        logger.info('Analyzing tokens 1-20...');
+        logger_js_1.contractLogger.info('Analyzing tokens 1-20...');
         for (let tokenId = 1; tokenId <= 20; tokenId++) {
             try {
                 const [owner, uri] = await Promise.all([
                     this.contract.ownerOf(tokenId),
                     this.contract.tokenURI(tokenId).catch(() => 'N/A')
                 ]);
-                // Track token holders
                 if (!tokenHolders.has(owner)) {
                     tokenHolders.set(owner, []);
                 }
                 tokenHolders.get(owner).push(tokenId);
                 tokenDetails.push({ id: tokenId, owner, uri });
-                logger.info(`Token ${tokenId}: ${owner}`, { tokenId, owner, uri });
+                logger_js_1.contractLogger.info(`Token ${tokenId}: ${owner}`, { tokenId, owner, uri });
             }
             catch (error) {
-                logger.warn(`Token ${tokenId} does not exist or error occurred:`, error);
+                logger_js_1.contractLogger.warn(`Token ${tokenId} does not exist or error occurred:`, error);
                 break;
             }
         }
-        // Display results
         console.log('\n=== TOKEN DISTRIBUTION ANALYSIS ===\n');
         console.log('📊 Token Holders Summary:');
         for (const [owner, tokens] of tokenHolders.entries()) {
@@ -69,9 +67,8 @@ class TokenAnalyzer {
         console.log(`  🎯 Total Tokens Found: ${tokenDetails.length}`);
         console.log(`  👥 Unique Holders: ${tokenHolders.size}`);
         console.log(`  🚀 Deployer Tokens: ${tokenHolders.get(DEPLOYER_ADDRESS)?.length || 0}`);
-        // Check if deployer has enough tokens to distribute
         const deployerTokens = tokenHolders.get(DEPLOYER_ADDRESS)?.length || 0;
-        const tokensNeeded = 5; // For 5 AI governance nodes
+        const tokensNeeded = 5;
         if (deployerTokens >= tokensNeeded) {
             console.log(`  ✅ Deployer has ${deployerTokens} tokens - sufficient for ${tokensNeeded} AI nodes`);
             console.log(`\n💡 Recommendation: Transfer existing tokens to AI governance nodes instead of minting new ones`);
@@ -100,7 +97,7 @@ async function main() {
         await analyzer.analyzeTokenDistribution();
     }
     catch (error) {
-        logger.error('Token analysis failed:', error);
+        logger_js_1.contractLogger.error('Token analysis failed:', error);
         console.error('❌ Analysis failed:', error instanceof Error ? error.message : String(error));
         process.exit(1);
     }

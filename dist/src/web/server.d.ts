@@ -4,9 +4,6 @@ export declare class WebServer {
     private nodeManager;
     private port;
     constructor(nodeManager: NodeManager);
-    /**
-     * Start the web server with optional port override
-     */
     start(portOverride?: number): Promise<void>;
     private handleStatus;
     private handleHealth;

@@ -1,4 +1,7 @@
-export const networks = {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getCurrentNetwork = exports.getNetwork = exports.networks = void 0;
+exports.networks = {
     sepolia: {
         name: 'Sepolia',
         chainId: 11155111,
@@ -12,15 +15,17 @@ export const networks = {
         blockExplorer: 'https://etherscan.io'
     }
 };
-export const getNetwork = (networkName) => {
-    const network = networks[networkName];
+const getNetwork = (networkName) => {
+    const network = exports.networks[networkName];
     if (!network) {
         throw new Error(`Network ${networkName} not supported`);
     }
     return network;
 };
-export const getCurrentNetwork = () => {
+exports.getNetwork = getNetwork;
+const getCurrentNetwork = () => {
     const networkName = process.env.NETWORK_NAME || 'sepolia';
-    return getNetwork(networkName);
+    return (0, exports.getNetwork)(networkName);
 };
+exports.getCurrentNetwork = getCurrentNetwork;
 //# sourceMappingURL=networks.js.map

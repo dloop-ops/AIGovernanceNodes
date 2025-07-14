@@ -3,9 +3,103 @@ import { ethers } from 'ethers';
 // Governance Node Types
 export interface NodeConfig {
   id: string;
-  strategy: 'conservative' | 'aggressive';
+  strategy: NodeStrategy;
   walletIndex: number;
   enabled: boolean;
+}
+
+export interface Proposal {
+  id: string;
+  proposer: string;
+  description: string;
+  proposalType: string;
+  assetAddress: string;
+  amount: string;
+  votesFor: string;
+  votesAgainst: string;
+  startTime?: number;
+  endTime: number;
+  state?: ProposalState;
+  executed: boolean;
+  cancelled: boolean;
+  title: string;
+  asset: string;
+  status: string;
+  totalSupply: number;
+  quorumReached: boolean;
+}
+
+export interface MarketData {
+  symbol: string;
+  price: number;
+  change24h: number;
+  volume24h: number;
+  timestamp: number;
+}
+
+export interface VotingDecision {
+  proposalId: string;
+  vote: boolean;
+  confidence: number;
+  reasoning: string;
+}
+
+export interface NodeDiagnosticResult {
+  nodeIndex: number;
+  address: string;
+  isRegistered: boolean;
+  dloopBalance: string;
+  ethBalance: string;
+  hasStakeApproval: boolean;
+  stakeRequirement: string;
+  registrationErrors: string[];
+}
+
+export enum NodeStrategy {
+  BALANCED = 'BALANCED',
+  AGGRESSIVE = 'AGGRESSIVE',
+  CONSERVATIVE = 'CONSERVATIVE'
+}
+
+export interface NodeInfo {
+  isActive: boolean;
+  owner: string;
+  registeredAt: bigint;
+  name?: string;
+  description?: string;
+  nodeType?: string;
+  reputation?: number;
+  registrationTime?: number;
+}
+
+export interface RegistrationResult {
+  success: boolean;
+  txHash?: string;
+  tokenId?: string;
+  error?: string;
+  nodeId: string;
+  address: string;
+}
+
+export interface NodeRegistrationResult {
+  nodeIndex: number;
+  success: boolean;
+  txHash?: string;
+  error?: string;
+}
+
+export interface NodeStatus {
+  nodeIndex: number;
+  address: string;
+  isAuthenticated: boolean;
+  tokenCount: number;
+}
+
+export class GovernanceError extends Error {
+  constructor(message: string, public code?: string, public details?: any) {
+    super(message);
+    this.name = 'GovernanceError';
+  }
 }
 
 export interface GovernanceNodeState {
@@ -52,22 +146,6 @@ export interface ProposalParams {
   additionalData?: string;
 }
 
-export interface Proposal {
-  id: string;
-  proposer: string;
-  proposalType: ProposalType;
-  assetAddress: string;
-  amount: string;
-  description: string;
-  votesFor: string;
-  votesAgainst: string;
-  startTime: number;
-  endTime: number;
-  executed: boolean;
-  cancelled: boolean;
-  state: ProposalState;
-}
-
 export enum ProposalType {
   INVEST = 0,
   DIVEST = 1,
@@ -85,16 +163,6 @@ export enum ProposalState {
 }
 
 // AI Node Registry Types
-export interface NodeInfo {
-  owner: string;
-  endpoint: string;
-  name: string;
-  description: string;
-  nodeType: string;
-  isActive: boolean;
-  reputation: number;
-  registrationTime: number;
-}
 
 // Configuration Types
 export interface NetworkConfig {
@@ -109,22 +177,6 @@ export interface ContractAddresses {
   aiNodeRegistry: string;
   dloopToken: string;
   soulboundNft: string;
-}
-
-// Error Types
-export class GovernanceError extends Error {
-  public readonly code: string;
-
-  constructor(message: string, code: string = 'GOVERNANCE_ERROR') {
-    super(message);
-    this.name = 'GovernanceError';
-    this.code = code;
-
-    // Maintain proper stack trace
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, GovernanceError);
-    }
-  }
 }
 
 // API Response Types

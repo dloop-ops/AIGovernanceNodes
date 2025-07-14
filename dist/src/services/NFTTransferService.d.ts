@@ -16,26 +16,10 @@ export declare class NFTTransferService {
     private sourceAddress;
     private soulboundContractAddress;
     constructor(contractService: ContractService, walletService: WalletService);
-    /**
-     * Analyze the source address for available SoulBound NFTs
-     */
     analyzeSoulboundNFTs(): Promise<NFTToken[]>;
-    /**
-     * Transfer SoulBound NFTs to governance nodes
-     * Note: SoulBound NFTs are typically non-transferable, so this will attempt minting instead
-     */
     distributeSoulboundNFTs(): Promise<TransferResult[]>;
-    /**
-     * Mint SoulBound NFT for a specific governance node
-     */
     private mintSoulboundNFTForNode;
-    /**
-     * Get current authentication status for all nodes
-     */
     private getCurrentAuthenticationStatus;
-    /**
-     * Verify SoulBound NFT ownership after distribution
-     */
     verifyDistribution(): Promise<{
         totalNodes: number;
         authenticatedNodes: number;

@@ -13,16 +13,10 @@ export declare class Scheduler {
     stopTask(name: string): void;
     startAll(): void;
     stopAll(): void;
-    /**
-     * Get task status
-     */
     getTaskStatus(name: string): {
         exists: boolean;
         isRunning: boolean;
     };
-    /**
-     * Get all task statuses
-     */
     getAllTaskStatuses(): Record<string, {
         exists: boolean;
         isRunning: boolean;

@@ -39,7 +39,7 @@ async function checkRegistrationStatus() {
 
     // Check registration status for each node
     console.log('\n2. Checking registration status...');
-    
+
     for (let i = 0; i < walletService.getWalletCount(); i++) {
       const wallet = walletService.getWallet(i);
       const nodeAddress = wallet.address;
@@ -60,9 +60,9 @@ async function checkRegistrationStatus() {
             console.log(`     ✅ Found in nodes mapping: ${isRegistered ? 'REGISTERED' : 'NOT ACTIVE'}`);
             if (nodeInfo) {
               console.log(`     📋 Node Info:`, {
-                isActive: nodeInfo.isActive,
-                owner: nodeInfo.owner || 'N/A',
-                registeredAt: nodeInfo.registeredAt ? new Date(Number(nodeInfo.registeredAt) * 1000).toISOString() : 'N/A'
+                isActive: (nodeInfo as any).isActive,
+                owner: (nodeInfo as any).owner || 'N/A',
+                registeredAt: (nodeInfo as any).registeredAt ? new Date(Number((nodeInfo as any).registeredAt) * 1000).toISOString() : 'N/A'
               });
             }
           }
@@ -120,4 +120,4 @@ checkRegistrationStatus()
   .catch((error) => {
     console.error('\n💥 Check failed with error:', error);
     process.exit(1);
-  }); 
+  });

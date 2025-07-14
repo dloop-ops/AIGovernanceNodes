@@ -1,10 +1,28 @@
-export var ProposalType;
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ProposalState = exports.ProposalType = exports.GovernanceError = exports.NodeStrategy = void 0;
+var NodeStrategy;
+(function (NodeStrategy) {
+    NodeStrategy["BALANCED"] = "BALANCED";
+    NodeStrategy["AGGRESSIVE"] = "AGGRESSIVE";
+    NodeStrategy["CONSERVATIVE"] = "CONSERVATIVE";
+})(NodeStrategy || (exports.NodeStrategy = NodeStrategy = {}));
+class GovernanceError extends Error {
+    constructor(message, code, details) {
+        super(message);
+        this.code = code;
+        this.details = details;
+        this.name = 'GovernanceError';
+    }
+}
+exports.GovernanceError = GovernanceError;
+var ProposalType;
 (function (ProposalType) {
     ProposalType[ProposalType["INVEST"] = 0] = "INVEST";
     ProposalType[ProposalType["DIVEST"] = 1] = "DIVEST";
     ProposalType[ProposalType["REBALANCE"] = 2] = "REBALANCE";
-})(ProposalType || (ProposalType = {}));
-export var ProposalState;
+})(ProposalType || (exports.ProposalType = ProposalType = {}));
+var ProposalState;
 (function (ProposalState) {
     ProposalState[ProposalState["PENDING"] = 0] = "PENDING";
     ProposalState[ProposalState["ACTIVE"] = 1] = "ACTIVE";
@@ -13,18 +31,5 @@ export var ProposalState;
     ProposalState[ProposalState["QUEUED"] = 4] = "QUEUED";
     ProposalState[ProposalState["EXECUTED"] = 5] = "EXECUTED";
     ProposalState[ProposalState["CANCELLED"] = 6] = "CANCELLED";
-})(ProposalState || (ProposalState = {}));
-// Error Types
-export class GovernanceError extends Error {
-    code;
-    constructor(message, code = 'GOVERNANCE_ERROR') {
-        super(message);
-        this.name = 'GovernanceError';
-        this.code = code;
-        // Maintain proper stack trace
-        if (Error.captureStackTrace) {
-            Error.captureStackTrace(this, GovernanceError);
-        }
-    }
-}
+})(ProposalState || (exports.ProposalState = ProposalState = {}));
 //# sourceMappingURL=index.js.map

@@ -8,13 +8,7 @@ export declare class ConservativeStrategy extends BaseStrategy {
         confidence: number;
         reasoning: string;
     }>;
-    /**
-     * Conservative-specific risk assessment
-     */
     private assessConservativeRisk;
-    /**
-     * Check if proposal fits conservative portfolio allocation
-     */
     private fitsConservativeAllocation;
 }
 //# sourceMappingURL=ConservativeStrategy.d.ts.map

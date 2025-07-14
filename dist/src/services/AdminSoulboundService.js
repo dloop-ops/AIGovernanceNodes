@@ -1,31 +1,30 @@
-import { ethers } from 'ethers';
-import { getCurrentNetwork } from '../config/networks.js';
-import { getCurrentContractAddresses } from '../config/contracts.js';
-import logger from '../utils/logger.js';
-/**
- * Admin service for minting SoulBound NFTs using admin privileges
- */
-export class AdminSoulboundService {
-    adminWallet;
-    soulboundContract;
-    provider;
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AdminSoulboundService = void 0;
+const ethers_1 = require("ethers");
+const networks_js_1 = require("../config/networks.js");
+const contracts_js_1 = require("../config/contracts.js");
+const logger_js_1 = __importDefault(require("../utils/logger.js"));
+class AdminSoulboundService {
     constructor() {
-        const network = getCurrentNetwork();
-        this.provider = new ethers.JsonRpcProvider(network.rpcUrl);
+        const network = (0, networks_js_1.getCurrentNetwork)();
+        this.provider = new ethers_1.ethers.JsonRpcProvider(network.rpcUrl);
         const adminPrivateKey = process.env.SOULBOUND_ADMIN_PRIVATE_KEY;
         if (!adminPrivateKey) {
             throw new Error('SOULBOUND_ADMIN_PRIVATE_KEY environment variable is required');
         }
-        this.adminWallet = new ethers.Wallet(adminPrivateKey, this.provider);
+        this.adminWallet = new ethers_1.ethers.Wallet(adminPrivateKey, this.provider);
         this.initializeContract();
-        logger.info('Admin SoulBound service initialized', {
+        logger_js_1.default.info('Admin SoulBound service initialized', {
             component: 'admin-soulbound',
             adminAddress: this.adminWallet.address
         });
     }
     initializeContract() {
-        const addresses = getCurrentContractAddresses();
-        // SoulBound NFT ABI for minting and verification
+        const addresses = (0, contracts_js_1.getCurrentContractAddresses)();
         const soulboundAbi = [
             "function mint(address to, string memory tokenURI) external returns (uint256)",
             "function hasRole(bytes32 role, address account) external view returns (bool)",
@@ -37,16 +36,13 @@ export class AdminSoulboundService {
             "function totalSupply() external view returns (uint256)",
             "event TokenMinted(uint256 indexed tokenId, address indexed to, string tokenURI)"
         ];
-        this.soulboundContract = new ethers.Contract(addresses.soulboundNft, soulboundAbi, this.adminWallet);
+        this.soulboundContract = new ethers_1.ethers.Contract(addresses.soulboundNft, soulboundAbi, this.adminWallet);
     }
-    /**
-     * Check if admin wallet has minter role
-     */
     async checkMinterRole() {
         try {
             const minterRole = await this.soulboundContract.MINTER_ROLE();
             const hasMinterRole = await this.soulboundContract.hasRole(minterRole, this.adminWallet.address);
-            logger.info('Minter role check', {
+            logger_js_1.default.info('Minter role check', {
                 component: 'admin-soulbound',
                 adminAddress: this.adminWallet.address,
                 hasMinterRole
@@ -54,27 +50,23 @@ export class AdminSoulboundService {
             return hasMinterRole;
         }
         catch (error) {
-            logger.error('Failed to check minter role', {
+            logger_js_1.default.error('Failed to check minter role', {
                 component: 'admin-soulbound',
                 error
             });
             return false;
         }
     }
-    /**
-     * Mint SoulBound NFT for a governance node
-     */
     async mintForGovernanceNode(nodeAddress, nodeId) {
         try {
-            logger.info('Minting SoulBound NFT for governance node', {
+            logger_js_1.default.info('Minting SoulBound NFT for governance node', {
                 component: 'admin-soulbound',
                 nodeAddress,
                 nodeId
             });
-            // Check if node already has SoulBound NFT
             const balance = await this.soulboundContract.balanceOf(nodeAddress);
             if (balance > 0) {
-                logger.info('Node already has SoulBound NFT', {
+                logger_js_1.default.info('Node already has SoulBound NFT', {
                     component: 'admin-soulbound',
                     nodeAddress,
                     balance: balance.toString()
@@ -84,7 +76,6 @@ export class AdminSoulboundService {
                     tokenId: 'existing'
                 };
             }
-            // Create metadata for the governance node
             const metadata = {
                 name: `AI Governance Node ${nodeId}`,
                 description: `SoulBound NFT for DLoop AI Governance Node ${nodeId}`,
@@ -109,20 +100,17 @@ export class AdminSoulboundService {
                 ]
             };
             const tokenURI = `data:application/json;base64,${Buffer.from(JSON.stringify(metadata)).toString('base64')}`;
-            // Mint the SoulBound NFT
             const tx = await this.soulboundContract.mint(nodeAddress, tokenURI);
-            logger.info('SoulBound NFT mint transaction submitted', {
+            logger_js_1.default.info('SoulBound NFT mint transaction submitted', {
                 component: 'admin-soulbound',
                 nodeAddress,
                 txHash: tx.hash
             });
-            // Wait for transaction confirmation
             const receipt = await tx.wait();
             if (receipt.status === 1) {
-                // Extract token ID from logs
-                const mintEvent = receipt.logs.find((log) => log.topics[0] === ethers.id('Transfer(address,address,uint256)'));
-                const tokenId = mintEvent ? ethers.toBigInt(mintEvent.topics[3]).toString() : 'unknown';
-                logger.info('SoulBound NFT minted successfully', {
+                const mintEvent = receipt.logs.find((log) => log.topics[0] === ethers_1.ethers.id('Transfer(address,address,uint256)'));
+                const tokenId = mintEvent ? ethers_1.ethers.toBigInt(mintEvent.topics[3]).toString() : 'unknown';
+                logger_js_1.default.info('SoulBound NFT minted successfully', {
                     component: 'admin-soulbound',
                     nodeAddress,
                     txHash: tx.hash,
@@ -140,7 +128,7 @@ export class AdminSoulboundService {
             }
         }
         catch (error) {
-            logger.error('Failed to mint SoulBound NFT', {
+            logger_js_1.default.error('Failed to mint SoulBound NFT', {
                 component: 'admin-soulbound',
                 nodeAddress,
                 nodeId,
@@ -152,12 +140,9 @@ export class AdminSoulboundService {
             };
         }
     }
-    /**
-     * Batch mint SoulBound NFTs for all governance nodes
-     */
     async batchMintForGovernanceNodes(nodes) {
         const results = [];
-        logger.info('Starting batch mint for governance nodes', {
+        logger_js_1.default.info('Starting batch mint for governance nodes', {
             component: 'admin-soulbound',
             nodeCount: nodes.length
         });
@@ -168,14 +153,13 @@ export class AdminSoulboundService {
                 address: node.address,
                 ...result
             });
-            // Add delay between mints to avoid rate limiting
             if (results.length < nodes.length) {
                 await new Promise(resolve => setTimeout(resolve, 3000));
             }
         }
         const successful = results.filter(r => r.success).length;
         const failed = results.filter(r => !r.success).length;
-        logger.info('Batch mint completed', {
+        logger_js_1.default.info('Batch mint completed', {
             component: 'admin-soulbound',
             totalNodes: nodes.length,
             successful,
@@ -183,27 +167,22 @@ export class AdminSoulboundService {
         });
         return results;
     }
-    /**
-     * Verify SoulBound NFT ownership using direct balance check
-     */
     async verifyOwnership(nodeAddress) {
         try {
-            logger.info('Verifying SoulBound NFT ownership', {
+            logger_js_1.default.info('Verifying SoulBound NFT ownership', {
                 component: 'admin-soulbound',
                 nodeAddress
             });
             const balance = await this.soulboundContract.balanceOf(nodeAddress);
             const tokenCount = Number(balance);
             const tokenIds = [];
-            logger.info('Balance check result', {
+            logger_js_1.default.info('Balance check result', {
                 component: 'admin-soulbound',
                 nodeAddress,
                 balance: balance.toString(),
                 tokenCount
             });
-            // Try multiple methods to get token IDs
             if (tokenCount > 0) {
-                // Method 1: Try getTokensByOwner if available
                 try {
                     const tokens = await this.soulboundContract.getTokensByOwner(nodeAddress);
                     for (const token of tokens) {
@@ -211,18 +190,17 @@ export class AdminSoulboundService {
                     }
                 }
                 catch (error) {
-                    logger.info('getTokensByOwner not available, trying tokenOfOwnerByIndex', {
+                    logger_js_1.default.info('getTokensByOwner not available, trying tokenOfOwnerByIndex', {
                         component: 'admin-soulbound',
                         nodeAddress
                     });
-                    // Method 2: Try tokenOfOwnerByIndex
                     for (let i = 0; i < tokenCount; i++) {
                         try {
                             const tokenId = await this.soulboundContract.tokenOfOwnerByIndex(nodeAddress, i);
                             tokenIds.push(tokenId.toString());
                         }
                         catch (indexError) {
-                            logger.warn('Failed to get token by index', {
+                            logger_js_1.default.warn('Failed to get token by index', {
                                 component: 'admin-soulbound',
                                 nodeAddress,
                                 index: i,
@@ -237,7 +215,7 @@ export class AdminSoulboundService {
                 tokenCount,
                 tokenIds
             };
-            logger.info('Ownership verification complete', {
+            logger_js_1.default.info('Ownership verification complete', {
                 component: 'admin-soulbound',
                 nodeAddress,
                 result
@@ -245,7 +223,7 @@ export class AdminSoulboundService {
             return result;
         }
         catch (error) {
-            logger.error('Failed to verify ownership', {
+            logger_js_1.default.error('Failed to verify ownership', {
                 component: 'admin-soulbound',
                 nodeAddress,
                 error: error instanceof Error ? error.message : String(error)
@@ -257,11 +235,74 @@ export class AdminSoulboundService {
             };
         }
     }
-    /**
-     * Get admin wallet address
-     */
     getAdminAddress() {
         return this.adminWallet.address;
     }
+    async batchDistribute(nodes) {
+        const results = [];
+        logger_js_1.default.info(`Starting batch distribution for ${nodes.length} nodes...`);
+        for (const node of nodes) {
+            try {
+                const result = await this.mintForGovernanceNode(node.address, node.nodeId);
+                results.push({
+                    nodeId: node.nodeId,
+                    address: node.address,
+                    ...result
+                });
+            }
+            catch (error) {
+                logger_js_1.default.error(`Failed to distribute to ${node.nodeId}:`, error);
+                results.push({
+                    nodeId: node.nodeId,
+                    address: node.address,
+                    success: false,
+                    error: error.message
+                });
+            }
+        }
+        const successful = results.filter(r => r.success).length;
+        const failed = results.filter(r => !r.success).length;
+        return {
+            distributed: successful,
+            failed: failed,
+            results: results
+        };
+    }
+    async distributeAllSoulboundNFTs() {
+        logger_js_1.default.info('🎯 Distributing SoulBound NFTs to all registered nodes...');
+        const results = [];
+        const nodes = await this.getRegisteredNodes();
+        for (const node of nodes) {
+            try {
+                const result = await this.mintForGovernanceNode(node.address, node.nodeId);
+                results.push({
+                    nodeId: node.nodeId,
+                    address: node.address,
+                    ...result
+                });
+            }
+            catch (error) {
+                logger_js_1.default.error(`Failed to distribute SoulBound NFT to node ${node.nodeId}:`, error);
+                results.push({
+                    nodeId: node.nodeId,
+                    address: node.address,
+                    success: false,
+                    error: error.message
+                });
+            }
+        }
+        const successful = results.filter(r => r.success).length;
+        const failed = results.filter(r => !r.success).length;
+        logger_js_1.default.info(`✅ SoulBound NFT distribution complete: ${successful} successful, ${failed} failed`);
+        return {
+            distributed: successful,
+            failed: failed,
+            results: results
+        };
+    }
+    async getRegisteredNodes() {
+        return [];
+    }
 }
+exports.AdminSoulboundService = AdminSoulboundService;
 //# sourceMappingURL=AdminSoulboundService.js.map

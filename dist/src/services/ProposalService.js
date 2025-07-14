@@ -1,83 +1,193 @@
-import { ProposalType, GovernanceError } from '../types/index.js';
-import { governanceLogger as logger } from '../utils/logger.js';
-export class ProposalService {
-    contractService;
-    marketDataService;
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ProposalService = void 0;
+const MarketDataService_1 = require("./MarketDataService");
+const index_1 = require("../types/index");
+const logger_1 = require("../utils/logger");
+class ProposalService {
     constructor(contractService, marketDataService) {
+        this.proposalCache = new Map();
+        this.cacheExpiry = 5 * 60 * 1000;
+        if (!contractService) {
+            throw new index_1.GovernanceError('ContractService is required', 'INVALID_CONSTRUCTOR_PARAMS');
+        }
         this.contractService = contractService;
-        this.marketDataService = marketDataService;
+        this.marketDataService = marketDataService || new MarketDataService_1.MarketDataService();
     }
-    /**
-     * Generate investment proposals based on market analysis
-     */
     async generateProposals(nodeId) {
         try {
-            logger.info('Generating investment proposals', { nodeId });
-            // Get market analysis
+            logger_1.governanceLogger.info('Generating investment proposals', { nodeId });
             const analysis = await this.marketDataService.analyzeMarketData();
             if (!analysis || Object.keys(analysis.recommendations).length === 0) {
-                logger.warn('No market analysis available for proposal generation', { nodeId });
+                logger_1.governanceLogger.warn('No market analysis available for proposal generation', { nodeId });
                 return [];
             }
             const proposals = [];
-            // Convert market recommendations to proposals
             for (const [asset, recommendation] of Object.entries(analysis.recommendations)) {
                 const proposal = await this.createProposalFromRecommendation(asset, recommendation, analysis);
                 if (proposal) {
                     proposals.push(proposal);
                 }
             }
-            // Add portfolio rebalance proposal if needed
             if (analysis.portfolioRebalance && proposals.length > 0) {
                 const rebalanceProposal = this.createRebalanceProposal(analysis);
                 if (rebalanceProposal) {
                     proposals.push(rebalanceProposal);
                 }
             }
-            logger.info(`Generated ${proposals.length} proposals`, {
+            logger_1.governanceLogger.info(`Generated ${proposals.length} proposals`, {
                 nodeId,
-                proposalTypes: proposals.map(p => ProposalType[p.proposalType])
+                proposalTypes: proposals.map(p => index_1.ProposalType[p.proposalType])
             });
             return proposals;
         }
         catch (error) {
-            throw new GovernanceError(`Failed to generate proposals: ${error instanceof Error ? error.message : String(error)}`, 'PROPOSAL_GENERATION_ERROR');
+            throw new index_1.GovernanceError(`Failed to generate proposals: ${error instanceof Error ? error.message : String(error)}`, 'PROPOSAL_GENERATION_ERROR');
         }
     }
-    /**
-     * Create a proposal from market recommendation
-     */
+    async getAllProposals() {
+        try {
+            const proposals = await this.contractService.getProposals();
+            return proposals || [];
+        }
+        catch (error) {
+            throw new index_1.GovernanceError('Failed to get all proposals', 'PROPOSAL_FETCH_ERROR');
+        }
+    }
+    async getActiveProposals() {
+        const allProposals = await this.getAllProposals();
+        return allProposals.filter(proposal => proposal.state === index_1.ProposalState.ACTIVE &&
+            proposal.votingEnds > Math.floor(Date.now() / 1000));
+    }
+    async getProposalById(id) {
+        try {
+            if (this.proposalCache.has(id)) {
+                const cached = this.proposalCache.get(id);
+                if (Date.now() - cached.timestamp < this.cacheExpiry) {
+                    return cached.data;
+                }
+            }
+            const proposal = await this.contractService.getProposal(id.toString());
+            if (!proposal) {
+                throw new index_1.GovernanceError('Proposal not found', 'PROPOSAL_NOT_FOUND');
+            }
+            this.proposalCache.set(id, {
+                data: proposal,
+                timestamp: Date.now()
+            });
+            return proposal;
+        }
+        catch (error) {
+            throw new index_1.GovernanceError(`Failed to get proposal ${id}`, 'PROPOSAL_FETCH_ERROR');
+        }
+    }
+    async getProposalsByState(state) {
+        const allProposals = await this.getAllProposals();
+        return allProposals.filter(proposal => proposal.state === state);
+    }
+    async getUrgentProposals(secondsRemaining) {
+        const activeProposals = await this.getActiveProposals();
+        const currentTime = Math.floor(Date.now() / 1000);
+        return activeProposals.filter(proposal => {
+            const timeLeft = proposal.votingEnds - currentTime;
+            return timeLeft <= secondsRemaining && timeLeft > 0;
+        });
+    }
+    async getProposalsByProposer(proposerAddress) {
+        const allProposals = await this.getAllProposals();
+        return allProposals.filter(proposal => proposal.proposer.toLowerCase() === proposerAddress.toLowerCase());
+    }
+    async analyzeProposal(proposalId) {
+        const proposal = await this.getProposalById(proposalId);
+        return {
+            proposalId,
+            totalVotes: proposal.forVotes + proposal.againstVotes,
+            participation: (proposal.forVotes + proposal.againstVotes) / proposal.totalSupply,
+            trend: proposal.forVotes > proposal.againstVotes ? 'positive' : 'negative'
+        };
+    }
+    async getVotingTrends() {
+        const allProposals = await this.getAllProposals();
+        const totalProposals = allProposals.length;
+        const totalParticipation = allProposals.reduce((sum, proposal) => sum + (proposal.forVotes + proposal.againstVotes), 0);
+        return {
+            averageParticipation: totalParticipation / totalProposals,
+            totalProposals,
+            activeProposals: allProposals.filter(p => p.state === index_1.ProposalState.ACTIVE).length
+        };
+    }
+    isProposalActiveForVoting(proposal) {
+        const currentTime = Math.floor(Date.now() / 1000);
+        return proposal.state === index_1.ProposalState.ACTIVE &&
+            proposal.votingEnds > currentTime &&
+            proposal.votingStarts <= currentTime;
+    }
+    invalidateCache() {
+        this.proposalCache.clear();
+    }
+    async makeVotingDecision(proposal) {
+        try {
+            if (!this.isProposalActiveForVoting(proposal)) {
+                return {
+                    vote: 'ABSTAIN',
+                    confidence: 0,
+                    reasoning: 'Proposal is not active for voting'
+                };
+            }
+            let vote = 'FOR';
+            let confidence = 0.7;
+            let reasoning = 'Standard approval for active proposal';
+            if (this.marketDataService) {
+                try {
+                    await this.marketDataService.getCurrentPrice('ETH');
+                    confidence = 0.8;
+                    reasoning = 'Decision enhanced with market data';
+                }
+                catch (error) {
+                    reasoning = 'Market data unavailable, using basic voting logic';
+                }
+            }
+            return {
+                vote,
+                confidence,
+                reasoning
+            };
+        }
+        catch (error) {
+            return {
+                vote: 'ABSTAIN',
+                confidence: 0,
+                reasoning: `Error making voting decision: ${error instanceof Error ? error.message : 'Unknown error'}`
+            };
+        }
+    }
     async createProposalFromRecommendation(asset, recommendation, analysis) {
         try {
-            // Skip if confidence is too low
             if (recommendation.confidence < 0.6) {
-                logger.debug(`Skipping proposal for ${asset} due to low confidence`, {
+                logger_1.governanceLogger.debug(`Skipping proposal for ${asset} due to low confidence`, {
                     confidence: recommendation.confidence
                 });
                 return null;
             }
-            // Get asset address
             const assetAddress = this.contractService.getAssetAddress(asset);
-            // Calculate investment amount based on confidence and allocation
             const baseAmount = this.calculateInvestmentAmount(asset, recommendation, analysis);
             let proposalType;
             let description;
             if (recommendation.action === 'buy') {
-                proposalType = ProposalType.INVEST;
+                proposalType = index_1.ProposalType.INVEST;
                 description = `Investment proposal for ${asset}: ${recommendation.reasoning}. ` +
                     `Confidence: ${(recommendation.confidence * 100).toFixed(1)}%. ` +
                     `Risk Score: ${analysis.riskScore.toFixed(2)}. ` +
                     `Recommended allocation: ${recommendation.allocatedPercentage?.toFixed(1)}%.`;
             }
             else if (recommendation.action === 'sell') {
-                proposalType = ProposalType.DIVEST;
+                proposalType = index_1.ProposalType.DIVEST;
                 description = `Divestment proposal for ${asset}: ${recommendation.reasoning}. ` +
                     `Confidence: ${(recommendation.confidence * 100).toFixed(1)}%. ` +
                     `Risk Score: ${analysis.riskScore.toFixed(2)}. ` +
                     `Recommended reduction: ${recommendation.allocatedPercentage?.toFixed(1)}%.`;
             }
             else {
-                // Hold - no proposal needed
                 return null;
             }
             const proposal = {
@@ -102,16 +212,12 @@ export class ProposalService {
             return proposal;
         }
         catch (error) {
-            logger.error(`Failed to create proposal for ${asset}`, { error, recommendation });
+            logger_1.governanceLogger.error(`Failed to create proposal for ${asset}`, { error, recommendation });
             return null;
         }
     }
-    /**
-     * Create a portfolio rebalance proposal
-     */
     createRebalanceProposal(analysis) {
         try {
-            // Calculate optimal portfolio distribution
             const allocations = Object.entries(analysis.recommendations)
                 .filter(([_, rec]) => rec.allocatedPercentage)
                 .map(([asset, rec]) => `${asset}: ${rec.allocatedPercentage?.toFixed(1)}%`)
@@ -120,12 +226,11 @@ export class ProposalService {
                 `Overall risk score: ${analysis.riskScore.toFixed(2)}. ` +
                 `Recommended allocations: ${allocations}. ` +
                 `Analysis: Multiple assets showing significant trends requiring rebalancing.`;
-            // Use a placeholder asset address for rebalance proposals
             const placeholderAsset = this.contractService.getAssetAddress('USDC');
             return {
-                proposalType: ProposalType.REBALANCE,
+                proposalType: index_1.ProposalType.REBALANCE,
                 assetAddress: placeholderAsset,
-                amount: '0', // Rebalance doesn't require specific amount
+                amount: '0',
                 description,
                 additionalData: JSON.stringify({
                     rebalance: {
@@ -143,35 +248,25 @@ export class ProposalService {
             };
         }
         catch (error) {
-            logger.error('Failed to create rebalance proposal', { error });
+            logger_1.governanceLogger.error('Failed to create rebalance proposal', { error });
             return null;
         }
     }
-    /**
-     * Calculate investment amount based on various factors
-     */
     calculateInvestmentAmount(asset, recommendation, analysis) {
-        // Base amounts per asset (in ETH equivalent for simplicity)
         const baseAmounts = {
-            'USDC': 1000, // $1000 equivalent
-            'WBTC': 0.02, // ~$1000 worth of BTC
-            'PAXG': 0.5, // ~$1000 worth of gold
-            'EURT': 800 // ~$1000 worth of EUR
+            'USDC': 1000,
+            'WBTC': 0.02,
+            'PAXG': 0.5,
+            'EURT': 800
         };
         const baseAmount = baseAmounts[asset] || 500;
-        // Adjust based on confidence (0.6 to 1.0 confidence -> 0.6x to 1.0x base amount)
         const confidenceMultiplier = Math.max(0.6, recommendation.confidence);
-        // Adjust based on risk (lower risk allows higher investment)
         const riskMultiplier = Math.max(0.5, 1 - (analysis.riskScore * 0.5));
-        // Adjust based on allocated percentage
         const allocationMultiplier = recommendation.allocatedPercentage ?
-            (recommendation.allocatedPercentage / 25) : 1; // Normalize to base 25% allocation
+            (recommendation.allocatedPercentage / 25) : 1;
         const finalAmount = baseAmount * confidenceMultiplier * riskMultiplier * allocationMultiplier;
-        return Math.max(0.01, finalAmount); // Minimum investment
+        return Math.max(0.01, finalAmount);
     }
-    /**
-     * Summarize market conditions for proposal metadata
-     */
     summarizeMarketConditions(analysis) {
         const conditions = [];
         if (analysis.riskScore > 0.7) {
@@ -195,72 +290,57 @@ export class ProposalService {
         }
         return conditions.join(', ') || 'stable conditions';
     }
-    /**
-     * Validate proposal parameters
-     */
     validateProposal(proposal) {
         try {
-            // Basic validation
             if (!proposal.assetAddress || !proposal.description) {
                 return false;
             }
-            // Amount validation
             const amount = parseFloat(proposal.amount);
             if (isNaN(amount) || amount < 0) {
                 return false;
             }
-            // Proposal type validation
-            if (![ProposalType.INVEST, ProposalType.DIVEST, ProposalType.REBALANCE].includes(proposal.proposalType)) {
+            if (![index_1.ProposalType.INVEST, index_1.ProposalType.DIVEST, index_1.ProposalType.REBALANCE].includes(proposal.proposalType)) {
                 return false;
             }
-            // Description length validation
             if (proposal.description.length < 50 || proposal.description.length > 1000) {
                 return false;
             }
             return true;
         }
         catch (error) {
-            logger.error('Proposal validation failed', { error, proposal });
+            logger_1.governanceLogger.error('Proposal validation failed', { error, proposal });
             return false;
         }
     }
-    /**
-     * Prioritize proposals based on confidence and market conditions
-     */
     prioritizeProposals(proposals) {
         return proposals.sort((a, b) => {
             try {
-                // Parse additional data to get confidence scores
                 const aData = a.additionalData ? JSON.parse(a.additionalData) : {};
                 const bData = b.additionalData ? JSON.parse(b.additionalData) : {};
                 const aConfidence = aData.analysis?.confidence || 0;
                 const bConfidence = bData.analysis?.confidence || 0;
-                // Prioritize by confidence, then by proposal type
                 if (aConfidence !== bConfidence) {
                     return bConfidence - aConfidence;
                 }
-                // Rebalance proposals get lower priority
-                if (a.proposalType === ProposalType.REBALANCE && b.proposalType !== ProposalType.REBALANCE) {
+                if (a.proposalType === index_1.ProposalType.REBALANCE && b.proposalType !== index_1.ProposalType.REBALANCE) {
                     return 1;
                 }
-                if (b.proposalType === ProposalType.REBALANCE && a.proposalType !== ProposalType.REBALANCE) {
+                if (b.proposalType === index_1.ProposalType.REBALANCE && a.proposalType !== index_1.ProposalType.REBALANCE) {
                     return -1;
                 }
                 return 0;
             }
             catch (error) {
-                logger.error('Error prioritizing proposals', { error });
+                logger_1.governanceLogger.error('Error prioritizing proposals', { error });
                 return 0;
             }
         });
     }
-    /**
-     * Get proposal summary for logging
-     */
     getProposalSummary(proposal) {
-        const type = ProposalType[proposal.proposalType];
+        const type = index_1.ProposalType[proposal.proposalType];
         const amount = parseFloat(proposal.amount).toFixed(4);
         return `${type} proposal: ${amount} ETH for asset ${proposal.assetAddress.substring(0, 10)}...`;
     }
 }
+exports.ProposalService = ProposalService;
 //# sourceMappingURL=ProposalService.js.map

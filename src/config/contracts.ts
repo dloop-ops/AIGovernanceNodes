@@ -1,5 +1,7 @@
 import { ContractAddresses } from '../types/index.js';
 
+// Ensure proper module exports for both ESM and CommonJS
+
 export const contractAddresses: Record<string, ContractAddresses> = {
   sepolia: {
     assetDao: process.env.ASSET_DAO_ADDRESS || '0xa87e662061237a121Ca2E83E77dA8251bc4B3529',

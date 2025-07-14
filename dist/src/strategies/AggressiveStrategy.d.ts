@@ -8,21 +8,9 @@ export declare class AggressiveStrategy extends BaseStrategy {
         confidence: number;
         reasoning: string;
     }>;
-    /**
-     * Detect strong market trends for aggressive positioning
-     */
     private detectStrongTrend;
-    /**
-     * Detect downtrend for divestment decisions
-     */
     private detectDowntrend;
-    /**
-     * Check if market volatility presents opportunities
-     */
     private hasVolatilityOpportunity;
-    /**
-     * Assess growth potential of the proposal
-     */
     private assessGrowthPotential;
 }
 //# sourceMappingURL=AggressiveStrategy.d.ts.map

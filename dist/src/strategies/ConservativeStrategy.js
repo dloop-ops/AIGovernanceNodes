@@ -1,24 +1,26 @@
-import { BaseStrategy } from './BaseStrategy.js';
-import { ProposalType } from '../types/index.js';
-import { strategyLogger as logger } from '../utils/logger.js';
-export class ConservativeStrategy extends BaseStrategy {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ConservativeStrategy = void 0;
+const BaseStrategy_js_1 = require("./BaseStrategy.js");
+const index_js_1 = require("../types/index.js");
+const logger_js_1 = require("../utils/logger.js");
+class ConservativeStrategy extends BaseStrategy_js_1.BaseStrategy {
     constructor() {
         const config = {
-            riskTolerance: 0.3, // Low risk tolerance
-            maxPositionSize: 0.15, // Max 15% position size
-            diversificationThreshold: 0.25, // Prefer diversification
-            rebalanceThreshold: 0.1, // Conservative rebalancing
+            riskTolerance: 0.3,
+            maxPositionSize: 0.15,
+            diversificationThreshold: 0.25,
+            rebalanceThreshold: 0.1,
             marketConditionWeights: {
-                trending: 0.2, // Less weight on trends
-                volatility: 0.5, // High weight on volatility (avoid high volatility)
-                volume: 0.3 // Moderate weight on volume
+                trending: 0.2,
+                volatility: 0.5,
+                volume: 0.3
             }
         };
         super('Conservative', config);
     }
     async analyzeProposal(proposal, marketAnalysis, nodeContext) {
         try {
-            // Basic validation
             if (!this.validateProposal(proposal)) {
                 return {
                     shouldVote: false,
@@ -34,27 +36,22 @@ export class ConservativeStrategy extends BaseStrategy {
             let voteSupport = false;
             let confidence = 0.5;
             let reasoning = '';
-            // Conservative strategy: prioritize safety and stability
-            // Risk assessment - reject high-risk proposals
             if (riskScore > this.config.riskTolerance) {
                 voteSupport = false;
                 confidence = 0.8;
                 reasoning = `High risk score (${riskScore.toFixed(2)}) exceeds tolerance (${this.config.riskTolerance})`;
             }
-            // Amount check - be cautious with large investments
             else if (parseFloat(proposal.amount) > 1000) {
                 voteSupport = false;
                 confidence = 0.7;
                 reasoning = 'Amount too large for conservative strategy';
             }
-            // Market volatility check
             else if (marketAnalysis && marketAnalysis.riskScore > 0.6) {
                 voteSupport = false;
                 confidence = 0.6;
                 reasoning = 'High market volatility detected, avoiding new positions';
             }
-            // Stable coin preference for investments
-            else if (proposal.proposalType === ProposalType.INVEST) {
+            else if (proposal.proposalType === index_js_1.ProposalType.INVEST.toString()) {
                 const isStableCoin = proposal.description.toUpperCase().includes('USDC') ||
                     proposal.description.toUpperCase().includes('EURT');
                 if (isStableCoin) {
@@ -73,8 +70,7 @@ export class ConservativeStrategy extends BaseStrategy {
                     reasoning = 'Non-stable asset investment without strong market signals';
                 }
             }
-            // Divestment analysis - generally supportive of risk reduction
-            else if (proposal.proposalType === ProposalType.DIVEST) {
+            else if (proposal.proposalType === index_js_1.ProposalType.DIVEST.toString()) {
                 if (marketAnalysis && marketAnalysis.riskScore > 0.5) {
                     voteSupport = true;
                     confidence = 0.8;
@@ -91,8 +87,7 @@ export class ConservativeStrategy extends BaseStrategy {
                     reasoning = 'Divestment not justified by current market conditions';
                 }
             }
-            // Rebalancing - support if conservative
-            else if (proposal.proposalType === ProposalType.REBALANCE) {
+            else if (proposal.proposalType === index_js_1.ProposalType.REBALANCE.toString()) {
                 if (marketAnalysis && marketAnalysis.portfolioRebalance) {
                     voteSupport = true;
                     confidence = 0.7;
@@ -104,21 +99,18 @@ export class ConservativeStrategy extends BaseStrategy {
                     reasoning = 'Rebalancing not supported by current market analysis';
                 }
             }
-            // Adjust confidence based on voting momentum
             if (votingMomentum.votingActivity === 'high') {
                 if (voteSupport === (votingMomentum.supportRatio > 0.5)) {
-                    confidence += 0.1; // Boost confidence if aligned with majority
+                    confidence += 0.1;
                 }
                 else {
-                    confidence -= 0.1; // Reduce confidence if against majority
+                    confidence -= 0.1;
                 }
             }
-            // Time pressure adjustment - reduce confidence in last-minute decisions
             if (this.isLastMinute(proposal)) {
                 confidence *= 0.8;
                 reasoning += ' (last-minute decision factor applied)';
             }
-            // Final confidence bounds
             confidence = Math.max(0.1, Math.min(0.9, confidence));
             const decision = {
                 shouldVote,
@@ -130,7 +122,7 @@ export class ConservativeStrategy extends BaseStrategy {
             return decision;
         }
         catch (error) {
-            logger.error(`Conservative strategy analysis failed for proposal ${proposal.id}`, { error });
+            logger_js_1.strategyLogger.error(`Conservative strategy analysis failed for proposal ${proposal.id}`, { error });
             return {
                 shouldVote: false,
                 voteSupport: false,
@@ -139,47 +131,35 @@ export class ConservativeStrategy extends BaseStrategy {
             };
         }
     }
-    /**
-     * Conservative-specific risk assessment
-     */
     assessConservativeRisk(proposal, marketAnalysis) {
         let riskMultiplier = 1.0;
-        // Higher risk for volatile assets
         if (proposal.description.toUpperCase().includes('WBTC')) {
-            riskMultiplier += 0.3; // Bitcoin is volatile
+            riskMultiplier += 0.3;
         }
-        // Lower risk for stable assets
         if (proposal.description.toUpperCase().includes('USDC') ||
             proposal.description.toUpperCase().includes('EURT')) {
-            riskMultiplier -= 0.2; // Stable coins are safer
+            riskMultiplier -= 0.2;
         }
-        // Market condition adjustment
         if (marketAnalysis) {
             if (marketAnalysis.riskScore > 0.7) {
-                riskMultiplier += 0.4; // Very risky market
+                riskMultiplier += 0.4;
             }
             else if (marketAnalysis.riskScore < 0.3) {
-                riskMultiplier -= 0.2; // Stable market
+                riskMultiplier -= 0.2;
             }
         }
         return Math.max(0.1, Math.min(1.0, riskMultiplier));
     }
-    /**
-     * Check if proposal fits conservative portfolio allocation
-     */
     fitsConservativeAllocation(proposal) {
         const amount = parseFloat(proposal.amount);
-        // Conservative strategy prefers smaller, incremental changes
-        if (amount > 500) { // Large position
+        if (amount > 500) {
             return false;
         }
-        // Prefer stable coin allocations over 30%
         const isStableCoin = proposal.description.toUpperCase().includes('USDC') ||
             proposal.description.toUpperCase().includes('EURT');
-        if (isStableCoin && proposal.proposalType === ProposalType.INVEST) {
+        if (isStableCoin && proposal.proposalType === index_js_1.ProposalType.INVEST.toString()) {
             return true;
         }
-        // Limit exposure to volatile assets
         const isVolatileAsset = proposal.description.toUpperCase().includes('WBTC');
         if (isVolatileAsset && amount > 200) {
             return false;
@@ -187,4 +167,5 @@ export class ConservativeStrategy extends BaseStrategy {
         return true;
     }
 }
+exports.ConservativeStrategy = ConservativeStrategy;
 //# sourceMappingURL=ConservativeStrategy.js.map

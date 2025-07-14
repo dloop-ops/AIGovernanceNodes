@@ -1,13 +1,15 @@
-import { ethers } from 'ethers';
-import { contractLogger as logger } from '../utils/logger.js';
-export class TransactionManager {
-    rpcManager;
-    defaultConfig = {
-        gasLimit: '500000',
-        retries: 3,
-        timeout: 180000 // 3 minutes
-    };
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.TransactionManager = void 0;
+const ethers_1 = require("ethers");
+const logger_js_1 = require("../utils/logger.js");
+class TransactionManager {
     constructor(rpcManager) {
+        this.defaultConfig = {
+            gasLimit: '500000',
+            retries: 3,
+            timeout: 180000
+        };
         this.rpcManager = rpcManager;
     }
     async executeTransaction(signer, contractAddress, contractABI, methodName, args = [], config = {}) {
@@ -15,54 +17,48 @@ export class TransactionManager {
         let lastError = null;
         for (let attempt = 1; attempt <= (mergedConfig.retries || 3); attempt++) {
             try {
-                logger.info('Executing blockchain transaction', {
+                logger_js_1.contractLogger.info('Executing blockchain transaction', {
                     method: methodName,
                     attempt,
                     contractAddress
                 });
                 const result = await this.rpcManager.executeWithRetry(async (provider) => {
                     const connectedSigner = signer.connect(provider);
-                    const contract = new ethers.Contract(contractAddress, contractABI, connectedSigner);
-                    // Enhanced gas estimation with fallbacks
+                    const contract = new ethers_1.ethers.Contract(contractAddress, contractABI, connectedSigner);
                     let gasLimit;
                     let gasPrice;
                     let maxFeePerGas;
                     let maxPriorityFeePerGas;
                     try {
-                        // Attempt gas estimation
                         const estimatedGas = await contract[methodName].estimateGas(...args);
-                        gasLimit = (estimatedGas * BigInt(120) / BigInt(100)).toString(); // 20% buffer
-                        logger.debug('Gas estimation successful', {
+                        gasLimit = (estimatedGas * BigInt(120) / BigInt(100)).toString();
+                        logger_js_1.contractLogger.debug('Gas estimation successful', {
                             method: methodName,
                             estimatedGas: estimatedGas.toString(),
                             gasLimitWithBuffer: gasLimit
                         });
                     }
                     catch (gasError) {
-                        // Fallback to fixed gas limit for problematic methods
                         gasLimit = this.getMethodSpecificGasLimit(methodName);
-                        logger.warn('Gas estimation failed, using fallback', {
+                        logger_js_1.contractLogger.warn('Gas estimation failed, using fallback', {
                             method: methodName,
                             fallbackGasLimit: gasLimit,
                             error: gasError.message
                         });
                     }
-                    // Get fee data with fallbacks
                     try {
                         const feeData = await provider.getFeeData();
                         if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
-                            // EIP-1559 transaction
                             maxFeePerGas = mergedConfig.maxFeePerGas || (feeData.maxFeePerGas * BigInt(110) / BigInt(100)).toString();
                             maxPriorityFeePerGas = mergedConfig.maxPriorityFeePerGas || feeData.maxPriorityFeePerGas.toString();
                         }
                         else {
-                            // Legacy transaction
                             gasPrice = feeData.gasPrice ? (feeData.gasPrice * BigInt(110) / BigInt(100)).toString() : '20000000000';
                         }
                     }
                     catch (feeError) {
-                        logger.warn('Fee data fetch failed, using defaults', { error: feeError });
-                        gasPrice = '20000000000'; // 20 Gwei fallback
+                        logger_js_1.contractLogger.warn('Fee data fetch failed, using defaults', { error: feeError });
+                        gasPrice = '20000000000';
                     }
                     const transactionRequest = {
                         gasLimit
@@ -74,7 +70,7 @@ export class TransactionManager {
                     else {
                         transactionRequest.gasPrice = gasPrice;
                     }
-                    logger.debug('Enhanced transaction parameters', {
+                    logger_js_1.contractLogger.debug('Enhanced transaction parameters', {
                         method: methodName,
                         gasLimit,
                         gasPrice,
@@ -82,22 +78,20 @@ export class TransactionManager {
                         maxPriorityFeePerGas,
                         argsLength: args.length
                     });
-                    // Execute the contract method with enhanced error handling
                     const transaction = await contract[methodName](...args, transactionRequest);
-                    logger.info('Transaction submitted successfully', {
+                    logger_js_1.contractLogger.info('Transaction submitted successfully', {
                         method: methodName,
                         txHash: transaction.hash,
                         attempt,
                         gasLimit,
                         gasUsed: transaction.gasLimit?.toString()
                     });
-                    // Wait for confirmation with timeout
                     const receipt = await Promise.race([
                         transaction.wait(1),
                         new Promise((_, reject) => setTimeout(() => reject(new Error('Transaction confirmation timeout')), mergedConfig.timeout))
                     ]);
                     if (receipt.status === 1) {
-                        logger.info('Transaction confirmed successfully', {
+                        logger_js_1.contractLogger.info('Transaction confirmed successfully', {
                             method: methodName,
                             txHash: receipt.hash,
                             blockNumber: receipt.blockNumber,
@@ -122,7 +116,7 @@ export class TransactionManager {
             catch (error) {
                 lastError = error;
                 const isRetryableError = this.isRetryableError(error);
-                logger.warn('Transaction attempt failed', {
+                logger_js_1.contractLogger.warn('Transaction attempt failed', {
                     method: methodName,
                     attempt,
                     error: error.message,
@@ -130,14 +124,14 @@ export class TransactionManager {
                     willRetry: isRetryableError && attempt < (mergedConfig.retries || 3)
                 });
                 if (isRetryableError && attempt < (mergedConfig.retries || 3)) {
-                    await this.delay(Math.pow(2, attempt) * 1000); // Exponential backoff
+                    await this.delay(Math.pow(2, attempt) * 1000);
                 }
                 else if (!isRetryableError) {
-                    break; // Don't retry non-retryable errors
+                    break;
                 }
             }
         }
-        logger.error('Transaction execution failed', {
+        logger_js_1.contractLogger.error('Transaction execution failed', {
             method: methodName,
             finalError: lastError?.message || 'Unknown error',
             totalAttempts: mergedConfig.retries
@@ -162,7 +156,6 @@ export class TransactionManager {
     isRetryableError(error) {
         const message = error.message?.toLowerCase() || '';
         const code = error.code;
-        // Non-retryable errors
         if (message.includes('insufficient funds') ||
             message.includes('nonce too low') ||
             message.includes('already known') ||
@@ -171,7 +164,6 @@ export class TransactionManager {
             code === 'NONCE_EXPIRED') {
             return false;
         }
-        // Retryable errors
         return (message.includes('timeout') ||
             message.includes('network') ||
             message.includes('connection') ||
@@ -182,9 +174,9 @@ export class TransactionManager {
     }
     async executeContractRead(contractAddress, contractABI, methodName, args = []) {
         return await this.rpcManager.executeWithRetry(async (provider) => {
-            const contract = new ethers.Contract(contractAddress, contractABI, provider);
+            const contract = new ethers_1.ethers.Contract(contractAddress, contractABI, provider);
             const result = await contract[methodName](...args);
-            logger.debug('Contract read operation completed', {
+            logger_js_1.contractLogger.debug('Contract read operation completed', {
                 method: methodName,
                 contractAddress,
                 result: typeof result === 'string' ? result.substring(0, 100) : result
@@ -192,10 +184,9 @@ export class TransactionManager {
             return result;
         }, 3, `Read ${methodName}`);
     }
-    async waitForTransactionConfirmation(transactionHash, confirmations = 1, timeout = 300000 // 5 minutes
-    ) {
+    async waitForTransactionConfirmation(transactionHash, confirmations = 1, timeout = 300000) {
         return await this.rpcManager.executeWithRetry(async (provider) => {
-            logger.info('Waiting for transaction confirmation', {
+            logger_js_1.contractLogger.info('Waiting for transaction confirmation', {
                 txHash: transactionHash,
                 confirmations
             });
@@ -206,7 +197,7 @@ export class TransactionManager {
             if (!receipt) {
                 throw new Error('Transaction receipt not found');
             }
-            logger.info('Transaction confirmed', {
+            logger_js_1.contractLogger.info('Transaction confirmed', {
                 txHash: transactionHash,
                 blockNumber: receipt.blockNumber,
                 status: receipt.status
@@ -217,9 +208,9 @@ export class TransactionManager {
     async estimateGas(signer, contractAddress, contractABI, methodName, args = []) {
         return await this.rpcManager.executeWithRetry(async (provider) => {
             const connectedSigner = signer.connect(provider);
-            const contract = new ethers.Contract(contractAddress, contractABI, connectedSigner);
+            const contract = new ethers_1.ethers.Contract(contractAddress, contractABI, connectedSigner);
             const gasEstimate = await contract[methodName].estimateGas(...args);
-            logger.debug('Gas estimation completed', {
+            logger_js_1.contractLogger.debug('Gas estimation completed', {
                 method: methodName,
                 gasEstimate: gasEstimate.toString()
             });
@@ -231,7 +222,6 @@ export class TransactionManager {
             return await this.rpcManager.executeWithRetry(async (provider) => {
                 const receipt = await provider.getTransactionReceipt(transactionHash);
                 if (!receipt) {
-                    // Check if transaction exists in mempool
                     const tx = await provider.getTransaction(transactionHash);
                     return tx ? { status: 'pending' } : { status: 'not_found' };
                 }
@@ -245,7 +235,7 @@ export class TransactionManager {
             }, 2, 'Get transaction status');
         }
         catch (error) {
-            logger.error('Failed to get transaction status', {
+            logger_js_1.contractLogger.error('Failed to get transaction status', {
                 txHash: transactionHash,
                 error: error instanceof Error ? error.message : 'Unknown error'
             });
@@ -256,4 +246,5 @@ export class TransactionManager {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
+exports.TransactionManager = TransactionManager;
 //# sourceMappingURL=TransactionManager.js.map
