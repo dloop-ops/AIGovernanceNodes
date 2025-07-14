@@ -16,7 +16,11 @@
 
 [functions."scheduled-voting"]
   timeout = 25
-  schedule = "*/10 * * * *"
+  schedule = "0,30 * * * *"
+
+[functions."scheduled-voting-test"]
+  timeout = 25
+  schedule = "15,45 * * * *"
 
 [[redirects]]
   from = "/api/status"
