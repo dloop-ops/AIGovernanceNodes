@@ -173,6 +173,29 @@
             padding-top: 12px;
             border-top: 1px solid var(--color-gray);
         }
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .registry-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            color: var(--color-accent);
+            text-decoration: none;
+            opacity: 0.8;
+            transition: opacity 0.2s ease;
+        }
+
+        .registry-link:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+
         .node-badge {
             background: var(--color-orange);
             color: var(--color-black);
@@ -253,10 +276,24 @@
 
         <!-- AI Nodes Section -->
         <section class="nodes-section">
-            <h2>🧠 Deployed AI Nodes</h2>
+            <div class="section-header">
+                <h2>🧠 Deployed AI Nodes</h2>
+                <a href="https://d-loop.io/identity/identity.json" 
+                   target="_blank" 
+                   rel="noopener noreferrer"
+                   class="registry-link"
+                   title="View AI Node SoulBound NFT Registry">
+                    <span>View NFT Registry</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                </a>
+            </div>
             <div id="nodes-container" class="nodes-grid">
-            <!-- Node cards will be inserted here by JavaScript -->
-        </div>
+                <!-- Node cards will be inserted here by JavaScript -->
+            </div>
         
         <!-- Lucide Icons -->
         <script src="https://unpkg.com/lucide@latest"></script>
