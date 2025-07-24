@@ -131,10 +131,21 @@
         }
         .node-address {
             font-family: monospace;
-            font-size: 14px;
-            color: var(--color-dark-gray);
-            margin-bottom: 12px;
+            color: #666;
+            margin: 5px 0;
+            font-size: 0.9em;
             word-break: break-all;
+        }
+        
+        .node-address a {
+            color: var(--color-accent);
+            text-decoration: none;
+            transition: opacity 0.2s ease;
+        }
+        
+        .node-address a:hover {
+            opacity: 0.8;
+            text-decoration: underline;
         }
         .node-stats {
             display: flex;
@@ -250,12 +261,12 @@
         <!-- Lucide Icons -->
         <script src="https://unpkg.com/lucide@latest"></script>
         <script>
-            // Node data with Lucide icons
+            // Node data with Lucide icons and actual Ethereum addresses
             const nodes = [
                 {
                     id: 1,
                     name: "AI.Gov#01",
-                    address: "0x7f3a...49b8b9",
+                    address: "0x0E354b735a6eee60726e6e3A431e3320Ba26ba45",
                     votingPower: "0.45",
                     responseTime: "<1s",
                     accuracy: "92.5%",
@@ -265,7 +276,7 @@
                 {
                     id: 2,
                     name: "AI.Gov#02",
-                    address: "0x8a4b...57c9d0",
+                    address: "0x48B2353954496679CF7C73d239bc12098cB0C5B4",
                     votingPower: "0.35",
                     responseTime: "<1s",
                     accuracy: "89.2%",
@@ -275,7 +286,7 @@
                 {
                     id: 3,
                     name: "AI.Gov#03",
-                    address: "0x9a5c...68d0e1",
+                    address: "0x43f76157E9696302E287181828cB3B0C6B89d31e",
                     votingPower: "0.55",
                     responseTime: "<1s",
                     accuracy: "88.7%",
@@ -285,7 +296,7 @@
                 {
                     id: 4,
                     name: "AI.Gov#04",
-                    address: "0x2a6d...79f1e2",
+                    address: "0xC02764913ce2F23B094F0338a711EFD984024A46",
                     votingPower: "0.40",
                     responseTime: "<1s",
                     accuracy: "90.3%",
@@ -295,7 +306,7 @@
                 {
                     id: 5,
                     name: "AI.Gov#05",
-                    address: "0x1a7e...8a0f3d",
+                    address: "0x00FfF703fa6837A1a46b3DF9B6a047404046379E",
                     votingPower: "0.50",
                     responseTime: "<1s",
                     accuracy: "91.1%",
@@ -304,6 +315,14 @@
                 }
             ];
             
+            // Function to truncate Ethereum address
+            function truncateAddress(address) {
+                if (!address) return '';
+                const start = address.substring(0, 6);
+                const end = address.substring(address.length - 6);
+                return `${start}...${end}`;
+            }
+
             // Render nodes
             function renderNodes() {
                 const container = document.getElementById('nodes-container');
@@ -312,7 +331,14 @@
                 container.innerHTML = nodes.map(node => `
                     <div class="node-card">
                         <h3><i data-lucide="${node.icon}"></i> ${node.name}</h3>
-                        <div class="node-address">${node.address}</div>
+                        <div class="node-address">
+                            <a href="https://sepolia.etherscan.io/address/${node.address}" 
+                               target="_blank" 
+                               rel="noopener noreferrer"
+                               title="${node.address}">
+                                ${truncateAddress(node.address)}
+                            </a>
+                        </div>
                         <div class="node-stats">
                             <span class="stat-item">
                                 <i data-lucide="vote" class="icon"></i> ${node.votingPower} VP

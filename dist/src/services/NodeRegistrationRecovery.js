@@ -58,7 +58,7 @@ class NodeRegistrationRecovery {
     }
     async scanUnregisteredNodes() {
         const nodeConfigs = [
-            { nodeId: 'ai-gov-01', address: '0x561529036AB886c1FD3D112360383D79fBA9E71c' },
+            { nodeId: 'ai-gov-01', address: '0x0E354b735a6eee60726e6e3A431e3320Ba26ba45' },
             { nodeId: 'ai-gov-02', address: '0x48B2353954496679CF7C73d239bc12098cB0C5B4' },
             { nodeId: 'ai-gov-03', address: '0x43f76157E9696302E287181828cB3B0C6B89d31e' },
             { nodeId: 'ai-gov-04', address: '0xC02764913ce2F23B094F0338a711EFD984024A46' },
