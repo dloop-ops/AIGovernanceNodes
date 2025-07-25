@@ -299,8 +299,8 @@
                 <!-- Node cards will be inserted here by JavaScript -->
             </div>
         
-        <!-- Lucide Icons - Using specific version for stability -->
-        <script src="https://unpkg.com/lucide@4.1.0/dist/umd/lucide.js" integrity="sha384-+v8w8rJ8J7f4Z8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8" crossorigin="anonymous"></script>
+        <!-- Lucide Icons - Using CDN with fallback -->
+        <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.js" crossorigin="anonymous"></script>
         <script>
             // Node data with Lucide icons and actual Ethereum addresses
             const nodes = [
@@ -398,22 +398,39 @@
                 `).join('');
                 
                 // Initialize Lucide icons after rendering
-                document.addEventListener('DOMContentLoaded', () => {
+                function initLucide() {
+                    const grid = document.getElementById('nodes-container');
+                    if (!grid) {
+                        console.warn('Nodes container not found, retrying...');
+                        setTimeout(initLucide, 100);
+                        return;
+                    }
+                    
                     if (window.lucide) {
                         lucide.createIcons();
                     } else {
                         console.warn('Lucide not loaded, retrying...');
                         // Fallback: Try loading Lucide again
                         const script = document.createElement('script');
-                        script.src = 'https://unpkg.com/lucide@latest/dist/umd/lucide.js';
+                        script.src = 'https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.js';
                         script.onload = () => {
                             if (window.lucide) {
                                 lucide.createIcons();
                             }
                         };
+                        script.onerror = () => {
+                            console.error('Failed to load Lucide icons');
+                        };
                         document.head.appendChild(script);
                     }
-                });
+                }
+                
+                // Start initialization
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initLucide);
+                } else {
+                    initLucide();
+                }
             }
             
             // Initialize when DOM is fully loaded
