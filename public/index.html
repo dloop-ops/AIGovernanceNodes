@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DLoop AI Governance Nodes</title>
+    <title>D-LOOP AI Governance Nodes</title>
+    <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -248,7 +249,10 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🤖 DLoop AI Governance Nodes</h1>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
+                <img src="/images/d-loop.png" alt="D-LOOP Logo" style="height: 40px; width: auto;">
+                <h1>D-LOOP AI Governance Nodes</h1>
+            </div>
             <p>Autonomous AI agents for DAO governance</p>
         </div>
 
@@ -295,8 +299,8 @@
                 <!-- Node cards will be inserted here by JavaScript -->
             </div>
         
-        <!-- Lucide Icons -->
-        <script src="https://unpkg.com/lucide@latest"></script>
+        <!-- Lucide Icons - Using specific version for stability -->
+        <script src="https://unpkg.com/lucide@4.1.0/dist/umd/lucide.js" integrity="sha384-+v8w8rJ8J7f4Z8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8J8" crossorigin="anonymous"></script>
         <script>
             // Node data with Lucide icons and actual Ethereum addresses
             const nodes = [
@@ -394,9 +398,22 @@
                 `).join('');
                 
                 // Initialize Lucide icons after rendering
-                if (window.lucide) {
-                    window.lucide.createIcons();
-                }
+                document.addEventListener('DOMContentLoaded', () => {
+                    if (window.lucide) {
+                        lucide.createIcons();
+                    } else {
+                        console.warn('Lucide not loaded, retrying...');
+                        // Fallback: Try loading Lucide again
+                        const script = document.createElement('script');
+                        script.src = 'https://unpkg.com/lucide@latest/dist/umd/lucide.js';
+                        script.onload = () => {
+                            if (window.lucide) {
+                                lucide.createIcons();
+                            }
+                        };
+                        document.head.appendChild(script);
+                    }
+                });
             }
             
             // Initialize when DOM is fully loaded
@@ -410,7 +427,7 @@
     </div>
 
     <footer>
-        &copy; <span id="year"></span> DLoop • <a href="https://d-loop.io" target="_blank" rel="noopener">d-loop.io</a>
+            <p> D-LOOP • <a href="https://d-loop.io" target="_blank" rel="noopener">d-loop.io</a></p>
     </footer>
 
     <script>
