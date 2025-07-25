@@ -69,7 +69,6 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://sepolia.infura.io https://api.coingecko.com wss://sepolia.infura.io; font-src 'self' data:;"
-    X-Content-Type-Options = "nosniff"
     Access-Control-Allow-Origin = "*"
 
 [[headers]]
